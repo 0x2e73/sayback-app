@@ -1,0 +1,31 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import type { DesktopApi } from '../shared/contracts';
+import { App } from './App';
+import './styles.css';
+import './styles/shared.css';
+import './styles/library.css';
+import './styles/meetings.css';
+import './styles/recording.css';
+import './styles/model-select.css';
+import './styles/onboarding.css';
+
+declare global {
+  interface Window {
+    sayBack?: DesktopApi;
+  }
+}
+const root = createRoot(document.getElementById('root')!);
+root.render(
+  <React.StrictMode>
+    {window.sayBack ? (
+      <App api={window.sayBack} />
+    ) : (
+      <div className="desktop-required">
+        <h1>SayBack</h1>
+        <p>Ouvrez l’application desktop pour enregistrer vos réunions.</p>
+        <code>npm run dev</code>
+      </div>
+    )}
+  </React.StrictMode>,
+);

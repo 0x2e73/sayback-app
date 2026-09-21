@@ -1,0 +1,145 @@
+.intro-strip,
+.settings-card,
+.notes-panel,
+.context-panel,
+.media-player,
+.empty-state {
+  padding: 24px;
+  border: 1px solid #e3e9ee;
+  border-radius: 16px;
+  background: #fff;
+}
+.intro-strip {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 30px;
+}
+.intro-strip > div {
+  flex: 1;
+  min-width: 0;
+}
+.intro-strip strong {
+  display: block;
+  margin-bottom: 3px;
+}
+.intro-strip > svg {
+  flex: none;
+  color: #8793a0;
+}
+.muted,
+.caption,
+.count {
+  color: #7c8995;
+}
+.caption {
+  font-size: 0.8rem;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 9px 15px;
+  border: 1px solid #dce4eb;
+  border-radius: 9px;
+  background: #fff;
+  color: #243343;
+  font-weight: 600;
+}
+.button:hover {
+  background: #f2f5f8;
+}
+.button-primary {
+  border-color: #273b54;
+  background: #273b54;
+  color: #fff;
+}
+.button-primary:hover {
+  background: #1c3049;
+}
+.button-danger {
+  border-color: #c54747;
+  background: #c54747;
+  color: #fff;
+}
+.button-ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.field {
+  display: grid;
+  gap: 8px;
+  color: #445261;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.field input,
+.field select,
+.field textarea,
+.field-control,
+.search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid #dbe3e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #17212b;
+}
+.field textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(100%, 320px);
+}
+.search > svg {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+  color: #7c8995;
+}
+.search input {
+  padding-left: 38px;
+}
+
+.local-setup {
+  display: grid;
+  gap: 14px;
+  max-width: 560px;
+  margin-top: 22px;
+}
+.local-setup-ready,
+.local-setup-missing li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+}
+.local-setup-ready {
+  color: #2f6f4f;
+}
+.local-setup-missing {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #a6413b;
+}
+.local-setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

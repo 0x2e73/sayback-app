@@ -1,0 +1,19 @@
+node_modules/
+out/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+test-results/
+
+# Outils et notes personnels
+.clinerules
+.codex/hooks.json
+.codex/vexp-hint.sh
+.vexp/
+.vscode/
+TEST-MANUEL.md
+docs/handoff-*.md

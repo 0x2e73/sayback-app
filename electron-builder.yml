@@ -1,0 +1,19 @@
+appId: ch.sayback.desktop
+productName: SayBack
+directories:
+  output: dist
+files:
+  - out/**/*
+  - package.json
+mac:
+  category: public.app-category.productivity
+  target: [dmg]
+  extendInfo:
+    NSMicrophoneUsageDescription: Enregistrer votre voix pendant vos réunions.
+    NSAudioCaptureUsageDescription: Enregistrer le son de votre ordinateur pendant vos réunions.
+    NSScreenCaptureUsageDescription: Relier vos notes au contenu partagé à l’écran.
+win:
+  target: [nsis]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
