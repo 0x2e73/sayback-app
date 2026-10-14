@@ -1,6 +1,6 @@
 import type { DesktopApi } from '../shared/contracts';
 import { AppShell, focusCardContent } from './components/AppShell';
-import { Notice } from './components/ui';
+import { ErrorBoundary, Notice } from './components/ui';
 import { ListPane } from './features/list/ListPane';
 import { Onboarding } from './features/onboarding/Onboarding';
 import { useOnboarding } from './features/onboarding/use-onboarding';
@@ -50,24 +50,26 @@ export function App({ api }: AppProps) {
   // While the card shows the settings, no row stands for it.
   const paneSelection = workspace.card === 'meeting' ? (workspace.selected?.id ?? null) : null;
   const pane = (
-    <ListPane
-      meetings={library.meetings}
-      visibleMeetings={workspace.filter.visible}
-      scope={workspace.filter.scope}
-      query={workspace.filter.query}
-      onScope={workspace.filter.setScope}
-      onQuery={workspace.filter.setQuery}
-      folders={folders.folders}
-      folderActions={folders}
-      loading={library.loading}
-      selectedId={paneSelection}
-      settingsOpen={workspace.card === 'settings'}
-      recording={recording.capture}
-      onSelect={workspace.select}
-      onToggleSettings={workspace.toggleSettings}
-      onNew={workspace.openNewMeeting}
-      onShowRecording={focusCardContent}
-    />
+    <ErrorBoundary className="list-pane">
+      <ListPane
+        meetings={library.meetings}
+        visibleMeetings={workspace.filter.visible}
+        scope={workspace.filter.scope}
+        query={workspace.filter.query}
+        onScope={workspace.filter.setScope}
+        onQuery={workspace.filter.setQuery}
+        folders={folders.folders}
+        folderActions={folders}
+        loading={library.loading}
+        selectedId={paneSelection}
+        settingsOpen={workspace.card === 'settings'}
+        recording={recording.capture}
+        onSelect={workspace.select}
+        onToggleSettings={workspace.toggleSettings}
+        onNew={workspace.openNewMeeting}
+        onShowRecording={focusCardContent}
+      />
+    </ErrorBoundary>
   );
   const floatingNotice = notice && (
     <Notice floating retry={notice.retryList ? () => void library.refresh() : undefined}>
@@ -77,22 +79,24 @@ export function App({ api }: AppProps) {
 
   return (
     <AppShell pane={pane} notice={floatingNotice}>
-      <WorkspaceContent
-        api={api}
-        card={workspace.card}
-        selected={workspace.selected}
-        loading={library.loading}
-        hasMeetings={library.meetings.length > 0}
-        folders={folders.folders}
-        capture={recording.capture}
-        stopping={recording.stopping}
-        onStop={recording.stop}
-        onUpdate={library.update}
-        onMove={folders.move}
-        onDeleted={workspace.deleted}
-        onSettings={workspace.showSettings}
-        onShowOnboarding={onboarding.reopen}
-      />
+      <ErrorBoundary>
+        <WorkspaceContent
+          api={api}
+          card={workspace.card}
+          selected={workspace.selected}
+          loading={library.loading}
+          hasMeetings={library.meetings.length > 0}
+          folders={folders.folders}
+          capture={recording.capture}
+          stopping={recording.stopping}
+          onStop={recording.stop}
+          onUpdate={library.update}
+          onMove={folders.move}
+          onDeleted={workspace.deleted}
+          onSettings={workspace.showSettings}
+          onShowOnboarding={onboarding.reopen}
+        />
+      </ErrorBoundary>
       {workspace.newMeeting && (
         <NewMeetingDialog api={api} onClose={workspace.closeNewMeeting} onStart={workspace.start} />
       )}

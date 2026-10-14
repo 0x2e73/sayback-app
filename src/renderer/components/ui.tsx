@@ -5,3 +5,4 @@ export { StatusBadge } from './StatusBadge';
 export { ConfirmDialog } from './ConfirmDialog';
 export { Chip } from './Chip';
 export { EmptyState } from './EmptyState';
+export { ErrorBoundary } from './ErrorBoundary';

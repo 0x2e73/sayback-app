@@ -17,3 +17,16 @@ it('moves to the next day without a reload', () => {
   });
   expect(result.current.getDate()).toBe(15);
 });
+
+it.each([['focus'], ['visibilitychange']])('reads the date again on %s', (eventName) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 14, 23, 0));
+  const { result } = renderHook(() => useCurrentDate());
+  // A laptop asleep past midnight: timers did not run, the clock did move.
+  vi.setSystemTime(new Date(2026, 9, 15, 8, 0));
+  act(() => {
+    if (eventName === 'focus') window.dispatchEvent(new Event('focus'));
+    else document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect(result.current.getDate()).toBe(15);
+});

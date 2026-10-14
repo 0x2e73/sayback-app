@@ -139,3 +139,13 @@ describe('Meeting list and card', () => {
     expect(await screen.findByRole('option', { name: /Revue produit.*Acme/ })).toBeInTheDocument();
   });
 });
+
+describe('Unreadable dates', () => {
+  it.each([['nope'], ['']])('keep the interface up with the date %j', async (createdAt) => {
+    const broken = meetingFixture('bad', 'Sans date', createdAt);
+    render(<App api={apiFor([newer, broken])} />);
+    const pane = await screen.findByRole('complementary', { name: 'Liste des réunions' });
+    expect(within(pane).getByRole('group', { name: 'Date inconnue' })).toHaveTextContent('—');
+    expect(within(pane).getByRole('option', { name: /Revue produit/ })).toBeInTheDocument();
+  });
+});

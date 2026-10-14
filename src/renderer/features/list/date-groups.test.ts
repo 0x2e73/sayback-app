@@ -90,6 +90,29 @@ describe('groupByDate', () => {
     ]);
   });
 
+  it.each([['nope'], ['']])('puts the date %j under « Date inconnue », last', (createdAt) => {
+    const groups = groupByDate(
+      [
+        { id: 'broken', createdAt },
+        { id: 'old', createdAt: local(2026, 9, 30) },
+        { id: 'today', createdAt: local(2026, 10, 14, 8) },
+      ],
+      wednesday,
+    );
+    expect(groups.map((group) => [group.label, group.items.map((item) => item.id)])).toEqual([
+      ['Aujourd’hui', ['today']],
+      ['Septembre 2026', ['old']],
+      ['Date inconnue', ['broken']],
+    ]);
+  });
+
+  it('keeps every meeting when all the dates are unreadable', () => {
+    const groups = groupByDate([{ createdAt: 'nope' }, { createdAt: '' }], wednesday);
+    expect(groups.map((group) => [group.label, group.items.length])).toEqual([
+      ['Date inconnue', 2],
+    ]);
+  });
+
   it('returns no group for no meeting', () => {
     expect(groupByDate([], wednesday)).toEqual([]);
   });
@@ -107,7 +130,10 @@ describe('formatRowDate', () => {
     ['last year', local(2025, 10, 11), wednesday, '11 oct. 2025'],
     ['on 31 December, seen on 1 January', local(2025, 12, 31, 23), new Date(2026, 0, 1, 8), 'Hier'],
     ['in UTC before midnight, after it in Zurich', '2026-10-13T22:30:00.000Z', wednesday, '00:30'],
-    ['tomorrow, a clock ahead', local(2026, 10, 15, 9), wednesday, '09:00'],
+    ['tomorrow, a clock ahead', local(2026, 10, 15, 9), wednesday, '15 oct. 2026'],
+    ['a year ahead', local(2027, 10, 14, 9), wednesday, '14 oct. 2027'],
+    ['an invalid date', 'nope', wednesday, '—'],
+    ['an empty date', '', wednesday, '—'],
   ])('dates a meeting %s', (_case, createdAt, now, expected) => {
     expect(formatRowDate(createdAt, now)).toBe(expected);
   });

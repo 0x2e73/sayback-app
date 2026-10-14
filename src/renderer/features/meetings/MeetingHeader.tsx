@@ -39,6 +39,13 @@ function FolderSelect({ meeting, folders, onMove }: FolderSelectProps) {
   );
 }
 
+const longDate = new Intl.DateTimeFormat('fr-CH', { dateStyle: 'long', timeStyle: 'short' });
+
+function createdLabel(createdAt: string): string {
+  const date = new Date(createdAt);
+  return Number.isNaN(date.getTime()) ? 'Date inconnue' : longDate.format(date);
+}
+
 export function MeetingHeader({
   meeting,
   folders,
@@ -47,11 +54,6 @@ export function MeetingHeader({
   onExport,
   onDelete,
 }: MeetingHeaderProps) {
-  const createdAt = new Intl.DateTimeFormat('fr-CH', {
-    dateStyle: 'long',
-    timeStyle: 'short',
-  }).format(new Date(meeting.createdAt));
-
   return (
     <div className="detail-heading">
       <div>
@@ -61,7 +63,7 @@ export function MeetingHeader({
           <FolderSelect meeting={meeting} folders={folders} onMove={onMove} />
         </div>
         <h1>{meeting.title}</h1>
-        <p className="muted">{createdAt}</p>
+        <p className="muted">{createdLabel(meeting.createdAt)}</p>
       </div>
       <div className="row">
         <Button variant="secondary" onClick={onExport} disabled={!meeting.transcript.length}>

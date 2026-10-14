@@ -52,3 +52,9 @@ it.each(['processing', 'recording'] as const)('keeps the folder while %s', (stat
   );
   expect(select).toBeDisabled();
 });
+
+it('opens a meeting whose date is unreadable', () => {
+  renderHeader(meetingFixture('m1', 'Revue', 'nope'));
+  expect(screen.getByRole('heading', { level: 1, name: 'Revue' })).toBeInTheDocument();
+  expect(screen.getByText('Date inconnue')).toBeInTheDocument();
+});

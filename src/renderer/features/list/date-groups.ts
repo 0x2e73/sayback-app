@@ -40,7 +40,15 @@ function capitalise(text: string): string {
   return text.charAt(0).toLocaleUpperCase('fr-CH') + text.slice(1);
 }
 
-function heading(date: Date, now: Date): Heading {
+const UNKNOWN: Heading = { key: 'unknown', label: 'Date inconnue' };
+
+function isReadable(createdAt: string): boolean {
+  return !Number.isNaN(Date.parse(createdAt));
+}
+
+function heading(createdAt: string, now: Date): Heading {
+  if (!isReadable(createdAt)) return UNKNOWN;
+  const date = new Date(createdAt);
   const today = startOfDay(now);
   if (date >= today) return { key: 'today', label: 'Aujourd’hui' };
   if (date >= daysBefore(today, 1)) return { key: 'yesterday', label: 'Hier' };
@@ -51,8 +59,13 @@ function heading(date: Date, now: Date): Heading {
   return { key: monthKey(date), label: capitalise(monthFormat.format(date)) };
 }
 
+/** Newest first; the unreadable dates come last. */
 export function sortNewestFirst<T extends Dated>(items: readonly T[]): T[] {
-  return [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const time = (item: T) => (isReadable(item.createdAt) ? Date.parse(item.createdAt) : -Infinity);
+  return [...items].sort((a, b) => {
+    if (time(a) === time(b)) return 0;
+    return time(b) > time(a) ? 1 : -1;
+  });
 }
 
 /** Newest first. A date ahead of the clock counts as today. */
@@ -60,7 +73,7 @@ export function groupByDate<T extends Dated>(items: readonly T[], now: Date): Da
   const sorted = sortNewestFirst(items);
   const groups: DateGroup<T>[] = [];
   for (const item of sorted) {
-    const { key, label } = heading(new Date(item.createdAt), now);
+    const { key, label } = heading(item.createdAt, now);
     const last = groups.at(-1);
     if (last?.key === key) last.items.push(item);
     else groups.push({ key, label, items: [item] });
@@ -68,9 +81,12 @@ export function groupByDate<T extends Dated>(items: readonly T[], now: Date): Da
   return groups;
 }
 
+/** Never a bare time for a day that has not come yet. */
 export function formatRowDate(createdAt: string, now: Date): string {
+  if (!isReadable(createdAt)) return '—';
   const date = new Date(createdAt);
   const today = startOfDay(now);
+  if (date >= daysBefore(today, -1)) return fullDayFormat.format(date);
   if (date >= today) return timeFormat.format(date);
   if (date >= daysBefore(today, 1)) return 'Hier';
   if (date.getFullYear() === now.getFullYear()) return dayFormat.format(date);

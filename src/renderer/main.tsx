@@ -7,6 +7,7 @@ import './styles.css';
 import './styles/shared.css';
 import './styles/chip.css';
 import './styles/empty-state.css';
+import './styles/error-fallback.css';
 import './styles/meeting-list.css';
 import './styles/folder-filter.css';
 import './styles/list-pane.css';
