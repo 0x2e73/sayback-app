@@ -63,3 +63,11 @@ it('keeps a pushed status when an older read resolves later', async () => {
   await act(async () => resolve({ ok: true, value: upToDate }));
   expect(result.current).toEqual(available);
 });
+
+it('survives a rejected read', async () => {
+  const api = apiFor();
+  api.getUpdateStatus = () => Promise.reject(new Error('IPC'));
+  const { result } = renderHook(() => useUpdateStatus(api));
+  await act(async () => undefined);
+  expect(result.current).toBeNull();
+});

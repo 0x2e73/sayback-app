@@ -20,7 +20,7 @@ export function useWorkspace(api: DesktopApi) {
   const folders = useFolders(api, library.update, library.refresh);
   const analysis = useAutoAnalysis(api, library.update);
   const updateStatus = useUpdateStatus(api);
-  const updateInstall = useUpdateInstall(api);
+  const updateInstall = useUpdateInstall(api, updateStatus);
   const filter = useListFilter(library.meetings, folders.folders);
   const [card, setCard] = useState<CardView>('meeting');
   const [chosenId, setChosenId] = useState<string | null>(null);

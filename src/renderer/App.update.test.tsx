@@ -101,3 +101,37 @@ it('shows a pushed update without reloading', async () => {
   act(() => emit(ready));
   expect(await screen.findByRole('button', { name: 'Installer' })).toBeInTheDocument();
 });
+
+it('clears the refusal when the pushed state changes', async () => {
+  const api = apiWith(ready);
+  let emit: (status: UpdateStatus) => void = () => undefined;
+  api.onUpdateStatus = (listener) => {
+    emit = listener;
+    return () => undefined;
+  };
+  api.installUpdate = async () => ({ ok: false, error: 'Le paquet est introuvable.' });
+  const user = userEvent.setup();
+  render(<App api={api} />);
+  await user.click(await screen.findByRole('button', { name: 'Installer' }));
+  expect(await screen.findByRole('alert')).toBeInTheDocument();
+  act(() => emit(blocked));
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('stays busy once the install has started', async () => {
+  const api = apiWith(ready);
+  api.installUpdate = vi.fn(async () => ({ ok: true as const, value: 'started' as const }));
+  const user = userEvent.setup();
+  render(<App api={api} />);
+  const install = await screen.findByRole('button', { name: 'Installer' });
+  await user.click(install);
+  await user.click(install);
+  expect(api.installUpdate).toHaveBeenCalledOnce();
+  expect(install).toHaveAttribute('aria-busy', 'true');
+});
+
+it('keeps the status region mounted while there is nothing to announce', async () => {
+  render(<App api={apiFor()} />);
+  const region = await screen.findByRole('status', { name: 'Mise à jour' });
+  expect(region).toBeEmptyDOMElement();
+});

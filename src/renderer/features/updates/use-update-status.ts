@@ -12,9 +12,12 @@ export function useUpdateStatus(api: DesktopApi): UpdateStatus | null {
       pushed = true;
       setStatus(next);
     });
-    void api.getUpdateStatus().then((result) => {
-      if (active && !pushed && result.ok) setStatus(result.value);
-    });
+    api
+      .getUpdateStatus()
+      .then((result) => {
+        if (active && !pushed && result.ok) setStatus(result.value);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
       unsubscribe();

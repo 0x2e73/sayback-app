@@ -8,11 +8,11 @@ export interface UpdateLineProps {
   onInstall(): void;
 }
 
-export function UpdateLine({ status, busy, onInstall }: UpdateLineProps) {
+function UpdateContent({ status, busy, onInstall }: UpdateLineProps) {
   if (!status?.available) return null;
   if (!status.canInstall && !status.reason) return null;
   return (
-    <div className="update-line" role="status" aria-label="Mise à jour">
+    <div className="update-line">
       <div className="update-line-text">
         <strong>Mise à jour prête</strong>
         <span className="update-line-version">{updateLabel(status.available)}</span>
@@ -23,6 +23,15 @@ export function UpdateLine({ status, busy, onInstall }: UpdateLineProps) {
           Installer
         </Button>
       )}
+    </div>
+  );
+}
+
+// The live region stays mounted, empty and without size, so a screen reader announces its arrival.
+export function UpdateLine(props: UpdateLineProps) {
+  return (
+    <div role="status" aria-label="Mise à jour">
+      <UpdateContent {...props} />
     </div>
   );
 }
