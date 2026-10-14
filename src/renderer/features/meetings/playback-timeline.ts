@@ -24,13 +24,8 @@ type PlayableMeeting = Pick<Meeting, 'id' | 'hasVideo' | 'duration' | 'audioChun
 
 const finite = (value: number) => Number.isFinite(value);
 
-/** The video carries the sound; otherwise one source per recorded extract, in time order. */
-export function playbackSources(meeting: PlayableMeeting): PlaybackSource[] {
+function audioSources(meeting: PlayableMeeting): PlaybackSource[] {
   const base = `meeting-media://local/${meeting.id}`;
-  if (meeting.hasVideo) {
-    const duration = finite(meeting.duration) ? Math.max(0, meeting.duration) : 0;
-    return [{ src: `${base}/video`, start: 0, duration }];
-  }
   return meeting.audioChunks
     .filter(
       (chunk) =>
@@ -42,6 +37,27 @@ export function playbackSources(meeting: PlayableMeeting): PlaybackSource[] {
       start: chunk.start,
       duration: chunk.duration,
     }));
+}
+
+/** The video file of a meeting that has one. */
+export function videoSource(meeting: Pick<Meeting, 'id' | 'hasVideo'>): string | null {
+  return meeting.hasVideo ? `meeting-media://local/${meeting.id}/video` : null;
+}
+
+/** Only a meeting with a video and no playable extract takes its timeline from the video. */
+export function drivesFromVideo(meeting: PlayableMeeting): boolean {
+  return meeting.hasVideo && audioSources(meeting).length === 0;
+}
+
+/**
+ * The audio extracts always drive the timeline: a video that stalls or fails must not mute
+ * the meeting. The video only follows, muted.
+ */
+export function playbackSources(meeting: PlayableMeeting): PlaybackSource[] {
+  const extracts = audioSources(meeting);
+  if (extracts.length > 0 || !meeting.hasVideo) return extracts;
+  const duration = finite(meeting.duration) ? Math.max(0, meeting.duration) : 0;
+  return [{ src: `meeting-media://local/${meeting.id}/video`, start: 0, duration }];
 }
 
 export function timelineEnd(sources: readonly PlaybackSource[], duration: number): number {

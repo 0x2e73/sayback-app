@@ -2,51 +2,14 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import type { AudioChunk, Meeting } from '../../../shared/contracts';
+import type { Meeting } from '../../../shared/contracts';
 import { meetingFixture } from '../../test-api';
-import { useMediaPlayback } from './use-media-playback';
+import { Harness, at, chunk, click, media, renderLoaded, threeMinutes } from './playback-harness';
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
-
-const chunk = (index: number, start: number, duration = 60): AudioChunk => ({
-  index,
-  start,
-  duration,
-  transcript: null,
-});
-const threeMinutes = meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z', {
-  duration: 180,
-  audioChunks: [chunk(0, 0), chunk(1, 60), chunk(2, 120)],
-});
-
-function Harness({ meeting }: { meeting: Meeting }) {
-  const playback = useMediaPlayback(meeting);
-  return (
-    <>
-      <audio data-testid="media" {...playback.mediaProps} />
-      <p data-testid="at">{playback.at}</p>
-      <p data-testid="duration">{playback.duration}</p>
-      {playback.failed && <p>Échec</p>}
-      <button onClick={playback.toggle}>{playback.playing ? 'Pause' : 'Lire'}</button>
-      <button onClick={() => playback.playAt(150)}>2:30</button>
-      <button onClick={() => playback.seek(90)}>1:30</button>
-      <button onClick={() => playback.seek(30)}>0:30</button>
-    </>
-  );
-}
-
-const media = () => screen.getByTestId<HTMLAudioElement>('media');
-const at = () => Number(screen.getByTestId('at').textContent);
-const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
-
-function renderLoaded(meeting: Meeting = threeMinutes) {
-  const view = render(<Harness meeting={meeting} />);
-  fireEvent.loadedMetadata(media());
-  return view;
-}
 
 it('plays the extracts one after the other as one timeline', () => {
   const play = vi.spyOn(HTMLMediaElement.prototype, 'play');
@@ -171,9 +134,10 @@ it('orders the extracts by time and measures the whole meeting', () => {
   expect(screen.getByTestId('duration')).toHaveTextContent('181.5');
 });
 
-it('drives the video as one source', () => {
-  render(<Harness meeting={{ ...threeMinutes, hasVideo: true }} />);
+it('drives the video as one source when there is no audio extract', () => {
+  render(<Harness meeting={{ ...threeMinutes, audioChunks: [], hasVideo: true }} />);
   expect(media()).toHaveAttribute('src', 'meeting-media://local/m1/video');
+  expect(screen.queryByTestId('video')).toBeNull();
 });
 
 it('has nothing to play without audio', () => {

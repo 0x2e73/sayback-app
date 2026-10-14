@@ -155,8 +155,20 @@ it('follows the analysis as the poll brings new segments', () => {
   expect(screen.getByRole('heading', { level: 2, name: 'Résumé' })).toBeInTheDocument();
 });
 
-it('shows the video at the top of the content, driven by the footer', () => {
+it('shows the video at the top, muted, while the audio extracts drive the footer', () => {
   render(detail({ ...analysed, hasVideo: true }));
+  const video = document.querySelector('video');
+  expect(video).toHaveAttribute('src', 'meeting-media://local/m1/video');
+  expect(video?.muted).toBe(true);
+  expect(document.querySelector('audio')).toHaveAttribute(
+    'src',
+    'meeting-media://local/m1/audio/0',
+  );
+  expect(screen.getByRole('button', { name: 'Lire' })).toBeEnabled();
+});
+
+it('lets a video without any audio extract carry the sound alone', () => {
+  render(detail({ ...analysed, hasVideo: true, audioChunks: [] }));
   expect(document.querySelector('video')).toHaveAttribute('src', 'meeting-media://local/m1/video');
   expect(document.querySelector('audio')).toBeNull();
   expect(screen.getByRole('button', { name: 'Lire' })).toBeEnabled();

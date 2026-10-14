@@ -4,7 +4,7 @@ import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { VideoBlock } from './VideoBlock';
-import type { MediaElementProps } from './use-media-playback';
+import type { MediaElementProps, Playback } from './use-media-playback';
 
 const requestFullscreen = vi.fn(() => Promise.resolve());
 
@@ -34,6 +34,13 @@ function mediaProps(extra: Partial<MediaElementProps> = {}): MediaElementProps {
   };
 }
 
+function playbackOf(
+  extra: Partial<MediaElementProps> = {},
+  timeline: Playback['timeline'] = 'video',
+): Pick<Playback, 'mediaProps' | 'videoProps' | 'timeline'> {
+  return { mediaProps: mediaProps(extra), videoProps: null, timeline };
+}
+
 function video(): HTMLVideoElement {
   const element = document.querySelector('video');
   if (!element) throw new Error('no video element');
@@ -41,27 +48,27 @@ function video(): HTMLVideoElement {
 }
 
 it('shows the video the footer bar drives, without its own controls', () => {
-  render(<VideoBlock mediaProps={mediaProps()} />);
+  render(<VideoBlock playback={playbackOf()} />);
   expect(video()).toHaveAttribute('src', 'meeting-media://local/m1/video');
   expect(video()).not.toHaveAttribute('controls');
 });
 
 it('hands the video element to the playback driver', () => {
   const ref = vi.fn();
-  render(<VideoBlock mediaProps={mediaProps({ ref })} />);
+  render(<VideoBlock playback={playbackOf({ ref })} />);
   expect(ref).toHaveBeenCalledWith(video());
 });
 
 it('opens the video itself in full screen from a labelled button', async () => {
   const user = userEvent.setup();
-  render(<VideoBlock mediaProps={mediaProps()} />);
+  render(<VideoBlock playback={playbackOf()} />);
   await user.click(screen.getByRole('button', { name: 'Plein écran' }));
   expect(requestFullscreen).toHaveBeenCalledOnce();
   expect(requestFullscreen.mock.contexts[0]).toBe(video());
 });
 
 it('gives the video its own controls only while it fills the screen', () => {
-  render(<VideoBlock mediaProps={mediaProps()} />);
+  render(<VideoBlock playback={playbackOf()} />);
   Object.defineProperty(document, 'fullscreenElement', {
     configurable: true,
     get: () => video(),
@@ -69,6 +76,34 @@ it('gives the video its own controls only while it fills the screen', () => {
   fireEvent(video(), new Event('fullscreenchange'));
   expect(video()).toHaveAttribute('controls');
   Reflect.deleteProperty(document, 'fullscreenElement');
+  fireEvent(video(), new Event('fullscreenchange'));
+  expect(video()).not.toHaveAttribute('controls');
+});
+
+it('follows the audio muted, without controls of its own even in full screen', () => {
+  const ref = vi.fn();
+  render(
+    <VideoBlock
+      playback={{
+        mediaProps: mediaProps(),
+        timeline: 'audio',
+        videoProps: {
+          ref,
+          src: 'meeting-media://local/m1/video',
+          preload: 'metadata',
+          muted: true,
+          onLoadedMetadata: vi.fn(),
+          onError: vi.fn(),
+        },
+      }}
+    />,
+  );
+  expect(ref).toHaveBeenCalledWith(video());
+  expect(video().muted).toBe(true);
+  Object.defineProperty(document, 'fullscreenElement', {
+    configurable: true,
+    get: () => video(),
+  });
   fireEvent(video(), new Event('fullscreenchange'));
   expect(video()).not.toHaveAttribute('controls');
 });

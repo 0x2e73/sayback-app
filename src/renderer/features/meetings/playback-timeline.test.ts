@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { AudioChunk } from '../../../shared/contracts';
 import {
+  drivesFromVideo,
   locate,
   playbackSources,
   resumePoint,
   timelineEnd,
   timelineTime,
+  videoSource,
   type PlaybackSource,
 } from './playback-timeline';
 
@@ -47,10 +49,27 @@ describe('playbackSources', () => {
     ]);
   });
 
-  it('plays the video as one source, its sound included', () => {
-    expect(playbackSources({ ...audio([chunk(0, 0)]), hasVideo: true, duration: 3130.4 })).toEqual([
+  it('lets the audio extracts drive a meeting that also has a video', () => {
+    const meeting = { ...audio([chunk(0, 0), chunk(1, 60)]), hasVideo: true };
+    expect(playbackSources(meeting).map((source) => source.src)).toEqual([
+      'meeting-media://local/m1/audio/0',
+      'meeting-media://local/m1/audio/1',
+    ]);
+    expect(drivesFromVideo(meeting)).toBe(false);
+    expect(videoSource(meeting)).toBe('meeting-media://local/m1/video');
+  });
+
+  it('plays the video as the one source when no extract can be played', () => {
+    const meeting = { ...audio([chunk(0, 0, 0)]), hasVideo: true, duration: 3130.4 };
+    expect(playbackSources(meeting)).toEqual([
       { src: 'meeting-media://local/m1/video', start: 0, duration: 3130.4 },
     ]);
+    expect(drivesFromVideo(meeting)).toBe(true);
+  });
+
+  it('has no video source for an audio meeting', () => {
+    expect(videoSource(audio([chunk(0, 0)]))).toBeNull();
+    expect(drivesFromVideo(audio([chunk(0, 0)]))).toBe(false);
   });
 
   it('has nothing to play without audio', () => {

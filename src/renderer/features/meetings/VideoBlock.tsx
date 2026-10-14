@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Maximize2 } from 'lucide-react';
 import { Button } from '../../components/ui';
-import type { MediaElementProps } from './use-media-playback';
+import type { Playback } from './use-media-playback';
 
 interface VideoBlockProps {
-  mediaProps: MediaElementProps;
+  playback: Pick<Playback, 'mediaProps' | 'videoProps' | 'timeline'>;
 }
 
 /** The footer bar drives the video; the button is the only way to fill the screen. */
-export function VideoBlock({ mediaProps }: VideoBlockProps) {
+export function VideoBlock({ playback }: VideoBlockProps) {
+  // Muted and following the audio, or the one element with the sound.
+  const mediaProps = playback.videoProps ?? playback.mediaProps;
+  const ownsTimeline = playback.timeline === 'video';
   const video = useRef<HTMLVideoElement | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -31,7 +34,12 @@ export function VideoBlock({ mediaProps }: VideoBlockProps) {
 
   return (
     <div className="detail-video-block">
-      <video className="detail-video" {...mediaProps} ref={attach} controls={fullscreen} />
+      <video
+        className="detail-video"
+        {...mediaProps}
+        ref={attach}
+        controls={fullscreen && ownsTimeline}
+      />
       <Button
         variant="ghost"
         shape="round"

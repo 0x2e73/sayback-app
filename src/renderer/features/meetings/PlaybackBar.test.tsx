@@ -22,6 +22,8 @@ function playbackOf(extra: Partial<Playback> = {}): Playback {
   };
   return {
     available: true,
+    timeline: 'audio',
+    videoProps: null,
     playing: false,
     failed: false,
     at: 252,
@@ -37,7 +39,7 @@ function playbackOf(extra: Partial<Playback> = {}): Playback {
 const slider = () => screen.getByRole('slider', { name: 'Position de lecture' });
 
 it('shows the position and the duration of the whole meeting', () => {
-  render(<PlaybackBar playback={playbackOf()} hasVideo={false} />);
+  render(<PlaybackBar playback={playbackOf()} />);
   expect(screen.getByText('04:12')).toBeInTheDocument();
   expect(screen.getByText('52:10')).toBeInTheDocument();
   expect(slider()).toHaveAttribute('aria-valuetext', '04:12 sur 52:10');
@@ -46,10 +48,10 @@ it('shows the position and the duration of the whole meeting', () => {
 it('plays and pauses', async () => {
   const user = userEvent.setup();
   const playback = playbackOf();
-  const { rerender } = render(<PlaybackBar playback={playback} hasVideo={false} />);
+  const { rerender } = render(<PlaybackBar playback={playback} />);
   await user.click(screen.getByRole('button', { name: 'Lire' }));
   expect(playback.toggle).toHaveBeenCalledOnce();
-  rerender(<PlaybackBar playback={{ ...playback, playing: true }} hasVideo={false} />);
+  rerender(<PlaybackBar playback={{ ...playback, playing: true }} />);
   expect(screen.getByRole('button', { name: 'Mettre en pause' })).toHaveAttribute(
     'title',
     'Mettre en pause',
@@ -58,28 +60,28 @@ it('plays and pauses', async () => {
 
 it('seeks from the progress bar', () => {
   const playback = playbackOf();
-  render(<PlaybackBar playback={playback} hasVideo={false} />);
+  render(<PlaybackBar playback={playback} />);
   fireEvent.change(slider(), { target: { value: '600' } });
   expect(playback.seek).toHaveBeenCalledWith(600);
 });
 
 it('says when a passage cannot be read', () => {
-  render(<PlaybackBar playback={playbackOf({ failed: true })} hasVideo={false} />);
+  render(<PlaybackBar playback={playbackOf({ failed: true })} />);
   expect(screen.getByText('Ce passage ne peut pas être lu.')).toBeInTheDocument();
 });
 
 it('cannot play without audio', () => {
-  render(<PlaybackBar playback={playbackOf({ available: false })} hasVideo={false} />);
+  render(<PlaybackBar playback={playbackOf({ available: false })} />);
   expect(screen.getByRole('button', { name: 'Lire' })).toBeDisabled();
   expect(slider()).toBeDisabled();
 });
 
 it('leaves the element to the video block when there is a video', () => {
-  const { rerender } = render(<PlaybackBar playback={playbackOf()} hasVideo={false} />);
+  const { rerender } = render(<PlaybackBar playback={playbackOf()} />);
   expect(document.querySelector('audio')).toHaveAttribute(
     'src',
     'meeting-media://local/m1/audio/0',
   );
-  rerender(<PlaybackBar playback={playbackOf()} hasVideo />);
+  rerender(<PlaybackBar playback={playbackOf({ timeline: 'video' })} />);
   expect(document.querySelector('audio')).toBeNull();
 });

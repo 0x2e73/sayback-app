@@ -5,18 +5,17 @@ import type { Playback } from './use-media-playback';
 
 interface PlaybackBarProps {
   playback: Playback;
-  /** The video block holds the element; the bar only drives it. */
-  hasVideo: boolean;
 }
 
-export function PlaybackBar({ playback, hasVideo }: PlaybackBarProps) {
+export function PlaybackBar({ playback }: PlaybackBarProps) {
   const { at, duration, playing, available, failed } = playback;
   const ratio = duration > 0 ? Math.min(1, at / duration) : 0;
   const label = playing ? 'Mettre en pause' : 'Lire';
 
   return (
     <div className="playback">
-      {!hasVideo && <audio {...playback.mediaProps} />}
+      {/* The video block holds the element when the video alone has the sound. */}
+      {playback.timeline === 'audio' && <audio {...playback.mediaProps} />}
       <Button
         variant="ghost"
         shape="round"

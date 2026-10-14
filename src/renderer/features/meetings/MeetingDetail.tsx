@@ -49,7 +49,7 @@ export function MeetingDetail(props: MeetingDetailProps) {
         canRetry={meeting.audioChunks.length > 0}
         onRetry={analyze}
       />
-      {meeting.hasVideo && <VideoBlock mediaProps={playback.mediaProps} />}
+      {meeting.hasVideo && <VideoBlock playback={playback} />}
     </>
   );
 
@@ -73,7 +73,7 @@ export function MeetingDetail(props: MeetingDetailProps) {
         transcript={<Transcript meeting={meeting} at={playback.at} onSeek={playback.playAt} />}
       />
       <footer className="playback-bar">
-        <PlaybackBar playback={playback} hasVideo={meeting.hasVideo} />
+        <PlaybackBar playback={playback} />
         <MeetingActions
           meeting={meeting}
           busy={actions.analyzing}
