@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, realpath } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, relative, sep } from 'node:path';
@@ -23,6 +24,22 @@ export function bundleOfExecutable(exePath: string): string | null {
   if (basename(macos) !== 'MacOS' || basename(contents) !== 'Contents') return null;
   const named = basename(bundle).length > BUNDLE_SUFFIX.length && bundle.endsWith(BUNDLE_SUFFIX);
   return named ? bundle : null;
+}
+
+/**
+ * Does the running bundle carry `com.apple.quarantine`, i.e. was it downloaded rather than built
+ * on this machine? Not a bundle (development): no. Any doubt other than « no attribute »: yes.
+ */
+export function isQuarantined(exePath: string): Promise<boolean> {
+  const bundle = bundleOfExecutable(exePath);
+  if (bundle === null) return Promise.resolve(false);
+  const args = ['-p', 'com.apple.quarantine', bundle];
+  return new Promise((resolve) => {
+    execFile('/usr/bin/xattr', args, { timeout: 5_000, maxBuffer: 4_096 }, (error) => {
+      // Exit status 1: the attribute is absent.
+      resolve(error === null || !('code' in error) || error.code !== 1);
+    });
+  });
 }
 
 /** Where the replaced version is kept: next to it, a single backup. */
