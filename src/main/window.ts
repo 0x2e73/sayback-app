@@ -13,7 +13,7 @@ export function createWindow({ rendererUrl, isRecording }: WindowOptions): Brows
     minWidth: 900,
     minHeight: 650,
     title: 'SayBack',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#0f1117',
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,

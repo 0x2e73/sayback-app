@@ -48,6 +48,7 @@ export default ts.config(
   },
   {
     files: ['src/renderer/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
