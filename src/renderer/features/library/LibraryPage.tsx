@@ -1,4 +1,4 @@
-import { ArrowUpRight, AudioLines, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { Button } from '../../components/ui';
 import { Library } from './Library';
@@ -29,27 +29,11 @@ export function LibraryPage({
   return (
     <div className="library-page">
       <div className="page-heading">
-        <div>
-          <p className="eyebrow">Moins de notes. Plus de présence.</p>
-          <h1>
-            Mes réunions<span className="heading-dot">.</span>
-          </h1>
-          <p>Les conversations passent. Les bonnes idées restent.</p>
-        </div>
+        <h1>Mes réunions</h1>
         <Button onClick={onNew}>
           <Plus size={17} />
           Nouvelle réunion
         </Button>
-      </div>
-      <div className="intro-strip">
-        <span className="intro-icon">
-          <AudioLines size={22} />
-        </span>
-        <div>
-          <strong>Gardez toute la conversation.</strong>
-          <span>L’audio, l’écran et les idées importantes, au même endroit.</span>
-        </div>
-        <ArrowUpRight size={18} />
       </div>
       {loading ? (
         <p className="muted" role="status">

@@ -17,11 +17,7 @@ export function SettingsView({ api, onShowOnboarding }: SettingsViewProps) {
   return (
     <div className="settings-page">
       <div className="page-heading">
-        <div>
-          <p className="eyebrow">À votre façon</p>
-          <h1>Paramètres</h1>
-          <p>Vos données chez vous. Votre IA à portée de main.</p>
-        </div>
+        <h1>Paramètres</h1>
       </div>
       {settings.error && <Notice>{settings.error}</Notice>}
       <section className="settings-card">
