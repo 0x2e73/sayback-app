@@ -5,6 +5,8 @@ import { App } from './App';
 import { platformOf } from './platform';
 import './styles.css';
 import './styles/shared.css';
+import './styles/chip.css';
+import './styles/empty-state.css';
 import './styles/library.css';
 import './styles/meetings.css';
 import './styles/recording.css';

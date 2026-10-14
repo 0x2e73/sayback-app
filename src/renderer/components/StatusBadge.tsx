@@ -1,6 +1,6 @@
 import type { MeetingStatus } from '../../shared/contracts';
 
-const statusLabels: Record<MeetingStatus, string> = {
+export const statusLabels: Record<MeetingStatus, string> = {
   recording: 'Enregistrement',
   recorded: 'À analyser',
   processing: 'Analyse en cours',

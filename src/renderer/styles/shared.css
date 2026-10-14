@@ -69,6 +69,14 @@
   border-color: transparent;
   background: transparent;
 }
+.button-pill {
+  border-radius: var(--radius-pill);
+}
+.button-round {
+  width: 38px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+}
 .field {
   display: grid;
   gap: var(--space-2);

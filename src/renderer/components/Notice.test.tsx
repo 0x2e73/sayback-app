@@ -21,3 +21,8 @@ it('reports information politely', () => {
   expect(screen.queryByRole('alert')).toBeNull();
   expect(screen.getByRole('status')).toHaveClass('notice-info');
 });
+
+it('floats over the card when asked, keeping its tone', () => {
+  render(<Notice floating>Impossible de charger vos réunions.</Notice>);
+  expect(screen.getByRole('alert')).toHaveClass('notice-floating', 'notice-danger');
+});

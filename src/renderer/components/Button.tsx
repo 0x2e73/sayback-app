@@ -4,11 +4,13 @@ import { LoaderCircle } from 'lucide-react';
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   busy?: boolean;
+  shape?: 'pill' | 'round';
 }
 
 export function Button(props: ButtonProps) {
   const {
     variant = 'primary',
+    shape,
     className = '',
     busy = false,
     type = 'button',
@@ -26,7 +28,7 @@ export function Button(props: ButtonProps) {
     <button
       {...attributes}
       type={type}
-      className={`button button-${variant} ${className}`}
+      className={`button button-${variant}${shape ? ` button-${shape}` : ''} ${className}`}
       disabled={disabled}
       aria-busy={busy || undefined}
       aria-disabled={busy || undefined}

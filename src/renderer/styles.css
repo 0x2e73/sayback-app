@@ -45,6 +45,7 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
+  --control-xs: 24px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -190,6 +191,7 @@ p {
 
 /* Colour feedback for every interactive surface. Kept under reduced motion. */
 .button,
+.chip,
 .nav-item,
 .tabs button,
 .meeting-row,

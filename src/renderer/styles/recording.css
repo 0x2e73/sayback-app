@@ -211,6 +211,17 @@
   background: var(--color-accent-tint);
   color: var(--color-accent);
 }
+/* Floats at the bottom of the card, so nothing shifts when it appears. */
+.notice.notice-floating {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  left: var(--space-4);
+  z-index: 2;
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-float);
+  animation: state-enter var(--duration-base) var(--ease-out);
+}
 .badge {
   display: inline-flex;
   align-items: center;

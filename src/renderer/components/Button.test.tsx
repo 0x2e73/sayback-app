@@ -67,3 +67,18 @@ it('is not marked busy when idle', () => {
   render(<Button>Exporter</Button>);
   expect(screen.getByRole('button', { name: 'Exporter' })).not.toHaveAttribute('aria-busy');
 });
+
+it('takes a pill or a round shape', () => {
+  render(
+    <>
+      <Button shape="pill">Démarrer l’enregistrement</Button>
+      <Button shape="round" aria-label="Paramètres">
+        ⚙
+      </Button>
+    </>,
+  );
+  expect(screen.getByRole('button', { name: 'Démarrer l’enregistrement' })).toHaveClass(
+    'button-pill',
+  );
+  expect(screen.getByRole('button', { name: 'Paramètres' })).toHaveClass('button-round');
+});
