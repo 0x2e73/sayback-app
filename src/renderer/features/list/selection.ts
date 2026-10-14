@@ -30,3 +30,18 @@ export function neighbourAfter(ids: readonly string[], removedId: string): strin
   if (index === -1) return null;
   return ids[index + 1] ?? ids[index - 1] ?? null;
 }
+
+/** The row a key leads to; null when the list has no use for that key. */
+export function targetForKey(
+  key: string,
+  ids: readonly string[],
+  selectedId: string | null,
+  focusedId: string | null,
+): string | null {
+  if (key === 'ArrowDown') return adjacentId(ids, selectedId, 1);
+  if (key === 'ArrowUp') return adjacentId(ids, selectedId, -1);
+  if (key === 'Home') return ids[0] ?? null;
+  if (key === 'End') return ids.at(-1) ?? null;
+  const activates = key === 'Enter' || key === ' ';
+  return activates && focusedId !== null && ids.includes(focusedId) ? focusedId : null;
+}

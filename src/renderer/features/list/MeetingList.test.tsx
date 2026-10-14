@@ -153,3 +153,44 @@ it('marks the row being dragged and clears it when the drag ends', () => {
   fireEvent.dragEnd(dragged);
   expect(dragged).not.toHaveClass('is-dragging');
 });
+
+it.each([
+  ['Enter', 'Enter', 'd'],
+  ['Space', ' ', 'd'],
+])('opens the focused row with %s', (_name, key, expected) => {
+  const onSelect = renderList({ selectedId: 'a' });
+  const target = row(/Démo client/);
+  target.focus();
+  const passedOn = fireEvent.keyDown(target, { key });
+  expect(onSelect).toHaveBeenCalledWith(expected);
+  expect(passedOn).toBe(false);
+});
+
+it('goes to the first and the last row with Home and End', () => {
+  const onSelect = renderList({ selectedId: 'b' });
+  fireEvent.keyDown(screen.getByRole('listbox'), { key: 'End' });
+  expect(onSelect).toHaveBeenLastCalledWith('d');
+  expect(row(/Démo client/)).toHaveFocus();
+  fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Home' });
+  expect(onSelect).toHaveBeenLastCalledWith('e');
+});
+
+it.each([
+  ['Alt', { altKey: true }],
+  ['Ctrl', { ctrlKey: true }],
+  ['Cmd', { metaKey: true }],
+  ['Shift', { shiftKey: true }],
+])('leaves %s combinations to the browser', (_name, modifier) => {
+  const onSelect = renderList({ selectedId: 'a' });
+  for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' ']) {
+    const passedOn = fireEvent.keyDown(row(/Point hebdo/), { key, ...modifier });
+    expect(passedOn).toBe(true);
+  }
+  expect(onSelect).not.toHaveBeenCalled();
+});
+
+it('ignores Enter while a recording locks the list', () => {
+  const onSelect = renderList({ selectedId: 'a', locked: true });
+  fireEvent.keyDown(row(/Point hebdo/), { key: 'Enter' });
+  expect(onSelect).not.toHaveBeenCalled();
+});

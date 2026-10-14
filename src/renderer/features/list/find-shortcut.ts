@@ -3,6 +3,7 @@ import { platformOf } from '../../platform';
 
 export interface ShortcutKey {
   key: string;
+  code?: string;
   metaKey: boolean;
   ctrlKey: boolean;
   altKey: boolean;
@@ -11,7 +12,9 @@ export interface ShortcutKey {
 
 // On macOS, Ctrl+F moves the caret forward in every text field: only Cmd+F is "find".
 export function isFindShortcut(event: ShortcutKey, platform: 'mac' | 'other'): boolean {
-  if (event.key.toLowerCase() !== 'f' || event.altKey || event.shiftKey) return false;
+  // The physical key counts too: on a non-Latin layout, F types another letter.
+  const isF = event.key.toLowerCase() === 'f' || event.code === 'KeyF';
+  if (!isF || event.altKey || event.shiftKey) return false;
   if (platform === 'mac') return event.metaKey && !event.ctrlKey;
   return event.ctrlKey && !event.metaKey;
 }

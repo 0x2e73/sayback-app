@@ -9,6 +9,7 @@ afterEach(cleanup);
 
 const key = (overrides: Partial<ShortcutKey>): ShortcutKey => ({
   key: 'f',
+  code: 'KeyF',
   metaKey: false,
   ctrlKey: false,
   altKey: false,
@@ -29,10 +30,17 @@ describe('isFindShortcut', () => {
     ],
     ['Cmd+Shift+F on macOS', key({ metaKey: true, shiftKey: true }), 'mac', false],
     ['Cmd+Option+F on macOS', key({ metaKey: true, altKey: true }), 'mac', false],
-    ['Cmd+G on macOS', key({ key: 'g', metaKey: true }), 'mac', false],
+    ['Cmd+G on macOS', key({ key: 'g', code: 'KeyG', metaKey: true }), 'mac', false],
+    [
+      'Cmd+F on a layout where F types another letter',
+      key({ key: 'ф', metaKey: true }),
+      'mac',
+      true,
+    ],
+    ['Ctrl+F elsewhere on that layout', key({ key: 'ф', ctrlKey: true }), 'other', true],
     ['Ctrl+F elsewhere', key({ ctrlKey: true }), 'other', true],
     ['the Windows key with F elsewhere', key({ metaKey: true }), 'other', false],
-    ['Ctrl+G elsewhere', key({ key: 'g', ctrlKey: true }), 'other', false],
+    ['Ctrl+G elsewhere', key({ key: 'g', code: 'KeyG', ctrlKey: true }), 'other', false],
   ])('%s → %s', (_case, event, platform, expected) => {
     expect(isFindShortcut(event, platform)).toBe(expected);
   });

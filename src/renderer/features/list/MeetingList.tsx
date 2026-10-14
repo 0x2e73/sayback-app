@@ -2,7 +2,7 @@ import { useId, type KeyboardEvent } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import type { DateGroup } from './date-groups';
 import { MeetingRow } from './MeetingRow';
-import { adjacentId } from './selection';
+import { targetForKey } from './selection';
 
 interface MeetingListProps {
   groups: DateGroup<Meeting>[];
@@ -13,7 +13,14 @@ interface MeetingListProps {
   onSelect(id: string): void;
 }
 
-const steps: Partial<Record<string, 1 | -1>> = { ArrowDown: 1, ArrowUp: -1 };
+function hasModifier(event: KeyboardEvent): boolean {
+  return event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+}
+
+function focusedRowId(event: KeyboardEvent): string | null {
+  if (!(event.target instanceof Element)) return null;
+  return event.target.closest<HTMLElement>('[role="option"]')?.dataset.meetingId ?? null;
+}
 
 function focusOption(list: HTMLElement, id: string): void {
   for (const option of list.querySelectorAll<HTMLElement>('[role="option"]')) {
@@ -28,11 +35,11 @@ export function MeetingList(props: MeetingListProps) {
   const tabStop = selectedId !== null && ids.includes(selectedId) ? selectedId : ids[0];
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
-    const step = steps[event.key];
-    if (!step || locked) return;
+    if (locked || hasModifier(event)) return;
+    const next = targetForKey(event.key, ids, selectedId, focusedRowId(event));
+    if (!next) return;
     event.preventDefault();
-    const next = adjacentId(ids, selectedId, step);
-    if (!next || next === selectedId) return;
+    if (next === selectedId) return;
     onSelect(next);
     focusOption(event.currentTarget, next);
   }

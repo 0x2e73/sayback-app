@@ -45,6 +45,8 @@ export function FolderFilter(props: FolderFilterProps) {
   }
 
   function requestDeletion(folder: Folder): void {
+    // The dialog hands the focus back to what held it: make that the chip, not the closing menu.
+    menuAnchor.current?.focus();
     setMenuOpen(false);
     deletion.request(folder);
   }

@@ -187,3 +187,12 @@ it('announces a move to a folder deleted meanwhile without naming it', async () 
   finishMove(true);
   expect(await screen.findByText('Réunion déplacée.')).toBeInTheDocument();
 });
+
+it('gives the focus back to the chip when the deletion dialog is cancelled', async () => {
+  const user = userEvent.setup();
+  render(<Harness folders={[acme]} actions={actionsWith()} />);
+  await openMenu(user, 'Acme');
+  await user.click(screen.getByRole('menuitem', { name: 'Supprimer…' }));
+  await user.click(await screen.findByRole('button', { name: 'Annuler' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Acme' })).toHaveFocus());
+});
