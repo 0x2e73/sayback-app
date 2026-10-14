@@ -6,10 +6,17 @@ interface NoticeProps {
   children: ReactNode;
   tone?: 'danger' | 'warning' | 'info';
   retry?: () => void;
+  action?: ReactNode;
   floating?: boolean;
 }
 
-export function Notice({ children, tone = 'danger', retry, floating = false }: NoticeProps) {
+export function Notice({
+  children,
+  tone = 'danger',
+  retry,
+  action,
+  floating = false,
+}: NoticeProps) {
   const Icon = tone === 'info' ? Info : AlertCircle;
   return (
     <div
@@ -23,6 +30,7 @@ export function Notice({ children, tone = 'danger', retry, floating = false }: N
           Réessayer
         </Button>
       )}
+      {action}
     </div>
   );
 }

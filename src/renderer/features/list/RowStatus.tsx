@@ -1,12 +1,6 @@
 import type { Meeting } from '../../../shared/contracts';
 import { statusLabels } from '../../components/StatusBadge';
-
-// Chunks report their transcription; the notes phase shows a full line.
-function analysisRatio(meeting: Meeting): number {
-  const total = meeting.audioChunks.length;
-  if (total === 0) return 0;
-  return meeting.audioChunks.filter((chunk) => chunk.transcript !== null).length / total;
-}
+import { analysisRatio } from '../meetings/analysis-progress';
 
 export function RowStatus({ meeting }: { meeting: Meeting }) {
   if (meeting.status === 'ready') {
