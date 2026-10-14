@@ -1,0 +1,63 @@
+.detail-header {
+  padding-top: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.detail-header h1 {
+  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+}
+.detail-meta > :not(:first-child)::before {
+  content: '·';
+  margin-right: var(--space-2);
+}
+.folder-control {
+  position: relative;
+  display: inline-flex;
+}
+.folder-control-face {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.folder-control:hover .folder-control-face {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.folder-control:has(:focus-visible) .folder-control-face {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.folder-control:has(:disabled) {
+  opacity: 0.55;
+}
+.folder-control-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.folder-control-select:disabled {
+  cursor: not-allowed;
+}
+.analysis-status {
+  font-variant-numeric: tabular-nums;
+}
+.notice-detail {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+}
+.detail-notices {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}

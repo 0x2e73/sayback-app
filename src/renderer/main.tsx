@@ -13,6 +13,7 @@ import './styles/folder-filter.css';
 import './styles/list-pane.css';
 import './styles/meetings.css';
 import './styles/segmented.css';
+import './styles/meeting-detail.css';
 import './styles/recording.css';
 import './styles/model-select.css';
 import './styles/onboarding.css';
