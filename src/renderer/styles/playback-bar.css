@@ -1,0 +1,80 @@
+.playback-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 56px;
+  padding: 0 var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-pane);
+}
+.playback {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.playback-time {
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+.playback-progress {
+  position: relative;
+  flex: 1;
+  min-width: 80px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+}
+.playback-progress-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  transform-origin: left;
+}
+.playback-progress-input {
+  position: absolute;
+  inset: -10px 0;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.playback-progress-input:disabled {
+  cursor: not-allowed;
+}
+.playback-progress:has(:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+}
+.playback-error {
+  margin: 0;
+  color: var(--color-paused);
+  font-size: var(--text-caption);
+}
+.meeting-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.action-feedback {
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+}
+.action-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+.action-pill .button-round {
+  width: 32px;
+  min-height: 32px;
+}

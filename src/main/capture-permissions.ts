@@ -9,7 +9,13 @@ interface SourceSelection {
 
 export function registerCapture(handle: RegisterHandler, getWindow: () => BrowserWindow | null) {
   let chosenSource: SourceSelection | undefined;
-  const allowedPermissions = new Set(['media', 'display-capture', 'fullscreen']);
+  // Writing the notes to the clipboard needs its own permission; reading it stays refused.
+  const allowedPermissions = new Set([
+    'media',
+    'display-capture',
+    'fullscreen',
+    'clipboard-sanitized-write',
+  ]);
   const canUsePermission = (contents: WebContents | null, permission: string) =>
     contents === getWindow()?.webContents && allowedPermissions.has(permission);
   const macCaptureApp = app.isPackaged

@@ -74,3 +74,17 @@ it('allows fullscreen only for the app window', () => {
   expect(denied).toHaveBeenCalledWith(false);
   expect(check(contents, 'notifications')).toBe(false);
 });
+
+it('lets the app window write the notes to the clipboard, never read it', () => {
+  const contents = { id: 1 };
+  const window = { webContents: contents } as unknown as BrowserWindow;
+  registerCapture(
+    () => undefined,
+    () => window,
+  );
+
+  const check = electron.setPermissionCheckHandler.mock.lastCall?.[0];
+  expect(check(contents, 'clipboard-sanitized-write')).toBe(true);
+  expect(check(contents, 'clipboard-read')).toBe(false);
+  expect(check({ id: 2 }, 'clipboard-sanitized-write')).toBe(false);
+});
