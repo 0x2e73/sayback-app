@@ -85,9 +85,9 @@ open /Applications/SayBack.app
 
 Quittez SayBack avant la copie. Ne lancez pas l’app depuis le dossier `updates/` : elle refuserait de se remplacer.
 
-**Ensuite**, committez puis relancez `npm run update:publish`. L’app voit la nouvelle version au démarrage, au retour au premier plan ou dans les cinq minutes, et propose de l’installer. Un clic la remplace et la relance ; l’installation est refusée pendant un enregistrement. La version remplacée reste dans `/Applications/SayBack.previous.app`, et le déroulé est écrit dans `~/Library/Application Support/SayBack/logs/update.log`. Deux builds du même commit ne se remplacent pas.
+**Ensuite**, committez puis relancez `npm run update:publish`. L’app voit la nouvelle version au démarrage, au retour au premier plan ou dans les cinq minutes, et propose de l’installer. macOS demande confirmation (« Installer et redémarrer » ou « Plus tard ») ; l’app est alors remplacée et relancée. L’installation est refusée pendant un enregistrement. La version remplacée reste dans `/Applications/SayBack.previous.app`, et le déroulé est écrit dans `~/Library/Application Support/SayBack/logs/update.log`. Deux builds du même commit ne se remplacent pas.
 
-`SAYBACK_LOCAL_UPDATE_CHANNEL=0 npm run dist` construit une app sans ce canal.
+Seules les apps construites par `npm run update:publish` (qui pose `SAYBACK_LOCAL_UPDATE_CHANNEL=1`) portent ce canal : `npm run package` et `npm run dist` construisent une app sans lui. Une copie téléchargée, marquée en quarantaine par macOS, le garde fermé.
 
 ## Sous le capot
 
