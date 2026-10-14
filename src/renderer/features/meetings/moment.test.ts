@@ -19,6 +19,17 @@ describe('parseMoment', () => {
     expect(parseMoment(input, duration)).toEqual({ ok: true, seconds });
   });
 
+  it.each([
+    ['4 : 12', 'spaces around the colon'],
+    ['4\u00a0:\u00a012', 'no-break spaces around the colon'],
+    ['４:１２', 'full-width digits'],
+    ['４：１２', 'a full-width colon'],
+    ['\u00a04:12\u00a0', 'no-break spaces around the whole'],
+    ['0 : 4 : 12', 'spaces in an hours form'],
+  ])('reads « %s » (%s) as 4:12', (input) => {
+    expect(parseMoment(input, duration)).toEqual({ ok: true, seconds: 252 });
+  });
+
   it('reads hours on a long meeting', () => {
     expect(parseMoment('01:02:03', 7205)).toEqual({ ok: true, seconds: 3723 });
     expect(parseMoment('2:00:05', 7205)).toEqual({ ok: true, seconds: 7205 });

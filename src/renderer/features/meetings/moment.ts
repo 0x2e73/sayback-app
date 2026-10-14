@@ -15,9 +15,17 @@ function toSeconds(text: string): number | null {
   return Number(hours ?? 0) * 3600 + Number(minutes) * 60 + Number(seconds);
 }
 
+// NFKC turns full-width digits and colons and no-break spaces into their plain forms.
+function normalized(input: string): string {
+  return input
+    .normalize('NFKC')
+    .replace(/\s*:\s*/g, ':')
+    .trim();
+}
+
 /** Reads the « Moment » field; the backend refuses a moment past the meeting too (meeting-rules.ts:29). */
 export function parseMoment(input: string, duration: number): MomentResult {
-  const seconds = toSeconds(input.trim());
+  const seconds = toSeconds(normalized(input));
   if (seconds === null) return { ok: false, error: FORMAT_ERROR };
   if (seconds > duration) {
     return {
