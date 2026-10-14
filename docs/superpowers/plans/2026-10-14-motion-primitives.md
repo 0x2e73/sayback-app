@@ -777,7 +777,7 @@ export function Dialog({ title, children, footer, busy = false, onClose }: Dialo
 }
 .dialog-footer {
   position: sticky;
-  bottom: -26px;
+  bottom: 0;
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
@@ -788,7 +788,7 @@ export function Dialog({ title, children, footer, busy = false, onClose }: Dialo
 }
 ```
 
-`.dialog` is the scroll container (`overflow-y: auto`), so the sticky footer pins to its bottom edge; the negative offsets cancel the inner padding.
+`.dialog` is the scroll container (`overflow-y: auto`, no padding), so `bottom: 0` pins the footer to its visible bottom edge; the negative margins cancel the padding of `.dialog-inner`.
 
 - [ ] **Step 4: Run the tests, the whole suite and the project checks, then commit**
 
