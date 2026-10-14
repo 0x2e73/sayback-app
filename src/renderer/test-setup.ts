@@ -7,3 +7,15 @@ if (typeof HTMLDialogElement !== 'undefined') {
     this.open = false;
   };
 }
+
+// jsdom has no media pipeline: play and pause only report the change, as a browser would.
+if (typeof HTMLMediaElement !== 'undefined') {
+  HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+    this.dispatchEvent(new Event('play'));
+    return Promise.resolve();
+  };
+  HTMLMediaElement.prototype.pause = function (this: HTMLMediaElement) {
+    this.dispatchEvent(new Event('pause'));
+  };
+  HTMLMediaElement.prototype.load = () => undefined;
+}
