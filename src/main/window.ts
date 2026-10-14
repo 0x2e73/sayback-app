@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog } from 'electron';
 import { join } from 'node:path';
+import { windowChrome } from './window-chrome';
 
 interface WindowOptions {
   rendererUrl: string;
@@ -13,7 +14,7 @@ export function createWindow({ rendererUrl, isRecording }: WindowOptions): Brows
     minWidth: 900,
     minHeight: 650,
     title: 'SayBack',
-    backgroundColor: '#0f1117',
+    ...windowChrome(process.platform),
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,

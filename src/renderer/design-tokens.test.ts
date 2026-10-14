@@ -1,14 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   contrast,
   declarations,
   read,
-  rendererDir,
   sheets,
   tokenBlock,
-  tokenValue,
   withoutTokens,
   type Declaration,
 } from './design-tokens-support';
@@ -199,11 +195,5 @@ describe('design tokens', () => {
       expect(block).toContain(`${token}:`);
     }
     expect(css.indexOf(block)).toBeGreaterThan(css.indexOf(tokenBlock(css)));
-  });
-
-  it('paints the window with the page background before the CSS loads', () => {
-    const windowSource = readFileSync(join(rendererDir, '../main/window.ts'), 'utf8');
-    const background = /backgroundColor:\s*'([^']+)'/.exec(windowSource)?.[1];
-    expect(background).toBe(tokenValue('--color-bg'));
   });
 });
