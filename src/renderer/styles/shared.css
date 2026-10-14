@@ -70,6 +70,9 @@
   background: var(--color-danger);
   color: var(--color-on-action);
 }
+.button-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 88%, var(--color-text));
+}
 .button-ghost {
   border-color: transparent;
   background: transparent;

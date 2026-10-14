@@ -16,7 +16,7 @@
   --color-accent-soft: color-mix(in srgb, var(--color-accent) 45%, transparent);
   --color-focus: var(--color-accent);
   --color-action: #f4f6fa;
-  --color-action-hover: #ffffff;
+  --color-action-hover: #dfe3ec;
   --color-on-action: #0d1017;
   --color-live: #ff958c;
   --color-danger: #ff8077;

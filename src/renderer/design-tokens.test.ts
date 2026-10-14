@@ -231,6 +231,15 @@ describe('design tokens', () => {
     },
   );
 
+  it('shows the hover of the primary action', () => {
+    expect(contrast('--color-action', '--color-action-hover')).toBeGreaterThanOrEqual(1.1);
+    expect(contrast('--color-on-action', '--color-action-hover')).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the danger button filled on hover, over the neutral button hover', () => {
+    expect(read('styles/shared.css')).toMatch(/\.button-danger:hover\s*\{[^}]*background:/);
+  });
+
   it.each(['recording', 'recorded', 'processing', 'ready', 'error'])(
     'styles the %s status',
     (status) => {

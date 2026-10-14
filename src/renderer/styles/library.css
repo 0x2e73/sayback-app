@@ -173,7 +173,7 @@
   border: 0;
 }
 .folder-item[aria-pressed='true'] {
-  background: var(--color-surface-raised);
+  background: var(--color-accent-tint);
   border-color: var(--color-accent-soft);
 }
 .folder-item small {
