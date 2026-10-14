@@ -9,7 +9,7 @@
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "build": "electron-vite build && node scripts/build-info.ts",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
