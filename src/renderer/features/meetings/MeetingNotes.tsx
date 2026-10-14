@@ -52,10 +52,30 @@ export function MeetingNotes(props: MeetingNotesProps) {
   return (
     <div className="notes-content">
       <p className="summary">{summary}</p>
-      <NoteSection title="Points clés" items={keyPoints} meeting={meeting} onSeek={onSeek} />
-      <NoteSection title="Décisions" items={decisions} meeting={meeting} onSeek={onSeek} />
-      <NoteSection title="Actions" items={actions} meeting={meeting} onSeek={onSeek} />
-      <NoteSection title="À clarifier" items={questions} meeting={meeting} onSeek={onSeek} />
+      <NoteSection
+        title="Points clés"
+        items={keyPoints}
+        meeting={meeting}
+        onTimestamp={(at) => onSeek(at)}
+      />
+      <NoteSection
+        title="Décisions"
+        items={decisions}
+        meeting={meeting}
+        onTimestamp={(at) => onSeek(at)}
+      />
+      <NoteSection
+        title="Actions"
+        items={actions}
+        meeting={meeting}
+        onTimestamp={(at) => onSeek(at)}
+      />
+      <NoteSection
+        title="À clarifier"
+        items={questions}
+        meeting={meeting}
+        onTimestamp={(at) => onSeek(at)}
+      />
       <div className="notes-footer">
         <Button variant="secondary" busy={analyzing} onClick={onAnalyze}>
           <Sparkles size={15} />

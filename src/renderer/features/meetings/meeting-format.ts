@@ -16,18 +16,34 @@ export function sourceTime(meeting: Meeting, sourceId: string): number | undefin
   return meeting.clarifications.find((item) => `clarification:${item.id}` === sourceId)?.at;
 }
 
+export interface NoteSource {
+  id: string;
+  at: number;
+}
+
+/** Playable sources of a note, in order; sources within the same second show one stamp. */
+export function noteSources(meeting: Meeting, sourceIds: readonly string[]): NoteSource[] {
+  const seconds = new Set<number>();
+  const sources: NoteSource[] = [];
+  for (const id of sourceIds) {
+    const at = sourceTime(meeting, id);
+    if (at === undefined || seconds.has(Math.floor(at))) continue;
+    seconds.add(Math.floor(at));
+    sources.push({ id, at });
+  }
+  return sources;
+}
+
 function formatSection(meeting: Meeting, title: string, items: NoteItem[]): string {
   const lines = items.map((item) => {
-    const timestamps = item.sourceIds
-      .map((id) => sourceTime(meeting, id))
-      .filter((at): at is number => at !== undefined)
-      .map(timeLabel);
+    const timestamps = noteSources(meeting, item.sourceIds).map((source) => timeLabel(source.at));
     return `- ${item.text} (${timestamps.join(', ')})`;
   });
   return [`## ${title}`, ...lines].join('\n');
 }
 
-export function meetingMarkdown(meeting: Meeting): string {
+/** What « Copier les notes » puts on the clipboard: everything but the transcript. */
+export function notesMarkdown(meeting: Meeting): string {
   const sections = [`# ${meeting.title}`];
   if (meeting.notes) {
     const { summary, keyPoints, decisions, actions, questions } = meeting.notes;
@@ -40,11 +56,14 @@ export function meetingMarkdown(meeting: Meeting): string {
   const corrections = meeting.clarifications.map(
     (item) => `- [${timeLabel(item.at)}] ${item.text}`,
   );
+  sections.push(['## Précisions', ...corrections].join('\n'));
+  return sections.join('\n\n');
+}
+
+export function meetingMarkdown(meeting: Meeting): string {
   const transcript = meeting.transcript.map((item) => {
     const speaker = speakerLabel(item);
     return `[${timeLabel(item.start)}] ${speaker ? `${speaker} : ` : ''}${item.text}`;
   });
-  sections.push(['## Précisions', ...corrections].join('\n'));
-  sections.push(['## Transcription', ...transcript].join('\n\n'));
-  return sections.join('\n\n');
+  return [notesMarkdown(meeting), ['## Transcription', ...transcript].join('\n\n')].join('\n\n');
 }

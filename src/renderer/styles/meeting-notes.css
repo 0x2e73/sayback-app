@@ -49,3 +49,22 @@
   color: var(--color-danger);
   font-size: var(--text-caption);
 }
+
+.notes-view {
+  display: grid;
+  gap: var(--space-6);
+}
+.note-summary {
+  margin: 0;
+  line-height: 1.6;
+}
+.notes-refresh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.notes-skeleton {
+  display: grid;
+  gap: var(--space-3);
+}

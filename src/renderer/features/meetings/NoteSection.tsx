@@ -1,38 +1,36 @@
-import { timeLabel } from '../../../shared/format';
-import { Play } from 'lucide-react';
 import type { Meeting, NoteItem } from '../../../shared/contracts';
-
-import { sourceTime } from './meeting-format';
+import type { TimestampHandler } from './Clarifications';
+import { shortTimeLabel } from './detail-format';
+import { noteSources } from './meeting-format';
 
 interface NoteSectionProps {
   title: string;
   items: NoteItem[];
   meeting: Meeting;
-  onSeek(at: number): void;
+  onTimestamp: TimestampHandler;
 }
 
-export function NoteSection({ title, items, meeting, onSeek }: NoteSectionProps) {
+export function NoteSection({ title, items, meeting, onTimestamp }: NoteSectionProps) {
   if (!items.length) return null;
 
   return (
     <section className="note-section">
-      <h3>{title}</h3>
-      <ul>
+      <h2>{title}</h2>
+      <ul className="note-list">
         {items.map((item, index) => (
           <li key={index}>
-            <span>{item.text}</span>
-            <span className="source-links">
-              {item.sourceIds.slice(0, 3).map((id) => {
-                const at = sourceTime(meeting, id);
-                if (at === undefined) return null;
-                return (
-                  <button className="timestamp-link" key={id} onClick={() => onSeek(at)}>
-                    <Play size={10} />
-                    {timeLabel(at)}
-                  </button>
-                );
-              })}
-            </span>
+            <span className="note-text">{item.text}</span>
+            {noteSources(meeting, item.sourceIds).map((source) => (
+              <button
+                key={source.id}
+                type="button"
+                className="timestamp-link"
+                aria-label={`Écouter à ${shortTimeLabel(source.at)}`}
+                onClick={() => onTimestamp(source.at, source.id)}
+              >
+                {shortTimeLabel(source.at)}
+              </button>
+            ))}
           </li>
         ))}
       </ul>

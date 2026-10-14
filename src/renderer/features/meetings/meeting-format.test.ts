@@ -1,0 +1,51 @@
+import { describe, expect, it } from 'vitest';
+import { meetingFixture } from '../../test-api';
+import { meetingMarkdown, noteSources, notesMarkdown } from './meeting-format';
+
+const ids = ['1-0', '0-0', '0-1', 'clarification:c1', 'inconnu'];
+const meeting = meetingFixture('m1', 'Revue produit', '2026-10-14T08:00:00Z', {
+  status: 'ready',
+  transcript: [
+    { id: '0-0', start: 4, end: 6, text: 'Bonjour.', speaker: 'A' },
+    { id: '0-1', start: 4.6, end: 8, text: 'Salut.', speaker: 'B' },
+    { id: '1-0', start: 61, end: 63, text: 'Le budget.', speaker: 'A' },
+  ],
+  clarifications: [{ id: 'c1', at: 90, text: 'Le budget 2027.', createdAt: '' }],
+  notes: {
+    summary: 'On valide le budget.',
+    keyPoints: [{ text: 'Budget validé', sourceIds: ids }],
+    decisions: [],
+    actions: [],
+    questions: [],
+  },
+});
+
+describe('noteSources', () => {
+  it('lists every playable source of a note, in order, once per second', () => {
+    expect(noteSources(meeting, ids)).toEqual([
+      { id: '1-0', at: 61 },
+      { id: '0-0', at: 4 },
+      { id: 'clarification:c1', at: 90 },
+    ]);
+  });
+});
+
+describe('notesMarkdown', () => {
+  it('copies the notes and the clarifications without the transcript', () => {
+    const notes = notesMarkdown(meeting);
+    expect(notes).toBe(
+      [
+        '# Revue produit',
+        'On valide le budget.',
+        '## Points clés\n- Budget validé (01:01, 00:04, 01:30)',
+        '## Décisions',
+        '## Actions',
+        '## À clarifier',
+        '## Précisions\n- [01:30] Le budget 2027.',
+      ].join('\n\n'),
+    );
+    expect(meetingMarkdown(meeting)).toBe(
+      `${notes}\n\n## Transcription\n\n[00:04] Intervenant A · extrait 1 : Bonjour.\n\n[00:04] Intervenant B · extrait 1 : Salut.\n\n[01:01] Intervenant A · extrait 2 : Le budget.`,
+    );
+  });
+});
