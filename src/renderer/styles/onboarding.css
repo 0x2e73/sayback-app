@@ -9,8 +9,16 @@
 .onboarding {
   display: grid;
   grid-template-columns: minmax(320px, 42%) minmax(0, 1fr);
-  min-height: 100dvh;
-  background: var(--color-surface);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--color-bg);
+}
+
+/* Behind the content: a drag region works wherever it sits, and nothing steals the clicks. */
+.onboarding-band {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: -1;
 }
 
 .onboarding-visual {
@@ -89,6 +97,7 @@
   flex-direction: column;
   min-width: 0;
   padding: 38px clamp(40px, 6vw, 100px);
+  background: var(--color-surface);
 }
 
 .onboarding-topline,

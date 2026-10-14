@@ -212,4 +212,23 @@ describe('Meeting workspace', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Lecture impossible');
     expect(screen.getByRole('button', { name: 'Réessayer' })).toBeEnabled();
   });
+  it('has no top bar, footer or marketing line around the workspace', async () => {
+    render(<App api={apiFor()} />);
+    await screen.findByRole('navigation', { name: 'Navigation principale' });
+    for (const text of [
+      'Espace de travail',
+      'En local',
+      'Un peu moins à retenir. Un peu plus à partager.',
+    ]) {
+      expect(screen.queryByText(text, { exact: false })).toBeNull();
+    }
+    expect(document.querySelector('.main-card')).not.toBeNull();
+  });
+  it('lets the window be dragged from the onboarding too', async () => {
+    const api = apiFor();
+    api.getSettings = () => ok({ ...settings, onboardingCompleted: false });
+    render(<App api={api} />);
+    await screen.findByRole('heading', { name: 'Gardez le fil de vos réunions.' });
+    expect(document.querySelector('.onboarding > .window-band')).not.toBeNull();
+  });
 });

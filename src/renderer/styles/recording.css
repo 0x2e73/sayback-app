@@ -311,11 +311,7 @@
     display: none;
   }
   .page-content {
-    padding: 28px 18px 50px;
-  }
-  .topbar,
-  .workspace-footer {
-    padding-inline: 18px;
+    padding: 8px 18px 50px;
   }
   .detail-grid {
     grid-template-columns: 1fr;

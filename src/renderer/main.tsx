@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import type { DesktopApi } from '../shared/contracts';
 import { App } from './App';
+import { platformOf } from './platform';
 import './styles.css';
 import './styles/shared.css';
 import './styles/library.css';
@@ -15,6 +16,7 @@ declare global {
     sayBack?: DesktopApi;
   }
 }
+document.documentElement.dataset.platform = platformOf(navigator.platform);
 const root = createRoot(document.getElementById('root')!);
 root.render(
   <React.StrictMode>

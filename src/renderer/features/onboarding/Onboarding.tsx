@@ -81,6 +81,7 @@ export function Onboarding({ api, busy, error, onComplete }: OnboardingProps) {
 
   return (
     <main className="onboarding">
+      <div className="window-band onboarding-band" aria-hidden="true" />
       <div className="onboarding-visual">
         <div className="onboarding-brand">
           <img src={logo} alt="" />

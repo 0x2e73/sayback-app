@@ -10,10 +10,6 @@ interface AppShellProps {
 }
 
 export function AppShell(props: AppShellProps) {
-  let heading = 'Espace de travail';
-  if (props.section === 'settings') heading = 'Préférences';
-  if (props.recording) heading = 'Réunion en cours';
-
   return (
     <div className="app-shell">
       <Sidebar
@@ -22,18 +18,9 @@ export function AppShell(props: AppShellProps) {
         locked={props.recording}
         onNavigate={props.onNavigate}
       />
-      <main className="main-content">
-        <header className="topbar">
-          <span>{heading}</span>
-          <span className="topbar-note">
-            <span className="status-dot" />
-            En local
-          </span>
-        </header>
+      <main className="main-card">
+        <div className="window-band" aria-hidden="true" />
         <div className="page-content">{props.children}</div>
-        <footer className="workspace-footer">
-          Un peu moins à retenir. Un peu plus à partager.<span>SayBack</span>
-        </footer>
       </main>
     </div>
   );
