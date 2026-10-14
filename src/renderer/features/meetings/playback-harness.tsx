@@ -28,6 +28,14 @@ export function Harness({ meeting }: { meeting: Meeting }) {
       <button onClick={() => playback.playAt(150)}>2:30</button>
       <button onClick={() => playback.seek(90)}>1:30</button>
       <button onClick={() => playback.seek(30)}>0:30</button>
+      <button
+        onClick={() => {
+          playback.playAt(150);
+          playback.seek(30);
+        }}
+      >
+        Passage puis 0:30
+      </button>
     </>
   );
 }

@@ -85,14 +85,11 @@ export class PlaybackController {
   }
 
   ended(): void {
-    const next = this.sources[this.view.position + 1];
-    if (!next) {
+    if (!this.sources[this.view.position + 1]) {
       this.commit({ playing: false, at: this.duration });
       return;
     }
-    this.broken = false;
-    this.driver.queue(0, true);
-    this.commit({ at: next.start, position: this.view.position + 1 });
+    this.advance();
   }
 
   timeUpdate(currentTime: number): void {
@@ -109,15 +106,31 @@ export class PlaybackController {
     this.driver.loadedMetadata();
   }
 
+  /** An unreadable extract: playback moves on to the next one, the message stays. */
   failed(): void {
     this.driver.failed();
     this.broken = true;
+    if (this.view.playing && this.sources[this.view.position + 1]) {
+      this.commit({ failed: true });
+      this.advance();
+      return;
+    }
     this.commit({ failed: true, playing: false });
   }
 
   stop(): void {
     this.driver.stop();
     this.follower.stop();
+  }
+
+  /** Starts the next extract from its first second. */
+  private advance(): void {
+    const position = this.view.position + 1;
+    const next = this.sources[position];
+    if (!next) return;
+    this.broken = false;
+    this.driver.queue(0, true);
+    this.commit({ at: next.start, position });
   }
 
   private commit(patch: Partial<PlaybackView>): void {

@@ -31,7 +31,24 @@ it('reports a disk error while closing the session to preserve earlier chunks', 
     },
   };
   const writer = new RecordingWriter(api, 'meeting');
-  writer.append('audio', 0, 0, 1, new Blob(['audio']));
+  writer.append('audio', 0, 0, 1, new Blob([new Uint8Array(2_048)]));
   await expect(writer.finish(1)).rejects.toThrow('Disque plein');
   expect(status).toBe('recorded');
+});
+
+it('drops an audio extract too small to hold a single frame', async () => {
+  const saved: string[] = [];
+  const api: RecordingApi = {
+    saveMedia: async (upload: MediaUpload) => {
+      saved.push(`${upload.kind}${upload.index}`);
+      return { ok: true, value: undefined };
+    },
+    finishMeeting: async () => ({ ok: true, value: {} as Meeting }),
+  };
+  const writer = new RecordingWriter(api, 'meeting');
+  writer.append('audio', 0, 0, 60, new Blob([new Uint8Array(1_023)]));
+  writer.append('audio', 1, 60, 60, new Blob([new Uint8Array(1_024)]));
+  writer.append('video', 0, 0, 60, new Blob(['v']));
+  await writer.finish(120);
+  expect(saved).toEqual(['audio1', 'video0']);
 });

@@ -22,6 +22,9 @@ export interface ResumeState {
 
 type PlayableMeeting = Pick<Meeting, 'id' | 'hasVideo' | 'duration' | 'audioChunks'>;
 
+/** Seconds kept before the end of an extract when a seek lands on it. */
+const END_MARGIN = 0.05;
+
 const finite = (value: number) => Number.isFinite(value);
 
 function audioSources(meeting: PlayableMeeting): PlaybackSource[] {
@@ -76,9 +79,11 @@ export function locate(sources: readonly PlaybackSource[], at: number): Playback
   const source = sources[position];
   if (!source) return null;
   const offset = time - source.start;
-  if (offset < source.duration) return { position, offset: Math.max(0, offset) };
+  // A hair inside the end: a seek at the very end of an extract would end it before it plays.
+  const last = Math.max(0, source.duration - END_MARGIN);
+  if (offset < source.duration) return { position, offset: Math.min(Math.max(0, offset), last) };
   if (position + 1 < sources.length) return { position: position + 1, offset: 0 };
-  return { position, offset: source.duration };
+  return { position, offset: last };
 }
 
 export function timelineTime(source: PlaybackSource, currentTime: number): number {
@@ -94,7 +99,7 @@ export function resumePoint({
   duration,
   failed,
 }: ResumeState): number | null {
-  if (failed) return sources[position + 1]?.start ?? at;
+  if (failed) return sources[position + 1]?.start ?? 0;
   if (at >= duration) return 0;
   return null;
 }

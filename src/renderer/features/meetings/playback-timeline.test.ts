@@ -93,12 +93,16 @@ describe('locate', () => {
     [60, 1, 0],
     [150, 2, 30],
     [179.5, 2, 59.5],
-    [180, 2, 60],
-    [500, 2, 60],
+    [180, 2, 59.95],
+    [500, 2, 59.95],
     [-4, 0, 0],
     [Number.NaN, 0, 0],
   ])('finds %s s in extract %s at %s s', (at, position, offset) => {
     expect(locate(three, at)).toEqual({ position, offset });
+  });
+
+  it('stays a hair inside the end of an extract, which would end at once otherwise', () => {
+    expect(locate(three, 59.99)).toEqual({ position: 0, offset: 59.95 });
   });
 
   it('jumps over a missing minute to the next extract', () => {
@@ -162,7 +166,7 @@ describe('resumePoint', () => {
     expect(resumePoint({ ...base, position: 1, at: 60, failed: true })).toBe(120);
   });
 
-  it('tries the last extract again when nothing follows', () => {
-    expect(resumePoint({ ...base, position: 2, at: 120, failed: true })).toBe(120);
+  it('starts over when the last extract is the one that cannot be read', () => {
+    expect(resumePoint({ ...base, position: 2, at: 120, failed: true })).toBe(0);
   });
 });

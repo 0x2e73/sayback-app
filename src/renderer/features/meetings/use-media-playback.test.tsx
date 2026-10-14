@@ -168,30 +168,42 @@ it('keeps only the last seek made while an extract loads', () => {
   expect(play).toHaveBeenCalledOnce();
 });
 
-it('resumes after an extract that fails during the hand-over', () => {
+it('moves on to the next extract by itself when one fails during the hand-over', () => {
   renderLoaded();
   click('Lire');
   fireEvent.ended(media());
   fireEvent.error(media());
-  expect(screen.getByText('Échec')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Lire' })).toBeInTheDocument();
-  click('Lire');
   expect(media()).toHaveAttribute('src', 'meeting-media://local/m1/audio/2');
   expect(at()).toBe(120);
+  expect(screen.getByText('Échec')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  fireEvent.loadedMetadata(media());
+  expect(media().currentTime).toBe(0);
 });
 
-it('tries the last extract again when it is the one that failed', () => {
-  const load = vi.spyOn(HTMLMediaElement.prototype, 'load');
-  const play = vi.spyOn(HTMLMediaElement.prototype, 'play');
+it('stops when the last extract fails, and « Lire » then starts over from 0', () => {
   renderLoaded();
   click('2:30');
   fireEvent.loadedMetadata(media());
   fireEvent.error(media());
+  expect(screen.getByText('Échec')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Lire' })).toBeInTheDocument();
   click('Lire');
-  expect(load).toHaveBeenCalledOnce();
+  expect(media()).toHaveAttribute('src', 'meeting-media://local/m1/audio/0');
+  expect(at()).toBe(0);
+  expect(screen.queryByText('Échec')).toBeNull();
+});
+
+it('keeps the intent of the first call when two calls land in the same batch', () => {
+  const play = vi.spyOn(HTMLMediaElement.prototype, 'play');
+  renderLoaded();
+  click('Passage puis 0:30');
+  expect(media()).toHaveAttribute('src', 'meeting-media://local/m1/audio/0');
   fireEvent.loadedMetadata(media());
   expect(media().currentTime).toBe(30);
-  expect(play).toHaveBeenCalledTimes(2);
+  expect(at()).toBe(30);
+  expect(play).toHaveBeenCalledOnce();
+  expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
 });
 
 it('opens the next meeting from the start, paused, once the first one is gone', () => {

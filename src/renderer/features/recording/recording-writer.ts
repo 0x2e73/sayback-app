@@ -1,5 +1,7 @@
 import type { DesktopApi, MediaKind, Meeting } from '../../../shared/contracts';
 import { unwrap } from '../../../shared/contracts';
+const MIN_AUDIO_BYTES = 1_024;
+
 export type RecordingApi = Pick<DesktopApi, 'saveMedia' | 'finishMeeting'>;
 export class RecordingWriter {
   private queue = Promise.resolve();
@@ -11,6 +13,8 @@ export class RecordingWriter {
   ) {}
   append(kind: MediaKind, index: number, at: number, duration: number, blob: Blob): void {
     if (!blob.size) return;
+    // MediaRecorder sometimes closes an audio extract before its first frame: unplayable.
+    if (kind === 'audio' && blob.size < MIN_AUDIO_BYTES) return;
     this.queue = this.queue
       .then(async () => {
         if (this.failure) return;

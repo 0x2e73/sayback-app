@@ -85,3 +85,31 @@ it('leaves the element to the video block when there is a video', () => {
   rerender(<PlaybackBar playback={playbackOf({ timeline: 'video' })} />);
   expect(document.querySelector('audio')).toBeNull();
 });
+
+it('seeks once, on release, however far the thumb travels', () => {
+  const playback = playbackOf();
+  render(<PlaybackBar playback={playback} />);
+  fireEvent.pointerDown(slider());
+  fireEvent.change(slider(), { target: { value: '300' } });
+  fireEvent.change(slider(), { target: { value: '600' } });
+  expect(playback.seek).not.toHaveBeenCalled();
+  expect(screen.getByText('10:00')).toBeInTheDocument();
+  fireEvent.pointerUp(slider());
+  expect(playback.seek).toHaveBeenCalledOnce();
+  expect(playback.seek).toHaveBeenCalledWith(600);
+});
+
+it('goes back to the playback position after a release', () => {
+  const playback = playbackOf();
+  const { rerender } = render(<PlaybackBar playback={playback} />);
+  fireEvent.pointerDown(slider());
+  fireEvent.change(slider(), { target: { value: '600' } });
+  fireEvent.pointerUp(slider());
+  rerender(<PlaybackBar playback={{ ...playback, at: 600 }} />);
+  expect(screen.getByText('10:00')).toBeInTheDocument();
+});
+
+it('moves in fractions of a second', () => {
+  render(<PlaybackBar playback={playbackOf()} />);
+  expect(slider()).toHaveAttribute('step', 'any');
+});
