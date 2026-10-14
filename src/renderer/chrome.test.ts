@@ -102,3 +102,10 @@ it('breaks a long search term inside the empty-list message', () => {
     /\.empty-message-title\s*\{[^}]*overflow-wrap:\s*anywhere/,
   );
 });
+
+it('narrows the list and the card padding under 640 px', () => {
+  const narrow =
+    /@media \(max-width: 640px\)\s*\{([\s\S]*?)\n\}/.exec(read('styles/recording.css'))?.[1] ?? '';
+  expect(narrow).toMatch(/--pane-list-width:\s*clamp\(200px,\s*38vw,\s*280px\)/);
+  expect(narrow).toMatch(/\.page-content\s*\{[^}]*padding-inline:\s*var\(--space-3\)/);
+});

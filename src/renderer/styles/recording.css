@@ -315,6 +315,15 @@
     grid-template-columns: 1fr;
   }
 }
+/* Zoomed in on the smallest window, the card keeps room for its content. */
+@media (max-width: 640px) {
+  :root {
+    --pane-list-width: clamp(200px, 38vw, 280px);
+  }
+  .page-content {
+    padding-inline: var(--space-3);
+  }
+}
 .permission-notice {
   display: grid;
   justify-items: start;
