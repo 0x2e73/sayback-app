@@ -6,10 +6,6 @@
   background: var(--color-bg);
 }
 
-.app-enter {
-  animation: app-enter 260ms var(--ease-out) both;
-}
-
 .onboarding {
   display: grid;
   grid-template-columns: minmax(320px, 42%) minmax(0, 1fr);
@@ -73,7 +69,6 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   color: var(--color-accent);
-  animation: symbol-enter 420ms var(--ease-out) both;
 }
 
 .onboarding-symbol svg {
@@ -120,7 +115,7 @@
   width: min(100%, 620px);
   margin: auto 0;
   padding: 50px 0;
-  animation: copy-enter 260ms var(--ease-out) both;
+  animation: state-enter var(--duration-base) var(--ease-out);
 }
 
 .onboarding-copy h1 {
@@ -162,44 +157,10 @@
   height: 4px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
-  transition: background-color 160ms ease;
 }
 
 .onboarding-progress span.active {
   background: var(--color-accent);
-}
-
-@keyframes app-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes copy-enter {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes symbol-enter {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 @media (max-width: 850px) {
@@ -217,22 +178,5 @@
   .onboarding-main {
     min-height: calc(100dvh - 170px);
     padding: 24px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-enter,
-  .onboarding-copy,
-  .onboarding-symbol {
-    animation: fade-enter 200ms ease both;
-  }
-}
-
-@keyframes fade-enter {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }

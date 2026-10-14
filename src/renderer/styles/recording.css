@@ -133,7 +133,6 @@
   padding: 7px 10px 7px 7px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 150ms ease;
 }
 .capture-source-row:hover {
   background: var(--color-surface);
@@ -259,14 +258,6 @@
   margin: 20vh auto;
   padding: 30px;
 }
-.spin {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 @media (max-width: 800px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -290,14 +281,6 @@
   }
   .detail-grid {
     grid-template-columns: 1fr;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spin {
-    animation: none;
-  }
-  .capture-source-row {
-    transition: none;
   }
 }
 .permission-notice {

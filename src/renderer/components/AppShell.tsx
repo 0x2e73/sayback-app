@@ -15,7 +15,7 @@ export function AppShell(props: AppShellProps) {
   if (props.recording) heading = 'Réunion en cours';
 
   return (
-    <div className="app-shell app-enter">
+    <div className="app-shell">
       <Sidebar
         section={props.section}
         count={props.count}
