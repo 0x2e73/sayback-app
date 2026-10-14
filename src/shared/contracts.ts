@@ -1,6 +1,8 @@
 import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
+import type { UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
+export type { UpdateInfo, UpdateStatus } from '../backend/domain/update';
 export type {
   Segment,
   NoteItem,
@@ -88,6 +90,17 @@ export interface DesktopApi {
   openDataFolder(): Promise<Result<void>>;
   checkLocalSetup(): Promise<Result<LocalSetupStatus>>;
   openSetupGuide(guide: SetupGuide): Promise<Result<void>>;
+  /** Last known update state; the first call waits for the startup read of the channel. */
+  getUpdateStatus(): Promise<Result<UpdateStatus>>;
+  /** Re-reads the update channel now. */
+  checkForUpdate(): Promise<Result<UpdateStatus>>;
+  /**
+   * Replaces the app with the staged version and relaunches it; the app quits right after the
+   * answer. Refused, with a sentence to display, during a recording or when nothing can install.
+   */
+  installUpdate(): Promise<Result<void>>;
+  /** Called on every change of update state. Returns the unsubscribe function. */
+  onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
 }
 export function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error);

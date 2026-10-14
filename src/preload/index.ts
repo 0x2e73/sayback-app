@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron';
-import type { DesktopApi } from '../shared/contracts';
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { DesktopApi, UpdateStatus } from '../shared/contracts';
 
 const api: DesktopApi = {
   listMeetings: () => ipcRenderer.invoke('meetings:list'),
@@ -26,5 +26,15 @@ const api: DesktopApi = {
   openDataFolder: () => ipcRenderer.invoke('data:open'),
   checkLocalSetup: () => ipcRenderer.invoke('setup:check'),
   openSetupGuide: (guide) => ipcRenderer.invoke('setup:open-guide', guide),
+  getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
+  checkForUpdate: () => ipcRenderer.invoke('updates:check'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateStatus: (listener) => {
+    const forward = (_event: IpcRendererEvent, status: UpdateStatus) => listener(status);
+    ipcRenderer.on('updates:changed', forward);
+    return () => {
+      ipcRenderer.removeListener('updates:changed', forward);
+    };
+  },
 };
 contextBridge.exposeInMainWorld('sayBack', api);
