@@ -1,19 +1,15 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const rendererDir = import.meta.dirname;
 const read = (path: string) => readFileSync(join(rendererDir, path), 'utf8');
 
-// Each task adds the sheets it migrates. Task 7 replaces this list with every sheet.
 const migratedSheets = [
   'styles.css',
-  'styles/shared.css',
-  'styles/recording.css',
-  'styles/library.css',
-  'styles/meetings.css',
-  'styles/onboarding.css',
-  'styles/model-select.css',
+  ...readdirSync(join(rendererDir, 'styles'))
+    .filter((file) => file.endsWith('.css'))
+    .map((file) => `styles/${file}`),
 ];
 
 const colourLiteral = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:white|black)\b/i;
