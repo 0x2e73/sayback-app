@@ -4,11 +4,12 @@ import { join } from 'node:path';
 import {
   APP_BUNDLE_NAME,
   BUILD_INFO_FILE_NAME,
+  LOCAL_UPDATE_CHANNEL_ENV,
   UPDATES_DIR_NAME,
   buildInfoSchema,
   type UpdateManifest,
 } from '../src/shared/update-channel.ts';
-import { ReleaseError, publishToChannel } from './update-publish.ts';
+import { ReleaseError, publishToChannel, publishedCommit } from './update-publish.ts';
 
 // Builds the current commit in a frozen copy (detached git worktree, cloned node_modules), runs
 // every check there, then publishes. Stops at the first red step and names it; nothing is
@@ -70,8 +71,13 @@ export const RELEASE_STEPS: readonly { label: string; command: string; args: rea
 
 /** What `runRelease` asks of the system: replaceable in tests. */
 export interface ReleaseIo {
-  /** Runs a command with visible output; returns its exit code. */
-  run(command: string, args: readonly string[], cwd: string): Promise<number>;
+  /** Runs a command with visible output, `env` added to the inherited one; returns its exit code. */
+  run(
+    command: string,
+    args: readonly string[],
+    cwd: string,
+    env?: Readonly<Record<string, string>>,
+  ): Promise<number>;
   /** Runs a command and returns its standard output; throws if it fails. */
   capture(command: string, args: readonly string[], cwd: string): Promise<string>;
   log(line: string): void;
@@ -82,13 +88,36 @@ export interface ReleaseContext {
   /** `appData/SayBack` of the packaged app. */
   channelRoot: string;
   io: ReleaseIo;
+  /** Aborted on ⌃C, SIGTERM or SIGHUP: nothing more starts, the copy is removed. */
+  signal?: AbortSignal;
 }
 
-/** The bundle electron-builder built in the copy: `SayBack.app` in `dist/mac…`. */
+export interface ReleaseResult {
+  manifest: UpdateManifest;
+  /** The channel already offered this commit: an app built from it will not see an update. */
+  alreadyPublished: boolean;
+}
+
+/** The copy is built with the local channel explicitly open; nothing else ever opens it. */
+const STEP_ENV = { [LOCAL_UPDATE_CHANNEL_ENV]: '1' };
+
+function assertNotAborted(context: ReleaseContext): void {
+  if (context.signal?.aborted)
+    throw new ReleaseError("publication interrompue : rien n'est publié");
+}
+
+/** Output folders to look in: this machine's architecture first, then any other `mac…`. */
+function outputOrder(outputs: readonly string[]): string[] {
+  const preferred = `mac-${process.arch}`;
+  const others = outputs.filter((name) => name.startsWith('mac') && name !== preferred).sort();
+  return outputs.includes(preferred) ? [preferred, ...others] : others;
+}
+
+/** The bundle electron-builder built in the copy: `SayBack.app` in `dist/mac-<arch>`. */
 async function findBuiltApp(tree: string): Promise<string> {
   const distDir = join(tree, 'dist');
   const outputs = await readdir(distDir).catch((): string[] => []);
-  for (const name of outputs.filter((entry) => entry.startsWith('mac')).sort()) {
+  for (const name of outputOrder(outputs)) {
     const candidate = join(distDir, name, APP_BUNDLE_NAME);
     const found = await stat(candidate).then(
       (info) => info.isDirectory(),
@@ -101,14 +130,17 @@ async function findBuiltApp(tree: string): Promise<string> {
 
 async function buildAndCheck(tree: string, context: ReleaseContext): Promise<void> {
   const { repoRoot, io } = context;
-  // APFS clone: instant, without doubling the space node_modules takes.
+  // APFS clone: instant, without doubling the space node_modules takes. Accepted: it is the
+  // repository's current node_modules, not one frozen with the commit's lockfile.
   const nodeModules = ['-cR', join(repoRoot, 'node_modules'), join(tree, 'node_modules')];
   if ((await io.run('cp', nodeModules, repoRoot)) !== 0) {
     throw new ReleaseError('étape « node_modules » en échec');
   }
   for (const step of RELEASE_STEPS) {
+    assertNotAborted(context);
     io.log(`étape « ${step.label} » : ${[step.command, ...step.args].join(' ')}`);
-    const code = await io.run(step.command, step.args, tree);
+    const code = await io.run(step.command, step.args, tree, STEP_ENV);
+    assertNotAborted(context);
     if (code !== 0) {
       throw new ReleaseError(
         `étape « ${step.label} » en échec (code ${String(code)}) : rien n'est publié`,
@@ -122,7 +154,7 @@ async function publishBuilt(
   commit: string,
   notes: string | undefined,
   context: ReleaseContext,
-): Promise<UpdateManifest> {
+): Promise<ReleaseResult> {
   const appPath = await findBuiltApp(tree);
   const infoText = await readFile(join(tree, 'out', BUILD_INFO_FILE_NAME), 'utf8');
   const info = buildInfoSchema.parse(JSON.parse(infoText));
@@ -130,17 +162,20 @@ async function publishBuilt(
     throw new ReleaseError(`le paquet construit dit venir de ${info.commit}, pas de ${commit}`);
   }
   const updatesDir = join(context.channelRoot, UPDATES_DIR_NAME);
+  const alreadyPublished = (await publishedCommit(updatesDir)) === commit;
+  assertNotAborted(context);
   const manifest = await publishToChannel({ appPath, updatesDir, info, notes });
   context.io.log(`publié : ${manifest.version} ${manifest.commit.slice(0, 12)} dans ${updatesDir}`);
-  return manifest;
+  return { manifest, alreadyPublished };
 }
 
-/** Builds the current commit in a frozen copy, checks it, publishes it. Returns the manifest. */
+/** Builds the current commit in a frozen copy, checks it, publishes it. */
 export async function runRelease(
   options: ReleaseOptions,
   context: ReleaseContext,
-): Promise<UpdateManifest> {
+): Promise<ReleaseResult> {
   const { repoRoot, io } = context;
+  assertNotAborted(context);
   const status = await io.capture('git', ['status', '--porcelain'], repoRoot);
   const dirty = status.split('\n').filter((line) => line.trim() !== '');
   if (dirty.length > 0 && !options.allowDirty) {
@@ -156,6 +191,7 @@ export async function runRelease(
   const tree = join(workDir, 'sayback');
   let worktreeAdded = false;
   try {
+    assertNotAborted(context);
     io.log(`copie figée de ${commit.slice(0, 12)} dans ${tree}`);
     const added = await io.run('git', ['worktree', 'add', '--detach', tree, commit], repoRoot);
     if (added !== 0) throw new ReleaseError('étape « worktree » en échec');
@@ -167,5 +203,7 @@ export async function runRelease(
       await io.run('git', ['worktree', 'remove', '--force', tree], repoRoot).catch(() => 1);
     }
     await rm(workDir, { recursive: true, force: true });
+    // Forgets a worktree whose folder vanished (interrupted run, removal that failed).
+    await io.run('git', ['worktree', 'prune'], repoRoot).catch(() => 1);
   }
 }

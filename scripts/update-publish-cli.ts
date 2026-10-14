@@ -17,11 +17,18 @@ import {
 
 const ROOT = join(import.meta.dirname, '..');
 const capture = promisify(execFile);
+const interruption = new AbortController();
 
 const io: ReleaseIo = {
-  run: (command, args, cwd) =>
+  run: (command, args, cwd, env) =>
     new Promise<number>((resolveCode) => {
-      const child = spawn(command, [...args], { cwd, stdio: 'inherit' });
+      const child = spawn(command, [...args], {
+        cwd,
+        stdio: 'inherit',
+        env: { ...process.env, ...env },
+        // An interruption stops the running command too.
+        signal: interruption.signal,
+      });
       child.on('error', (error) => {
         process.stderr.write(`[update] ${command} : ${error.message}\n`);
         resolveCode(127);
@@ -35,10 +42,13 @@ const io: ReleaseIo = {
   },
 };
 
-// ⌃C reaches the running commands too; the script itself goes on to clean its copy.
-process.on('SIGINT', () => {
-  process.stderr.write('[update] interrompu : nettoyage de la copie…\n');
-});
+// ⌃C, SIGTERM, SIGHUP: nothing more starts, and the script goes on to clean its copy.
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+  process.on(signal, () => {
+    process.stderr.write(`[update] ${signal} : arrêt et nettoyage de la copie…\n`);
+    interruption.abort();
+  });
+}
 
 function parseOrExit(): ReleaseOptions {
   try {
@@ -62,9 +72,12 @@ try {
     options.channelRoot === undefined
       ? packagedChannelRoot(homedir())
       : resolve(options.channelRoot);
-  await runRelease(options, { repoRoot: ROOT, channelRoot, io });
+  const context = { repoRoot: ROOT, channelRoot, io, signal: interruption.signal };
+  const { manifest, alreadyPublished } = await runRelease(options, context);
   process.stdout.write(
-    '[update] OK — SayBack proposera la mise à jour à son prochain retour au premier plan.\n',
+    alreadyPublished
+      ? `[update] ATTENTION — le commit ${manifest.commit.slice(0, 12)} était déjà publié : une app construite depuis ce commit ne proposera rien. Committez une modification, puis republiez.\n`
+      : '[update] OK — SayBack proposera la mise à jour à son prochain retour au premier plan.\n',
   );
 } catch (error) {
   process.stderr.write(`[update] ÉCHEC — ${describeFailure(error)}\n`);

@@ -7,6 +7,9 @@
   "description": "Vos réunions, leur contexte et des notes claires.",
   "type": "module",
   "main": "out/main/index.js",
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build && node scripts/build-info.ts",

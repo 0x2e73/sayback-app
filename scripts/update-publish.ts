@@ -1,12 +1,18 @@
 import { execFile } from 'node:child_process';
-import { createHash, randomBytes } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { chmod, lstat, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { writeFileAtomic } from '../src/backend/infrastructure/safe-files.ts';
+import {
+  openRegularFile,
+  readRegularFileUpTo,
+  sha256OfOpenFile,
+  writeFileAtomic,
+} from '../src/backend/infrastructure/safe-files.ts';
 import {
   APP_BUNDLE_NAME,
+  ASAR_MAX_BYTES,
+  UPDATE_MANIFEST_MAX_BYTES,
   UPDATE_MANIFEST_NAME,
   toManifestNotes,
   updateManifestSchema,
@@ -28,14 +34,29 @@ export class ReleaseError extends Error {
   }
 }
 
-export function sha256File(path: string): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const hash = createHash('sha256');
-    createReadStream(path)
-      .on('error', reject)
-      .on('data', (chunk) => hash.update(chunk))
-      .on('end', () => resolve(hash.digest('hex')));
-  });
+/** SHA-256 of app.asar with the hasher the app uses, under the same cap. */
+export async function sha256File(path: string): Promise<string> {
+  const { handle } = await openRegularFile(path);
+  try {
+    const sha256 = await sha256OfOpenFile(handle, ASAR_MAX_BYTES);
+    if (sha256 === null) throw new ReleaseError(`fichier trop volumineux : ${path}`);
+    return sha256;
+  } finally {
+    await handle.close();
+  }
+}
+
+/** The commit the channel offers today, if its manifest is readable. */
+export async function publishedCommit(updatesDir: string): Promise<string | null> {
+  try {
+    const path = join(updatesDir, UPDATE_MANIFEST_NAME);
+    const bytes = await readRegularFileUpTo(path, UPDATE_MANIFEST_MAX_BYTES);
+    if (bytes === null) return null;
+    const parsed = updateManifestSchema.safeParse(JSON.parse(bytes.toString('utf8')));
+    return parsed.success ? parsed.data.commit : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface PublishInput {
