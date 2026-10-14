@@ -56,6 +56,7 @@ function props(overrides: Partial<PaneProps> = {}): PaneProps {
     selectedId: null,
     settingsOpen: false,
     recording: null,
+    update: { status: null, busy: false, onInstall: vi.fn() },
     onSelect: vi.fn(),
     onToggleSettings: vi.fn(),
     onNew: vi.fn(),

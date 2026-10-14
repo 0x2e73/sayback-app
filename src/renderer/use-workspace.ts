@@ -8,6 +8,8 @@ import { useMeetings } from './features/list/use-meetings';
 import { useAutoAnalysis } from './features/meetings/use-auto-analysis';
 import type { CaptureOptions } from './features/recording/capture-session';
 import { useRecording } from './features/recording/use-recording';
+import { useUpdateInstall } from './features/updates/use-update-install';
+import { useUpdateStatus } from './features/updates/use-update-status';
 import { workspaceNotice } from './workspace-notice';
 
 export type CardView = 'meeting' | 'settings';
@@ -17,6 +19,8 @@ export function useWorkspace(api: DesktopApi) {
   const library = useMeetings(api);
   const folders = useFolders(api, library.update, library.refresh);
   const analysis = useAutoAnalysis(api, library.update);
+  const updateStatus = useUpdateStatus(api);
+  const updateInstall = useUpdateInstall(api);
   const filter = useListFilter(library.meetings, folders.folders);
   const [card, setCard] = useState<CardView>('meeting');
   const [chosenId, setChosenId] = useState<string | null>(null);
@@ -62,6 +66,11 @@ export function useWorkspace(api: DesktopApi) {
     folders,
     filter,
     recording,
+    update: {
+      status: updateStatus,
+      busy: updateInstall.busy,
+      onInstall: () => void updateInstall.install(),
+    },
     card,
     newMeeting,
     selected,
@@ -70,6 +79,7 @@ export function useWorkspace(api: DesktopApi) {
       analysis: analysis.error,
       library: library.error,
       folders: folders.error,
+      update: updateInstall.error,
     }),
     start,
     select,

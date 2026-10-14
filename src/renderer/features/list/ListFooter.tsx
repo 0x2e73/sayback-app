@@ -1,6 +1,7 @@
 import { Settings2 } from 'lucide-react';
 import { timeLabel } from '../../../shared/format';
 import { Button } from '../../components/ui';
+import { UpdateLine, type UpdateLineProps } from '../updates/UpdateLine';
 import { useElapsed } from './use-elapsed';
 
 interface Clock {
@@ -9,6 +10,7 @@ interface Clock {
 
 interface ListFooterProps {
   recording: Clock | null;
+  update: UpdateLineProps;
   settingsOpen: boolean;
   onToggleSettings(): void;
   onNew(): void;
@@ -27,26 +29,29 @@ function RecordingPill({ clock, onShow }: { clock: Clock; onShow(): void }) {
 
 // Settings stay shut while recording: the recording screen owns the two-hour stop.
 export function ListFooter(props: ListFooterProps) {
-  const { recording, settingsOpen, onToggleSettings, onNew, onShowRecording } = props;
+  const { recording, update, settingsOpen, onToggleSettings, onNew, onShowRecording } = props;
   return (
-    <div className="list-pane-footer">
-      <Button
-        variant="ghost"
-        shape="round"
-        aria-label="Paramètres"
-        aria-pressed={settingsOpen}
-        disabled={recording !== null}
-        onClick={onToggleSettings}
-      >
-        <Settings2 size={16} aria-hidden="true" />
-      </Button>
-      {recording ? (
-        <RecordingPill clock={recording} onShow={onShowRecording} />
-      ) : (
-        <Button shape="pill" onClick={onNew}>
-          Démarrer l’enregistrement
+    <>
+      <UpdateLine {...update} />
+      <div className="list-pane-footer">
+        <Button
+          variant="ghost"
+          shape="round"
+          aria-label="Paramètres"
+          aria-pressed={settingsOpen}
+          disabled={recording !== null}
+          onClick={onToggleSettings}
+        >
+          <Settings2 size={16} aria-hidden="true" />
         </Button>
-      )}
-    </div>
+        {recording ? (
+          <RecordingPill clock={recording} onShow={onShowRecording} />
+        ) : (
+          <Button shape="pill" onClick={onNew}>
+            Démarrer l’enregistrement
+          </Button>
+        )}
+      </div>
+    </>
   );
 }

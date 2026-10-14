@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { LIST_ERROR, workspaceNotice } from './workspace-notice';
 
-const none = { recording: '', analysis: '', library: '', folders: '' };
+const none = { recording: '', analysis: '', library: '', folders: '', update: '' };
 
 it.each([
   ['nothing when all is well', none, null],
@@ -24,6 +24,11 @@ it.each([
     'the folder failure last, without retry',
     { ...none, folders: 'Nom déjà pris' },
     { message: 'Nom déjà pris', retryList: false },
+  ],
+  [
+    'the update failure after the others',
+    { ...none, update: 'Le paquet est introuvable.' },
+    { message: 'Le paquet est introuvable.', retryList: false },
   ],
 ])('shows %s', (_case, errors, expected) => {
   expect(workspaceNotice(errors)).toEqual(expected);

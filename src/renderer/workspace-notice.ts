@@ -5,6 +5,7 @@ interface WorkspaceErrors {
   analysis: string;
   library: string;
   folders: string;
+  update: string;
 }
 
 export interface WorkspaceNotice {
@@ -18,5 +19,6 @@ export function workspaceNotice(errors: WorkspaceErrors): WorkspaceNotice | null
   if (errors.analysis) return { message: errors.analysis, retryList: false };
   if (errors.library) return { message: LIST_ERROR, retryList: true };
   if (errors.folders) return { message: errors.folders, retryList: false };
+  if (errors.update) return { message: errors.update, retryList: false };
   return null;
 }

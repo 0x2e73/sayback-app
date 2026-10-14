@@ -4,6 +4,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { ListFooter } from './ListFooter';
 
+const update = { status: null, busy: false, onInstall: vi.fn() };
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -15,6 +17,7 @@ it('offers the settings and the recording action', () => {
   render(
     <ListFooter
       recording={null}
+      update={update}
       settingsOpen
       onToggleSettings={onToggleSettings}
       onNew={onNew}
@@ -36,6 +39,7 @@ it('shows the running recording and keeps the settings shut', () => {
   render(
     <ListFooter
       recording={clock}
+      update={update}
       settingsOpen={false}
       onToggleSettings={vi.fn()}
       onNew={vi.fn()}

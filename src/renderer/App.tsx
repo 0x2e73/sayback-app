@@ -64,6 +64,7 @@ export function App({ api }: AppProps) {
         selectedId={paneSelection}
         settingsOpen={workspace.card === 'settings'}
         recording={recording.capture}
+        update={workspace.update}
         onSelect={workspace.select}
         onToggleSettings={workspace.toggleSettings}
         onNew={workspace.openNewMeeting}

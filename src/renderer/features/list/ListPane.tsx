@@ -5,6 +5,7 @@ import { FolderFilter } from './FolderFilter';
 import { ListBody } from './ListBody';
 import { ListFooter } from './ListFooter';
 import { ALL_MEETINGS, type FolderScope } from './list-filter';
+import type { UpdateLineProps } from '../updates/UpdateLine';
 import { SearchField } from './SearchField';
 import { useCurrentDate } from './use-current-date';
 import type { FolderActions } from './use-folders';
@@ -22,6 +23,7 @@ export interface ListPaneProps {
   selectedId: string | null;
   settingsOpen: boolean;
   recording: { readonly elapsed: number } | null;
+  update: UpdateLineProps;
   onSelect(id: string): void;
   onToggleSettings(): void;
   onNew(): void;
@@ -67,6 +69,7 @@ export function ListPane(props: ListPaneProps) {
       </div>
       <ListFooter
         recording={recording}
+        update={props.update}
         settingsOpen={props.settingsOpen}
         onToggleSettings={props.onToggleSettings}
         onNew={props.onNew}
