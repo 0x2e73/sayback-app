@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { read } from './design-tokens-support';
+import { read, tokenValue } from './design-tokens-support';
 
 const css = () => read('styles.css');
 
@@ -61,4 +61,19 @@ it('lets the onboarding text be selected and clicked under the band', () => {
 
 it('keeps a drag band on the screens that have no shell', () => {
   expect(css()).toMatch(/\.window-band-fixed\s*\{[^}]*position:\s*fixed/);
+});
+
+it('insets the list header for the traffic lights on macOS only', () => {
+  expect(tokenValue('--traffic-inset')).toBe('0px');
+  expect(css()).toMatch(/:root\[data-platform='mac'\]\s*\{[^}]*--traffic-inset:\s*76px/);
+});
+
+it('drops the inset and the top band in full screen, after the macOS values', () => {
+  const sheet = css();
+  const block = /:root\[data-fullscreen\]\s*\{([^}]*)\}/.exec(sheet)?.[1] ?? '';
+  expect(block).toMatch(/--chrome-band:\s*0px/);
+  expect(block).toMatch(/--traffic-inset:\s*0px/);
+  expect(sheet.indexOf(':root[data-fullscreen]')).toBeGreaterThan(
+    sheet.indexOf(":root[data-platform='mac']"),
+  );
 });

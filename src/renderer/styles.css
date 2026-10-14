@@ -52,6 +52,7 @@
   --radius-pill: 999px;
 
   --chrome-band: 0px;
+  --traffic-inset: 0px;
 
   --shadow-float: 0 12px 40px rgb(0 0 0 / 0.45), 0 0 0 1px var(--color-border);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -77,8 +78,15 @@
 
 :root[data-platform='mac'] {
   --chrome-band: 52px;
+  --traffic-inset: 76px;
   --color-sidebar: var(--color-sidebar-veil);
   background: transparent;
+}
+
+/* Native full screen hides the traffic lights and the title area. */
+:root[data-fullscreen] {
+  --chrome-band: 0px;
+  --traffic-inset: 0px;
 }
 
 * {

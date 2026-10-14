@@ -88,6 +88,9 @@ export interface DesktopApi {
   openDataFolder(): Promise<Result<void>>;
   checkLocalSetup(): Promise<Result<LocalSetupStatus>>;
   openSetupGuide(guide: SetupGuide): Promise<Result<void>>;
+  isFullScreen(): Promise<Result<boolean>>;
+  /** Returns the function that stops listening. */
+  onFullScreenChange(listener: (fullScreen: boolean) => void): () => void;
 }
 export function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error);

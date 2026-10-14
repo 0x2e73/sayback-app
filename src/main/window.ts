@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog } from 'electron';
 import { join } from 'node:path';
+import { relayFullScreen } from './full-screen';
 import { windowChrome } from './window-chrome';
 
 interface WindowOptions {
@@ -23,6 +24,7 @@ export function createWindow({ rendererUrl, isRecording }: WindowOptions): Brows
     },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  relayFullScreen(window);
   window.webContents.on('will-navigate', (event, url) => {
     if (url !== rendererUrl) event.preventDefault();
   });

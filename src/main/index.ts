@@ -10,6 +10,7 @@ import {
   registerSettingsHandlers,
 } from './meeting-handlers';
 import { registerCapture } from './capture-permissions';
+import { registerWindowHandlers } from './full-screen';
 import { createWindow } from './window';
 import { serveMedia } from './media-protocol';
 
@@ -60,6 +61,7 @@ void app.whenReady().then(() => {
   registerFolderHandlers(handle, desktop);
   registerSettingsHandlers(handle, desktop, root);
   registerCapture(handle, () => window);
+  registerWindowHandlers(handle, () => window);
   protocol.handle('meeting-media', (request) =>
     serveMedia(request, desktop.media, desktop.meetings),
   );

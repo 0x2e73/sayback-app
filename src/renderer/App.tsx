@@ -8,6 +8,7 @@ import { useFolders } from './features/library/use-folders';
 import { useAutoAnalysis } from './features/meetings/use-auto-analysis';
 import { Onboarding } from './features/onboarding/Onboarding';
 import { useOnboarding } from './features/onboarding/use-onboarding';
+import { useFullScreen } from './use-full-screen';
 import { NewMeetingDialog } from './features/recording/NewMeetingDialog';
 import { useRecording } from './features/recording/use-recording';
 import type { CaptureOptions } from './features/recording/capture-session';
@@ -45,6 +46,7 @@ function OnboardingScreen({ api, onboarding }: OnboardingScreenProps) {
 
 export function App({ api }: AppProps) {
   const onboarding = useOnboarding(api);
+  useFullScreen(api);
   const library = useMeetings(api);
   const folders = useFolders(api, library.update, library.refresh);
   const updateMeeting = library.update;

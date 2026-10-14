@@ -66,5 +66,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     openDataFolder: () => ok(undefined),
     checkLocalSetup: () => ok(readySetup),
     openSetupGuide: () => ok(undefined),
+    isFullScreen: () => ok(false),
+    onFullScreenChange: () => () => {},
   };
 }

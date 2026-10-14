@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { DesktopApi } from '../shared/contracts';
 
 const api: DesktopApi = {
@@ -26,5 +26,16 @@ const api: DesktopApi = {
   openDataFolder: () => ipcRenderer.invoke('data:open'),
   checkLocalSetup: () => ipcRenderer.invoke('setup:check'),
   openSetupGuide: (guide) => ipcRenderer.invoke('setup:open-guide', guide),
+  isFullScreen: () => ipcRenderer.invoke('window:is-full-screen'),
+  onFullScreenChange: (listener) => {
+    // The sandboxed preload cannot load zod: validate the one boolean by hand.
+    const relay = (_event: IpcRendererEvent, fullScreen: unknown) => {
+      if (typeof fullScreen === 'boolean') listener(fullScreen);
+    };
+    ipcRenderer.on('window:full-screen-changed', relay);
+    return () => {
+      ipcRenderer.removeListener('window:full-screen-changed', relay);
+    };
+  },
 };
 contextBridge.exposeInMainWorld('sayBack', api);
