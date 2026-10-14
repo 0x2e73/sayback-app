@@ -8,14 +8,28 @@ if (typeof HTMLDialogElement !== 'undefined') {
   };
 }
 
-// jsdom has no media pipeline: play and pause only report the change, as a browser would.
+// jsdom has no media pipeline: play and pause only report the change, as a browser would:
+// `paused` flips, and an event fires only when something changed.
 if (typeof HTMLMediaElement !== 'undefined') {
+  const playing = new WeakSet<HTMLMediaElement>();
+  Object.defineProperty(HTMLMediaElement.prototype, 'paused', {
+    configurable: true,
+    get(this: HTMLMediaElement) {
+      return !playing.has(this);
+    },
+  });
   HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
-    this.dispatchEvent(new Event('play'));
+    if (!playing.has(this)) {
+      playing.add(this);
+      this.dispatchEvent(new Event('play'));
+    }
     return Promise.resolve();
   };
   HTMLMediaElement.prototype.pause = function (this: HTMLMediaElement) {
-    this.dispatchEvent(new Event('pause'));
+    if (playing.has(this)) {
+      playing.delete(this);
+      this.dispatchEvent(new Event('pause'));
+    }
   };
   HTMLMediaElement.prototype.load = () => undefined;
 }

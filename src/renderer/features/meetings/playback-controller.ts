@@ -101,6 +101,18 @@ export class PlaybackController {
     this.follower.drift(at);
   }
 
+  /** The person paused the video with its own controls: the sound follows. */
+  videoPaused(): void {
+    if (!this.view.playing) return;
+    this.commit({ playing: false });
+    this.driver.setPlaying(false);
+  }
+
+  /** The person played the video with its own controls: the sound resumes where it is. */
+  videoPlayed(): void {
+    if (!this.view.playing) this.toggle();
+  }
+
   loadedMetadata(): void {
     this.broken = false;
     this.driver.loadedMetadata();

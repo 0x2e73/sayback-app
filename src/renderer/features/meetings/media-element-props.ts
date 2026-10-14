@@ -29,5 +29,11 @@ export function followerVideoProps(
     muted: true,
     onLoadedMetadata: () => controller.follower.loadedMetadata(),
     onError: () => controller.follower.failed(),
+    onPlay: () => {
+      if (controller.follower.playedByPerson()) controller.videoPlayed();
+    },
+    onPause: () => {
+      if (controller.follower.pausedByPerson()) controller.videoPaused();
+    },
   };
 }

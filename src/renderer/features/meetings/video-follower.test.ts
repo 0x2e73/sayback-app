@@ -3,12 +3,25 @@ import { VideoFollower, type VideoLike } from './video-follower';
 
 interface FakeVideo extends VideoLike {
   ended: boolean;
+  paused: boolean;
   play: Mock<() => Promise<void>>;
   pause: Mock<() => void>;
 }
 
 function fakeVideo(play: () => Promise<void> = async () => undefined): FakeVideo {
-  return { currentTime: 0, ended: false, play: vi.fn(play), pause: vi.fn() };
+  const video: FakeVideo = {
+    currentTime: 0,
+    ended: false,
+    paused: true,
+    play: vi.fn(async () => {
+      video.paused = false;
+      await play();
+    }),
+    pause: vi.fn(() => {
+      video.paused = true;
+    }),
+  };
+  return video;
 }
 
 function readyFollower(video: FakeVideo) {
@@ -90,5 +103,31 @@ describe('VideoFollower', () => {
     follower.attach(null);
     follower.stop();
     expect(video.pause).toHaveBeenCalledOnce();
+  });
+
+  it('tells the pause the person made from the one it made itself', () => {
+    const video = fakeVideo();
+    const follower = readyFollower(video);
+    follower.setPlaying(true);
+    expect(follower.playedByPerson()).toBe(false);
+    follower.setPlaying(false);
+    expect(follower.pausedByPerson()).toBe(false);
+    // Nobody asked for these two: the person did.
+    expect(follower.pausedByPerson()).toBe(true);
+    expect(follower.playedByPerson()).toBe(true);
+  });
+
+  it('does not wait for an event from a pause that changed nothing', () => {
+    const video = fakeVideo();
+    const follower = readyFollower(video);
+    follower.setPlaying(false);
+    expect(follower.pausedByPerson()).toBe(true);
+  });
+
+  it('does not take the end of a video that is shorter than the audio for a pause', () => {
+    const video = fakeVideo();
+    const follower = readyFollower(video);
+    video.ended = true;
+    expect(follower.pausedByPerson()).toBe(false);
   });
 });

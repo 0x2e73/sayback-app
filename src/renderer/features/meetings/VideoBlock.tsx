@@ -4,14 +4,13 @@ import { Button } from '../../components/ui';
 import type { Playback } from './use-media-playback';
 
 interface VideoBlockProps {
-  playback: Pick<Playback, 'mediaProps' | 'videoProps' | 'timeline'>;
+  playback: Pick<Playback, 'mediaProps' | 'videoProps'>;
 }
 
 /** The footer bar drives the video; the button is the only way to fill the screen. */
 export function VideoBlock({ playback }: VideoBlockProps) {
   // Muted and following the audio, or the one element with the sound.
   const mediaProps = playback.videoProps ?? playback.mediaProps;
-  const ownsTimeline = playback.timeline === 'video';
   const video = useRef<HTMLVideoElement | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -34,12 +33,7 @@ export function VideoBlock({ playback }: VideoBlockProps) {
 
   return (
     <div className="detail-video-block">
-      <video
-        className="detail-video"
-        {...mediaProps}
-        ref={attach}
-        controls={fullscreen && ownsTimeline}
-      />
+      <video className="detail-video" {...mediaProps} ref={attach} controls={fullscreen} />
       <Button
         variant="ghost"
         shape="round"

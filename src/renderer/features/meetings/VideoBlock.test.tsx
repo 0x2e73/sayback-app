@@ -36,9 +36,8 @@ function mediaProps(extra: Partial<MediaElementProps> = {}): MediaElementProps {
 
 function playbackOf(
   extra: Partial<MediaElementProps> = {},
-  timeline: Playback['timeline'] = 'video',
-): Pick<Playback, 'mediaProps' | 'videoProps' | 'timeline'> {
-  return { mediaProps: mediaProps(extra), videoProps: null, timeline };
+): Pick<Playback, 'mediaProps' | 'videoProps'> {
+  return { mediaProps: mediaProps(extra), videoProps: null };
 }
 
 function video(): HTMLVideoElement {
@@ -80,13 +79,12 @@ it('gives the video its own controls only while it fills the screen', () => {
   expect(video()).not.toHaveAttribute('controls');
 });
 
-it('follows the audio muted, without controls of its own even in full screen', () => {
+it('follows the audio muted, with native controls only in full screen', () => {
   const ref = vi.fn();
   render(
     <VideoBlock
       playback={{
         mediaProps: mediaProps(),
-        timeline: 'audio',
         videoProps: {
           ref,
           src: 'meeting-media://local/m1/video',
@@ -94,16 +92,22 @@ it('follows the audio muted, without controls of its own even in full screen', (
           muted: true,
           onLoadedMetadata: vi.fn(),
           onError: vi.fn(),
+          onPlay: vi.fn(),
+          onPause: vi.fn(),
         },
       }}
     />,
   );
   expect(ref).toHaveBeenCalledWith(video());
   expect(video().muted).toBe(true);
+  expect(video()).not.toHaveAttribute('controls');
   Object.defineProperty(document, 'fullscreenElement', {
     configurable: true,
     get: () => video(),
   });
+  fireEvent(video(), new Event('fullscreenchange'));
+  expect(video()).toHaveAttribute('controls');
+  Reflect.deleteProperty(document, 'fullscreenElement');
   fireEvent(video(), new Event('fullscreenchange'));
   expect(video()).not.toHaveAttribute('controls');
 });

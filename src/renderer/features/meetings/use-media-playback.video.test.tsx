@@ -78,3 +78,42 @@ it('pauses the video with the audio', () => {
   click('Pause');
   expect(pause.mock.contexts).toContain(video());
 });
+
+it('pauses the audio when the person pauses the video, without a loop', () => {
+  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause');
+  renderWithVideo();
+  click('Lire');
+  pause.mockClear();
+  fireEvent.pause(video());
+  expect(screen.getByRole('button', { name: 'Lire' })).toBeInTheDocument();
+  expect(pause.mock.contexts.filter((element) => element === media())).toHaveLength(1);
+});
+
+it('resumes the audio when the person plays the video again', () => {
+  const play = vi.spyOn(HTMLMediaElement.prototype, 'play');
+  renderWithVideo();
+  fireEvent.play(video());
+  expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  expect(play.mock.contexts).toContain(media());
+});
+
+it('does not pause the audio for the pause the follower makes itself', () => {
+  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause');
+  renderWithVideo();
+  click('Lire');
+  click('Pause');
+  pause.mockClear();
+  expect(screen.getByRole('button', { name: 'Lire' })).toBeInTheDocument();
+  click('Lire');
+  expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  expect(pause).not.toHaveBeenCalled();
+});
+
+it('leaves the audio alone when the video reaches its end before the audio', () => {
+  renderWithVideo();
+  click('Lire');
+  video().dispatchEvent(new Event('ended'));
+  Object.defineProperty(video(), 'ended', { configurable: true, get: () => true });
+  fireEvent.pause(video());
+  expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+});

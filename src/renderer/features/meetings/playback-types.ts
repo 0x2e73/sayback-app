@@ -20,6 +20,9 @@ export interface FollowerVideoProps {
   muted: true;
   onLoadedMetadata(): void;
   onError(): void;
+  /** Only the person's own play and pause: the follower's are filtered out. */
+  onPlay(): void;
+  onPause(): void;
 }
 
 export interface Playback {
