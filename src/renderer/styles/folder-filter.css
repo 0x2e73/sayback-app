@@ -1,0 +1,49 @@
+/* The menu hangs from this wrapper, outside the scrolling row that would clip it. */
+.folder-filter {
+  position: relative;
+  flex: none;
+}
+.folder-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 32px;
+  padding: 0 var(--space-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* A mask reads only alpha: any opaque token keeps the chips, transparent fades the edge. */
+  mask-image: linear-gradient(to right, var(--color-pane) calc(100% - var(--space-5)), transparent);
+}
+.folder-menu {
+  position: absolute;
+  top: 100%;
+  left: var(--space-3);
+  z-index: 3;
+  display: grid;
+  min-width: 160px;
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-float);
+  animation: menu-enter var(--duration-fast) var(--ease-out);
+}
+.folder-menu button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-control);
+  text-align: left;
+}
+.folder-menu button:hover,
+.folder-menu button:focus-visible {
+  background: var(--color-surface-raised);
+}
+.folder-name-field {
+  padding: var(--space-2) var(--space-3) 0;
+}
+.folder-name-field .field-control {
+  min-height: 32px;
+  padding-block: 5px;
+}

@@ -2,6 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { unwrap, type DesktopApi, type Folder, type Meeting } from '../../../shared/contracts';
 import { errorMessage } from '../../../shared/format';
 
+export interface FolderActions {
+  create(name: string): Promise<Folder | null>;
+  rename(id: string, name: string): Promise<boolean>;
+  remove(id: string): Promise<boolean>;
+  move(meetingId: string, folderId: string | null): Promise<boolean>;
+}
+
 export function useFolders(
   api: DesktopApi,
   onMove: (meeting: Meeting) => void,

@@ -77,3 +77,7 @@ it('drops the inset and the top band in full screen, after the macOS values', ()
     sheet.indexOf(":root[data-platform='mac']"),
   );
 });
+
+it('scrolls the folder chips sideways, never the pane', () => {
+  expect(read('styles/folder-filter.css')).toMatch(/\.folder-chips\s*\{[^}]*overflow-x:\s*auto/);
+});

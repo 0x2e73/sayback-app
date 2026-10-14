@@ -192,6 +192,7 @@ p {
 /* Colour feedback for every interactive surface. Kept under reduced motion. */
 .button,
 .chip,
+.folder-menu button,
 .nav-item,
 .tabs button,
 .meeting-row,
@@ -252,6 +253,12 @@ p {
     opacity: 0;
   }
 }
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -263,6 +270,11 @@ p {
     transition: none;
   }
   @keyframes state-enter {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes menu-enter {
     from {
       opacity: 0;
     }
