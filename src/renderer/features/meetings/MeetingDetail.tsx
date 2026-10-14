@@ -71,7 +71,9 @@ export function MeetingDetail(props: MeetingDetailProps) {
             onClarify={actions.clarify}
           />
         }
-        transcript={<Transcript meeting={meeting} at={playback.at} onSeek={playback.playAt} />}
+        transcript={(search) => (
+          <Transcript meeting={meeting} at={playback.at} onSeek={playback.playAt} {...search} />
+        )}
       />
       <footer className="playback-bar">
         <PlaybackBar playback={playback} />

@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { restoredScroll, useTabScroll } from './use-tab-scroll';
+import { restoredScroll, savedScroll, useTabScroll } from './use-tab-scroll';
 
 afterEach(cleanup);
 
@@ -23,10 +23,20 @@ describe('restoredScroll', () => {
   it.each([
     [undefined, 900, 240, 240],
     [undefined, 100, 240, 100],
-    [500, 0, 240, 500],
-    [0, 900, 240, 0],
-  ])('saved %s, left at %s, anchor at %s: %s', (saved, previous, anchor, expected) => {
+    [{ kind: 'above', top: 0 } as const, 900, 240, 0],
+    [{ kind: 'above', top: 100 } as const, 900, 300, 100],
+    [{ kind: 'past', beyond: 260 } as const, 0, 240, 500],
+    [{ kind: 'past', beyond: 260 } as const, 0, 300, 560],
+  ])('saved %j, left at %s, anchor at %s: %s', (saved, previous, anchor, expected) => {
     expect(restoredScroll(saved, previous, anchor)).toBe(expected);
+  });
+});
+
+describe('savedScroll', () => {
+  it('keeps the plain position above the tab bar, and the distance beyond it below', () => {
+    expect(savedScroll(100, 240)).toEqual({ kind: 'above', top: 100 });
+    expect(savedScroll(240, 240)).toEqual({ kind: 'above', top: 240 });
+    expect(savedScroll(500, 240)).toEqual({ kind: 'past', beyond: 260 });
   });
 });
 

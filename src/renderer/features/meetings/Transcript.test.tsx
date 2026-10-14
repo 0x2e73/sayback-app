@@ -2,9 +2,10 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import type { Meeting, Segment } from '../../../shared/contracts';
-import { Transcript } from './Transcript';
+import { Transcript as ControlledTranscript } from './Transcript';
 import { meetingMarkdown } from './meeting-format';
 
 beforeAll(() => {
@@ -12,6 +13,12 @@ beforeAll(() => {
 });
 
 afterEach(cleanup);
+
+// The search lives in the tab container; this stands in for it.
+function Transcript(props: { meeting: Meeting; at: number; onSeek(at: number): void }) {
+  const [search, setSearch] = useState('');
+  return <ControlledTranscript {...props} search={search} onSearch={setSearch} />;
+}
 
 function meetingWith(transcript: Segment[]): Meeting {
   return {

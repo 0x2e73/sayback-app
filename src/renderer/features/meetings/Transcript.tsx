@@ -1,10 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Search } from 'lucide-react';
 import type { Meeting, MeetingStatus } from '../../../shared/contracts';
 import { speakerTurns, type Turn } from './speaker-turns';
 import { TranscriptTurn } from './TranscriptTurn';
 
-interface TranscriptProps {
+/** The search is owned by the tab container, so it survives a change of tab. */
+export interface TranscriptSearch {
+  search: string;
+  onSearch(value: string): void;
+}
+
+interface TranscriptProps extends TranscriptSearch {
   meeting: Meeting;
   at: number;
   onSeek(at: number): void;
@@ -26,8 +32,7 @@ function TranscriptEmpty({ status }: { status: MeetingStatus }) {
   );
 }
 
-export function Transcript({ meeting, at, onSeek }: TranscriptProps) {
-  const [search, setSearch] = useState('');
+export function Transcript({ meeting, at, onSeek, search, onSearch }: TranscriptProps) {
   const playing = useRef<HTMLButtonElement>(null);
   const turns = useMemo(() => speakerTurns(meeting.transcript), [meeting.transcript]);
   const shown = useMemo(() => matching(turns, search), [turns, search]);
@@ -50,7 +55,7 @@ export function Transcript({ meeting, at, onSeek }: TranscriptProps) {
           value={search}
           placeholder="Chercher dans la transcription…"
           aria-label="Chercher dans la transcription"
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => onSearch(event.target.value)}
         />
       </label>
       <div className="transcript-turns">
