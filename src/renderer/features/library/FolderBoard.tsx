@@ -1,8 +1,8 @@
-import { useState, type DragEvent } from 'react';
 import { Folder as FolderIcon, FolderPlus, Pencil, Trash2 } from 'lucide-react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { ConfirmDialog } from '../../components/ui';
 import { useFolderDeletion } from './useFolderDeletion';
+import { useFolderDrop } from './useFolderDrop';
 import { useFolderEditor } from './useFolderEditor';
 
 interface FolderBoardProps {
@@ -15,8 +15,6 @@ interface FolderBoardProps {
   onDelete(id: string): Promise<boolean>;
   onMove(meetingId: string, folderId: string | null): Promise<boolean>;
 }
-
-export const MEETING_DRAG_TYPE = 'application/x-sayback-meeting';
 
 function FolderHeader({ onCreate }: { onCreate(): void }) {
   return (
@@ -120,43 +118,6 @@ function FolderEntry({
   );
 }
 
-function useFolderDrop(onMove: FolderBoardProps['onMove'], folders: Folder[]) {
-  const [dragTarget, setDragTarget] = useState<string | null>(null);
-  const [announcement, setAnnouncement] = useState('');
-  async function drop(event: DragEvent<HTMLElement>, id: string | null): Promise<void> {
-    event.preventDefault();
-    setDragTarget(null);
-    const meetingId = event.dataTransfer.getData(MEETING_DRAG_TYPE);
-    if (meetingId && (await onMove(meetingId, id))) {
-      const folder = folders.find((item) => item.id === id);
-      setAnnouncement(
-        folder ? `Réunion déplacée dans « ${folder.name} ».` : 'Réunion retirée de son dossier.',
-      );
-    }
-  }
-  function dropProps(id: string | null) {
-    const key = id ?? 'all';
-    return {
-      onDragEnter: (event: DragEvent<HTMLElement>) => {
-        if (event.dataTransfer.types.includes(MEETING_DRAG_TYPE)) setDragTarget(key);
-      },
-      onDragOver: (event: DragEvent<HTMLElement>) => {
-        if (event.dataTransfer.types.includes(MEETING_DRAG_TYPE)) {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'move';
-          setDragTarget(key);
-        }
-      },
-      onDragLeave: (event: DragEvent<HTMLElement>) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragTarget(null);
-      },
-      onDrop: (event: DragEvent<HTMLElement>) => void drop(event, id),
-      'data-drag-over': dragTarget === key,
-    };
-  }
-  return { dropProps, announcement };
-}
-
 interface FolderDeletionDialogProps {
   folder: Folder;
   busy: boolean;
@@ -181,7 +142,7 @@ function FolderDeletionDialog(props: FolderDeletionDialogProps) {
 export function FolderBoard(props: FolderBoardProps) {
   const editor = useFolderEditor(props);
   const deletion = useFolderDeletion(props.onDelete);
-  const { dropProps, announcement } = useFolderDrop(props.onMove, props.folders);
+  const { dropProps, announcement } = useFolderDrop(props);
 
   return (
     <section className="folder-section" aria-label="Dossiers de réunions">
@@ -228,7 +189,7 @@ export function FolderBoard(props: FolderBoardProps) {
       </div>
       <p className="folder-hint">Glissez une réunion sur un dossier pour la ranger.</p>
       <p className="sr-only" role="status" aria-live="polite">
-        {announcement}
+        {announcement && <span key={announcement.id}>{announcement.text}</span>}
       </p>
       {deletion.confirming && (
         <FolderDeletionDialog

@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Meeting } from '../../../shared/contracts';
 import { Library } from './Library';
-import { MEETING_DRAG_TYPE } from './FolderBoard';
+import { MEETING_DRAG_TYPE } from './useFolderDrop';
 
 afterEach(cleanup);
 
@@ -178,4 +178,69 @@ it('keeps the folder dialog open when the deletion fails', async () => {
   await user.click(await screen.findByRole('button', { name: 'Supprimer le dossier' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('La suppression a échoué.');
   expect(screen.getByRole('button', { name: 'Supprimer le dossier' })).toBeEnabled();
+});
+
+it('announces two identical drops separately', async () => {
+  const view = render(
+    <Library
+      meetings={[meeting('a', 'Produit')]}
+      folders={[{ id: 'folder', name: 'Acme', createdAt: '' }]}
+      onOpen={vi.fn()}
+      onCreateFolder={vi.fn()}
+      onRenameFolder={vi.fn()}
+      onDeleteFolder={vi.fn()}
+      onMoveMeeting={vi.fn(async () => true)}
+    />,
+  );
+  const target = view.container.querySelector('.folder-entry:not(.folder-unfiled)')!;
+  fireEvent.drop(target, { dataTransfer: dragTransfer('a') });
+  const first = (await screen.findByRole('status')).firstElementChild;
+  expect(first).toHaveTextContent('Réunion déplacée dans « Acme ».');
+  fireEvent.drop(target, { dataTransfer: dragTransfer('a') });
+  await waitFor(() => {
+    const second = screen.getByRole('status').firstElementChild;
+    expect(second).toHaveTextContent('Réunion déplacée dans « Acme ».');
+    expect(second).not.toBe(first);
+  });
+});
+
+it('ignores a drop on the folder the meeting is already in', () => {
+  const onMove = vi.fn(async () => true);
+  const view = render(
+    <Library
+      meetings={[meeting('a', 'Produit', 'folder'), meeting('b', 'Équipe')]}
+      folders={[{ id: 'folder', name: 'Acme', createdAt: '' }]}
+      onOpen={vi.fn()}
+      onCreateFolder={vi.fn()}
+      onRenameFolder={vi.fn()}
+      onDeleteFolder={vi.fn()}
+      onMoveMeeting={onMove}
+    />,
+  );
+  const folder = view.container.querySelector('.folder-entry:not(.folder-unfiled)')!;
+  const unfiled = view.container.querySelector('.folder-unfiled')!;
+  fireEvent.drop(folder, { dataTransfer: dragTransfer('a') });
+  fireEvent.drop(unfiled, { dataTransfer: dragTransfer('b') });
+  expect(onMove).not.toHaveBeenCalled();
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+});
+
+it('announces a move to a folder deleted meanwhile without naming it', async () => {
+  let finishMove: (moved: boolean) => void = () => {};
+  const onMove = vi.fn(() => new Promise<boolean>((resolve) => (finishMove = resolve)));
+  const props = {
+    meetings: [meeting('a', 'Produit')],
+    onOpen: vi.fn(),
+    onCreateFolder: vi.fn(),
+    onRenameFolder: vi.fn(),
+    onDeleteFolder: vi.fn(),
+    onMoveMeeting: onMove,
+  };
+  const folders = [{ id: 'folder', name: 'Acme', createdAt: '' }];
+  const view = render(<Library {...props} folders={folders} />);
+  const target = view.container.querySelector('.folder-entry:not(.folder-unfiled)')!;
+  fireEvent.drop(target, { dataTransfer: dragTransfer('a') });
+  view.rerender(<Library {...props} folders={[]} />);
+  finishMove(true);
+  expect(await screen.findByText('Réunion déplacée.')).toBeInTheDocument();
 });
