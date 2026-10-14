@@ -53,7 +53,7 @@ Vous êtes sur Windows ou Linux ? Vous êtes les bienvenus pour tester, signaler
 
 ## Démarrer
 
-Il n’y a pas encore d’installateur publié. Pour lancer SayBack depuis les sources, il faut [Node.js](https://nodejs.org) 22 ou plus récent :
+Il n’y a pas encore d’installateur publié. Pour lancer SayBack depuis les sources, il faut [Node.js](https://nodejs.org) 22.18 ou plus récent :
 
 ```bash
 git clone https://github.com/0x2e73/sayback-app.git
@@ -70,6 +70,24 @@ Pour construire l’application :
 npm run package   # application locale dans dist/
 npm run dist      # installateur
 ```
+
+### Mettre à jour l’app installée (macOS)
+
+`npm run update:publish` construit le dernier commit dans une copie propre (le travail en cours n’y entre pas), passe `npm run check`, construit `SayBack.app` puis la dépose dans `~/Library/Application Support/SayBack/updates/` avec son manifeste `latest.json`, écrit en dernier. Options : `--notes "<une ligne>"`, `--allow-dirty` (publie le commit courant malgré des modifications non commitées), `--channel-root <dossier>` (essais ailleurs).
+
+**Première installation**, une seule fois :
+
+```bash
+npm run update:publish
+ditto ~/Library/Application\ Support/SayBack/updates/SayBack.app /Applications/SayBack.app
+open /Applications/SayBack.app
+```
+
+Quittez SayBack avant la copie. Ne lancez pas l’app depuis le dossier `updates/` : elle refuserait de se remplacer.
+
+**Ensuite**, committez puis relancez `npm run update:publish`. L’app voit la nouvelle version au démarrage, au retour au premier plan ou dans les cinq minutes, et propose de l’installer. Un clic la remplace et la relance ; l’installation est refusée pendant un enregistrement. La version remplacée reste dans `/Applications/SayBack.previous.app`, et le déroulé est écrit dans `~/Library/Application Support/SayBack/logs/update.log`. Deux builds du même commit ne se remplacent pas.
+
+`SAYBACK_LOCAL_UPDATE_CHANNEL=0 npm run dist` construit une app sans ce canal.
 
 ## Sous le capot
 
