@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { timeLabel } from '../../../shared/format';
 import { ArrowUpRight, Clock3, FileText, GripVertical } from 'lucide-react';
 import type { Folder, Meeting } from '../../../shared/contracts';
@@ -16,16 +17,17 @@ export function MeetingRow({ meeting, folders, onOpen, onMove }: MeetingRowProps
     new Date(meeting.createdAt),
   );
   const movingDisabled = meeting.status === 'recording' || meeting.status === 'processing';
+  const [dragging, setDragging] = useState(false);
   return (
     <div
-      className="meeting-row"
+      className={`meeting-row${dragging ? ' is-dragging' : ''}`}
       draggable={!movingDisabled}
       onDragStart={(event) => {
         event.dataTransfer.setData(MEETING_DRAG_TYPE, meeting.id);
         event.dataTransfer.effectAllowed = 'move';
-        event.currentTarget.classList.add('is-dragging');
+        setDragging(true);
       }}
-      onDragEnd={(event) => event.currentTarget.classList.remove('is-dragging')}
+      onDragEnd={() => setDragging(false)}
     >
       <GripVertical size={17} className="row-grip" aria-hidden="true" />
       <button type="button" className="meeting-row-open" onClick={() => onOpen(meeting)}>

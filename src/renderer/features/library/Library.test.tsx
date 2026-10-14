@@ -93,3 +93,47 @@ it('creates a named folder from the library', async () => {
   await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
   expect(onCreate).toHaveBeenCalledWith('Produit');
 });
+
+const dragTransfer = (meetingId: string) => ({
+  types: [MEETING_DRAG_TYPE],
+  getData: () => meetingId,
+  setData: vi.fn(),
+  effectAllowed: 'none',
+  dropEffect: 'none',
+});
+
+it('marks the row being dragged and clears it when the drag ends', () => {
+  render(
+    <Library
+      meetings={[meeting('a', 'Produit')]}
+      folders={[]}
+      onOpen={vi.fn()}
+      onCreateFolder={vi.fn()}
+      onRenameFolder={vi.fn()}
+      onDeleteFolder={vi.fn()}
+      onMoveMeeting={vi.fn()}
+    />,
+  );
+  const row = screen.getByText('Produit').closest('.meeting-row')!;
+  fireEvent.dragStart(row, { dataTransfer: dragTransfer('a') });
+  expect(row).toHaveClass('is-dragging');
+  fireEvent.dragEnd(row);
+  expect(row).not.toHaveClass('is-dragging');
+});
+
+it('announces where a dropped meeting went', async () => {
+  const view = render(
+    <Library
+      meetings={[meeting('a', 'Produit')]}
+      folders={[{ id: 'folder', name: 'Acme', createdAt: '' }]}
+      onOpen={vi.fn()}
+      onCreateFolder={vi.fn()}
+      onRenameFolder={vi.fn()}
+      onDeleteFolder={vi.fn()}
+      onMoveMeeting={vi.fn(async () => true)}
+    />,
+  );
+  const target = view.container.querySelector('.folder-entry:not(.folder-unfiled)')!;
+  fireEvent.drop(target, { dataTransfer: dragTransfer('a') });
+  expect(await screen.findByRole('status')).toHaveTextContent('Réunion déplacée dans « Acme ».');
+});

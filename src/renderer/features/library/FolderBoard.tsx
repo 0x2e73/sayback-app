@@ -1,6 +1,7 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useState, type DragEvent } from 'react';
 import { Folder as FolderIcon, FolderPlus, Pencil, Trash2 } from 'lucide-react';
 import type { Folder, Meeting } from '../../../shared/contracts';
+import { useFolderEditor } from './useFolderEditor';
 
 interface FolderBoardProps {
   folders: Folder[];
@@ -120,16 +121,18 @@ function FolderEntry({
   );
 }
 
-function useFolderDrop(onMove: FolderBoardProps['onMove']) {
+function useFolderDrop(onMove: FolderBoardProps['onMove'], folders: Folder[]) {
   const [dragTarget, setDragTarget] = useState<string | null>(null);
-  const [recentDrop, setRecentDrop] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
   async function drop(event: DragEvent<HTMLElement>, id: string | null): Promise<void> {
     event.preventDefault();
     setDragTarget(null);
     const meetingId = event.dataTransfer.getData(MEETING_DRAG_TYPE);
     if (meetingId && (await onMove(meetingId, id))) {
-      setRecentDrop(id ?? 'all');
-      window.setTimeout(() => setRecentDrop(null), 550);
+      const folder = folders.find((item) => item.id === id);
+      setAnnouncement(
+        folder ? `Réunion déplacée dans « ${folder.name} ».` : 'Réunion retirée de son dossier.',
+      );
     }
   }
   function dropProps(id: string | null) {
@@ -150,54 +153,25 @@ function useFolderDrop(onMove: FolderBoardProps['onMove']) {
       },
       onDrop: (event: DragEvent<HTMLElement>) => void drop(event, id),
       'data-drag-over': dragTarget === key,
-      'data-dropped': recentDrop === key,
     };
   }
-  return { dropProps };
+  return { dropProps, announcement };
 }
 
 export function FolderBoard(props: FolderBoardProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const submitting = useRef(false);
-  const { dropProps } = useFolderDrop(props.onMove);
-
-  async function submit(): Promise<void> {
-    const trimmed = name.trim();
-    if (!trimmed || submitting.current) return;
-    submitting.current = true;
-    setBusy(true);
-    try {
-      const saved =
-        editingId === 'new'
-          ? await props.onCreate(trimmed)
-          : await props.onRename(editingId!, trimmed);
-      if (saved) {
-        setEditingId(null);
-        setName('');
-      }
-    } finally {
-      submitting.current = false;
-      setBusy(false);
-    }
-  }
+  const editor = useFolderEditor(props);
+  const { dropProps, announcement } = useFolderDrop(props.onMove, props.folders);
 
   return (
     <section className="folder-section" aria-label="Dossiers de réunions">
-      <FolderHeader
-        onCreate={() => {
-          setEditingId('new');
-          setName('');
-        }}
-      />
-      {editingId && (
+      <FolderHeader onCreate={editor.startCreate} />
+      {editor.editing && (
         <FolderForm
-          name={name}
-          busy={busy}
-          onName={setName}
-          onSave={() => void submit()}
-          onCancel={() => setEditingId(null)}
+          name={editor.name}
+          busy={editor.busy}
+          onName={editor.setName}
+          onSave={() => void editor.submit()}
+          onCancel={editor.cancel}
         />
       )}
       <div className="folder-list">
@@ -226,15 +200,15 @@ export function FolderBoard(props: FolderBoardProps) {
             selected={props.selectedId === folder.id}
             dropHandlers={dropProps}
             onSelect={props.onSelect}
-            onEdit={(item) => {
-              setEditingId(item.id);
-              setName(item.name);
-            }}
+            onEdit={editor.startRename}
             onDelete={props.onDelete}
           />
         ))}
       </div>
       <p className="folder-hint">Glissez une réunion sur un dossier pour la ranger.</p>
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
     </section>
   );
 }

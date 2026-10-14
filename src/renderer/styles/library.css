@@ -27,9 +27,7 @@
   cursor: grab;
 }
 .meeting-row.is-dragging {
-  opacity: 0.48;
-  transform: scale(0.985);
-  cursor: grabbing;
+  opacity: 0.5;
 }
 .meeting-row-open {
   display: flex;
