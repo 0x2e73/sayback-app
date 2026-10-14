@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
 import { Button } from './Button';
 
 interface NoticeProps {
   children: ReactNode;
+  tone?: 'danger' | 'warning' | 'info';
   retry?: () => void;
 }
 
-export function Notice({ children, retry }: NoticeProps) {
+export function Notice({ children, tone = 'danger', retry }: NoticeProps) {
+  const Icon = tone === 'info' ? Info : AlertCircle;
   return (
-    <div className="notice" role="alert">
-      <AlertCircle size={17} />
+    <div className={`notice notice-${tone}`} role={tone === 'danger' ? 'alert' : 'status'}>
+      <Icon size={17} aria-hidden="true" />
       <span>{children}</span>
       {retry && (
         <Button variant="ghost" onClick={retry}>

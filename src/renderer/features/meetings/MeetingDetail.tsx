@@ -43,7 +43,7 @@ export function MeetingDetail(props: MeetingDetailProps) {
         onExport={() => downloadMeeting(meeting)}
         onDelete={() => setConfirmDelete(true)}
       />
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone={actions.error ? 'danger' : 'warning'}>{error}</Notice>}
       <div className="detail-grid">
         <MeetingContent
           meeting={meeting}
