@@ -11,8 +11,13 @@ it('interrupts for a danger notice by default', () => {
   expect(screen.getByRole('alert')).toHaveClass('notice', 'notice-danger');
 });
 
-it('reports a warning politely', () => {
+it('interrupts for a warning too, it can appear while the page is read', () => {
   render(<Notice tone="warning">L’analyse n’a pas abouti.</Notice>);
+  expect(screen.getByRole('alert')).toHaveClass('notice-warning');
+});
+
+it('reports information politely', () => {
+  render(<Notice tone="info">Enregistrement en cours.</Notice>);
   expect(screen.queryByRole('alert')).toBeNull();
-  expect(screen.getByRole('status')).toHaveClass('notice-warning');
+  expect(screen.getByRole('status')).toHaveClass('notice-info');
 });

@@ -11,7 +11,7 @@ interface NoticeProps {
 export function Notice({ children, tone = 'danger', retry }: NoticeProps) {
   const Icon = tone === 'info' ? Info : AlertCircle;
   return (
-    <div className={`notice notice-${tone}`} role={tone === 'danger' ? 'alert' : 'status'}>
+    <div className={`notice notice-${tone}`} role={tone === 'info' ? 'status' : 'alert'}>
       <Icon size={17} aria-hidden="true" />
       <span>{children}</span>
       {retry && (
