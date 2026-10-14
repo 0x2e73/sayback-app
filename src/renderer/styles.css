@@ -53,8 +53,8 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --duration-fast: 120ms;
   --duration-base: 200ms;
-  --duration-slow: 220ms;
   --duration-loop: 1s;
+  --ease-linear: linear;
 
   font-family: var(--font-ui);
   color: var(--color-text);
@@ -146,6 +146,7 @@ p {
 .capture-source-row,
 .model-select-trigger,
 .model-select-list button,
+.row-arrow,
 .field input,
 .field select,
 .field textarea,
@@ -158,6 +159,13 @@ p {
     color var(--duration-fast) var(--ease-out);
 }
 
+.meeting-row {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
 .button {
   transition:
     background-color var(--duration-fast) var(--ease-out),
@@ -173,7 +181,7 @@ p {
 }
 
 .spin {
-  animation: spin var(--duration-loop) linear infinite;
+  animation: spin var(--duration-loop) var(--ease-linear) infinite;
 }
 
 @keyframes state-enter {

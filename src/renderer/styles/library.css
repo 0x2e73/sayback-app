@@ -210,6 +210,9 @@
 .row-arrow {
   color: var(--color-text-subtle);
 }
+.meeting-row:hover .row-arrow {
+  color: var(--color-accent);
+}
 .dot-separator {
   color: var(--color-text-subtle);
 }
