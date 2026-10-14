@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import type { RefObject, WheelEvent } from 'react';
 import type { Folder } from '../../../shared/contracts';
 import { Chip } from '../../components/ui';
 import { ALL_MEETINGS, UNFILED, type FolderScope } from './list-filter';
@@ -52,34 +52,48 @@ interface FolderChipsProps {
   onCreate(): void;
 }
 
+// A mouse wheel only turns vertically: let it drive the row when the chips overflow.
+function scrollSideways(event: WheelEvent<HTMLDivElement>): void {
+  const row = event.currentTarget;
+  if (row.scrollWidth <= row.clientWidth) return;
+  if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+  row.scrollLeft += event.deltaY;
+}
+
 export function FolderChips(props: FolderChipsProps) {
   const { folders, scope, locked, dropProps, onChoose } = props;
   return (
-    <div className="folder-chips" role="group" aria-label="Dossiers">
-      <Chip pressed={scope.kind === 'all'} disabled={locked} onClick={() => onChoose(ALL_MEETINGS)}>
-        Tous
-      </Chip>
-      {folders.map((folder) => (
-        <FolderChip
-          key={folder.id}
-          folder={folder}
-          selected={scope.kind === 'folder' && scope.id === folder.id}
-          locked={locked}
-          menuOpen={props.menuOpen}
-          menuAnchor={props.menuAnchor}
-          dropProps={dropProps}
-          onChoose={onChoose}
-          onToggleMenu={props.onToggleMenu}
-        />
-      ))}
-      <Chip
-        pressed={scope.kind === 'unfiled'}
-        disabled={locked}
-        {...dropProps(null)}
-        onClick={() => onChoose(UNFILED)}
-      >
-        Sans dossier
-      </Chip>
+    <div className="folder-bar">
+      <div className="folder-chips" role="group" aria-label="Dossiers" onWheel={scrollSideways}>
+        <Chip
+          pressed={scope.kind === 'all'}
+          disabled={locked}
+          onClick={() => onChoose(ALL_MEETINGS)}
+        >
+          Tous
+        </Chip>
+        {folders.map((folder) => (
+          <FolderChip
+            key={folder.id}
+            folder={folder}
+            selected={scope.kind === 'folder' && scope.id === folder.id}
+            locked={locked}
+            menuOpen={props.menuOpen}
+            menuAnchor={props.menuAnchor}
+            dropProps={dropProps}
+            onChoose={onChoose}
+            onToggleMenu={props.onToggleMenu}
+          />
+        ))}
+        <Chip
+          pressed={scope.kind === 'unfiled'}
+          disabled={locked}
+          {...dropProps(null)}
+          onClick={() => onChoose(UNFILED)}
+        >
+          Sans dossier
+        </Chip>
+      </div>
       <Chip aria-label="Nouveau dossier" disabled={locked} onClick={props.onCreate}>
         +
       </Chip>

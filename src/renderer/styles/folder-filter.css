@@ -3,12 +3,19 @@
   position: relative;
   flex: none;
 }
-.folder-chips {
+.folder-bar {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   height: 32px;
   padding: 0 var(--space-3);
+}
+.folder-chips {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
   /* A mask reads only alpha: any opaque token keeps the chips, transparent fades the edge. */
@@ -42,6 +49,11 @@
 }
 .folder-name-field {
   padding: var(--space-2) var(--space-3) 0;
+}
+.folder-name-error {
+  margin: var(--space-1) 0 0;
+  color: var(--color-danger);
+  font-size: var(--text-caption);
 }
 .folder-name-field .field-control {
   min-height: 32px;

@@ -4,6 +4,7 @@ import type { Folder } from '../../../shared/contracts';
 interface FolderMenuProps {
   folder: Folder;
   anchor: RefObject<HTMLButtonElement | null>;
+  left: number;
   onRename(folder: Folder): void;
   onDelete(folder: Folder): void;
   onClose(restoreFocus: boolean): void;
@@ -15,7 +16,7 @@ function moveFocus(menu: HTMLElement, step: 1 | -1): void {
   items[(index + step + items.length) % items.length]?.focus();
 }
 
-export function FolderMenu({ folder, anchor, onRename, onDelete, onClose }: FolderMenuProps) {
+export function FolderMenu({ folder, anchor, left, onRename, onDelete, onClose }: FolderMenuProps) {
   const first = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     first.current?.focus();
@@ -45,6 +46,7 @@ export function FolderMenu({ folder, anchor, onRename, onDelete, onClose }: Fold
       className="folder-menu"
       role="menu"
       aria-label={folder.name}
+      style={{ left }}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
     >

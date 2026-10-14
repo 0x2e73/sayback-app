@@ -1,4 +1,3 @@
-import { useRef, useState } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { FolderChips } from './FolderChips';
 import { FolderDeletionDialog } from './FolderDeletionDialog';
@@ -6,6 +5,7 @@ import { FolderMenu } from './FolderMenu';
 import { FolderNameField } from './FolderNameField';
 import type { FolderScope } from './list-filter';
 import type { FolderActions } from './use-folders';
+import { useFolderMenu } from './use-folder-menu';
 import { useFolderDeletion } from './useFolderDeletion';
 import { useFolderDrop } from './useFolderDrop';
 import { useFolderEditor } from './useFolderEditor';
@@ -24,59 +24,56 @@ export function FolderFilter(props: FolderFilterProps) {
   const editor = useFolderEditor({ onCreate: actions.create, onRename: actions.rename });
   const deletion = useFolderDeletion(actions.remove);
   const { dropProps, announcement } = useFolderDrop({ meetings, folders, onMove: actions.move });
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuAnchor = useRef<HTMLButtonElement>(null);
+  const menu = useFolderMenu();
   const selected =
     scope.kind === 'folder' ? folders.find((folder) => folder.id === scope.id) : undefined;
 
   function choose(next: FolderScope): void {
-    setMenuOpen(false);
+    menu.close();
     onScope(next);
   }
 
-  function closeMenu(restoreFocus: boolean): void {
-    setMenuOpen(false);
-    if (restoreFocus) menuAnchor.current?.focus();
-  }
-
   function rename(folder: Folder): void {
-    setMenuOpen(false);
+    menu.close();
     editor.startRename(folder);
   }
 
   function requestDeletion(folder: Folder): void {
     // The dialog hands the focus back to what held it: make that the chip, not the closing menu.
-    menuAnchor.current?.focus();
-    setMenuOpen(false);
+    menu.anchor.current?.focus();
+    menu.close();
     deletion.request(folder);
   }
 
   return (
-    <div className="folder-filter">
+    <div className="folder-filter" ref={menu.wrapper}>
       <FolderChips
         folders={folders}
         scope={scope}
         locked={locked}
-        menuOpen={menuOpen}
-        menuAnchor={menuAnchor}
+        menuOpen={menu.left !== null}
+        menuAnchor={menu.anchor}
         dropProps={dropProps}
         onChoose={choose}
-        onToggleMenu={() => setMenuOpen((open) => !open)}
+        onToggleMenu={menu.toggle}
         onCreate={editor.startCreate}
       />
-      {menuOpen && selected && (
+      {menu.left !== null && selected && (
         <FolderMenu
           folder={selected}
-          anchor={menuAnchor}
+          anchor={menu.anchor}
+          left={menu.left}
           onRename={rename}
           onDelete={requestDeletion}
-          onClose={closeMenu}
+          onClose={menu.close}
         />
       )}
       {editor.editing && (
         <FolderNameField
+          key={editor.editingId}
           name={editor.name}
           busy={editor.busy}
+          error={editor.error}
           onName={editor.setName}
           onSave={() => void editor.submit()}
           onCancel={editor.cancel}

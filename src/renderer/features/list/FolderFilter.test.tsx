@@ -1,62 +1,22 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { useState } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Folder, Meeting } from '../../../shared/contracts';
 import { meetingFixture } from '../../test-api';
-import { FolderFilter } from './FolderFilter';
-import { ALL_MEETINGS, resolveScope, type FolderScope } from './list-filter';
-import type { FolderActions } from './use-folders';
+import { acme, actionsWith, Harness, openMenu } from './folder-filter-harness';
 import { MEETING_DRAG_TYPE } from './useFolderDrop';
 
 afterEach(cleanup);
 
-const acme: Folder = { id: 'folder', name: 'Acme', createdAt: '' };
 const produit = (folderId?: string) =>
   meetingFixture('a', 'Produit', '2026-10-14T08:00:00.000Z', { folderId });
-
-function actionsWith(overrides: Partial<FolderActions> = {}): FolderActions {
-  return {
-    create: vi.fn(async () => null),
-    rename: vi.fn(async () => true),
-    remove: vi.fn(async () => true),
-    move: vi.fn(async () => true),
-    ...overrides,
-  };
-}
-
-interface HarnessProps {
-  folders: Folder[];
-  meetings?: Meeting[];
-  actions: FolderActions;
-}
-
-function Harness({ folders, meetings = [], actions }: HarnessProps) {
-  const [scope, setScope] = useState<FolderScope>(ALL_MEETINGS);
-  return (
-    <FolderFilter
-      folders={folders}
-      meetings={meetings}
-      scope={resolveScope(scope, folders)}
-      locked={false}
-      actions={actions}
-      onScope={setScope}
-    />
-  );
-}
 
 const dragTransfer = (meetingId: string) => ({
   types: [MEETING_DRAG_TYPE],
   getData: () => meetingId,
   dropEffect: 'none',
 });
-
-async function openMenu(user: ReturnType<typeof userEvent.setup>, name: string) {
-  await user.click(screen.getByRole('button', { name }));
-  await user.click(screen.getByRole('button', { name }));
-}
 
 it('creates a folder from the + chip', async () => {
   const create = vi.fn(async (name: string) => ({ id: 'new', name, createdAt: '' }));

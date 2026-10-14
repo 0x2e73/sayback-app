@@ -10,21 +10,33 @@ export function useFolderEditor({ onCreate, onRename }: FolderEditorActions) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const submitting = useRef(false);
 
   function startCreate(): void {
     setEditingId('new');
     setName('');
+    setError('');
   }
 
   function startRename(folder: Folder): void {
     setEditingId(folder.id);
     setName(folder.name);
+    setError('');
+  }
+
+  function rename(next: string): void {
+    setName(next);
+    setError('');
   }
 
   async function submit(): Promise<void> {
     const trimmed = name.trim();
-    if (!trimmed || submitting.current) return;
+    if (submitting.current) return;
+    if (!trimmed) {
+      setError('Donnez un nom au dossier.');
+      return;
+    }
     submitting.current = true;
     setBusy(true);
     try {
@@ -42,9 +54,11 @@ export function useFolderEditor({ onCreate, onRename }: FolderEditorActions) {
 
   return {
     editing: editingId !== null,
+    editingId,
     name,
     busy,
-    setName,
+    error,
+    setName: rename,
     startCreate,
     startRename,
     cancel: () => setEditingId(null),
