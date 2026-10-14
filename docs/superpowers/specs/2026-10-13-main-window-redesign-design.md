@@ -151,16 +151,16 @@ One centred column, max 520 px, on the dark translucent ground. The four step te
 
 ## Motion
 
-| Existing                                                   | Fate                                                                                                         |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Library cascade, row arrow, dead 160 ms row transition     | Removed                                                                                                      |
-| Shell entrance, onboarding pictogram, folder landing flash | Removed; the drop feedback is the row's new folder plus a polite announcement « Réunion déplacée dans Acme » |
-| Dragged row `scale(.985)` set imperatively                 | React state, `opacity: .5`, 120 ms                                                                           |
-| Drop target lift, scale and shadow                         | Background and accent border, 120 ms                                                                         |
-| Mixed 220/180 ms hover transitions                         | Colours only, 120 ms                                                                                         |
-| Busy spinner widening the button                           | Label and spinner stacked in one grid cell; reduced motion keeps a static spinner and dims the label         |
-| Onboarding text, progress dots                             | State entrance 200 ms; progress line `scaleX` 200 ms                                                         |
-| Keyframes and reduced motion spread over three files       | Both keyframes (`state-enter`, `fade-enter`) and all reduced motion rules live in `styles.css` only          |
+| Existing                                                   | Fate                                                                                                                        |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Library cascade, row arrow, dead 160 ms row transition     | Removed                                                                                                                     |
+| Shell entrance, onboarding pictogram, folder landing flash | Removed; the drop feedback is the row's new folder plus a polite announcement « Réunion déplacée dans Acme »                |
+| Dragged row `scale(.985)` set imperatively                 | React state, `opacity: .5`, 120 ms                                                                                          |
+| Drop target lift, scale and shadow                         | Background and accent border, 120 ms                                                                                        |
+| Mixed 220/180 ms hover transitions                         | Colours only, 120 ms                                                                                                        |
+| Busy spinner widening the button                           | Label and spinner stacked in one cell; reduced motion hides the spinner and dims the label, which keeps its accessible name |
+| Onboarding text, progress dots                             | State entrance 200 ms; progress line `scaleX` 200 ms                                                                        |
+| Keyframes and reduced motion spread over three files       | Both keyframes (`state-enter`, `fade-enter`) and all reduced motion rules live in `styles.css` only                         |
 
 | Added                                        | Property                              | Duration | Reduced motion |
 | -------------------------------------------- | ------------------------------------- | -------- | -------------- |
