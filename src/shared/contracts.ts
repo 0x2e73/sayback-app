@@ -1,6 +1,8 @@
 import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
+import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
+export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type {
   Segment,
   NoteItem,
@@ -91,6 +93,19 @@ export interface DesktopApi {
   isFullScreen(): Promise<Result<boolean>>;
   /** Returns the function that stops listening. */
   onFullScreenChange(listener: (fullScreen: boolean) => void): () => void;
+  /** Last known update state; the first call waits for the startup read of the channel. */
+  getUpdateStatus(): Promise<Result<UpdateStatus>>;
+  /** Re-reads the update channel now. */
+  checkForUpdate(): Promise<Result<UpdateStatus>>;
+  /**
+   * Asks the user natively (« Installer et redémarrer » / « Plus tard »), then replaces the app
+   * with the staged version and relaunches it: `started` means the app quits right after the
+   * answer, `postponed` that nothing was done. Refused, with a sentence to display, during a
+   * recording or when nothing can install.
+   */
+  installUpdate(): Promise<Result<UpdateInstallOutcome>>;
+  /** Called on every change of update state. Returns the unsubscribe function. */
+  onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
 }
 export function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error);

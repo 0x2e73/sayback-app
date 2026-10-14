@@ -13,6 +13,10 @@ import { registerCapture } from './capture-permissions';
 import { registerWindowHandlers } from './full-screen';
 import { createWindow } from './window';
 import { serveMedia } from './media-protocol';
+import { createUpdateService } from './updates';
+import { registerUpdateHandlers } from './update-handlers';
+import { APP_NAME } from '../shared/update-channel';
+import type { UpdateService } from '../backend/application/updates';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -21,7 +25,7 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-app.setName('SayBack');
+app.setName(APP_NAME);
 const legacyDataRoot = join(app.getPath('appData'), 'voice-meets');
 const dataRoot =
   process.env.SAYBACK_DATA_DIR ??
@@ -30,17 +34,20 @@ const dataRoot =
 mkdirSync(dataRoot, { recursive: true });
 app.setPath('userData', dataRoot);
 const rendererPath = join(import.meta.dirname, '../renderer/index.html');
-const rendererUrl = process.env.ELECTRON_RENDERER_URL ?? pathToFileURL(rendererPath).href;
+// The development server URL is never honoured by a packaged app.
+const devRendererUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
+const rendererUrl = devRendererUrl ?? pathToFileURL(rendererPath).href;
 let window: BrowserWindow | null = null;
 let services: DesktopServices | undefined;
+let updates: UpdateService | undefined;
+
+function isRecording(): boolean {
+  return services?.meetings.list().some((meeting) => meeting.status === 'recording') ?? false;
+}
 
 function openWindow() {
   if (!services) return;
-  const meetings = services.meetings;
-  window = createWindow({
-    rendererUrl,
-    isRecording: () => meetings.list().some((meeting) => meeting.status === 'recording'),
-  });
+  window = createWindow({ rendererUrl, isRecording });
   window.on('closed', () => {
     window = null;
   });
@@ -62,6 +69,9 @@ void app.whenReady().then(() => {
   registerSettingsHandlers(handle, desktop, root);
   registerCapture(handle, () => window);
   registerWindowHandlers(handle, () => window);
+  updates = createUpdateService({ getWindow: () => window, isRecording });
+  registerUpdateHandlers(handle, updates);
+  void updates.start();
   protocol.handle('meeting-media', (request) =>
     serveMedia(request, desktop.media, desktop.meetings),
   );
@@ -74,4 +84,9 @@ app.on('activate', () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-app.on('will-quit', () => services?.close());
+// Back in the foreground: the update channel is re-read.
+app.on('browser-window-focus', () => updates?.windowFocused());
+app.on('will-quit', () => {
+  void updates?.stop();
+  services?.close();
+});

@@ -7,9 +7,12 @@
   "description": "Vos réunions, leur contexte et des notes claires.",
   "type": "module",
   "main": "out/main/index.js",
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "build": "electron-vite build && node scripts/build-info.ts",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -19,7 +22,8 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
     "package": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "update:publish": "node scripts/update-publish-cli.ts"
   },
   "dependencies": {
     "lucide-react": "^1.45.0",

@@ -1,4 +1,11 @@
-import type { DesktopApi, LocalSetupStatus, Meeting, Result, Settings } from '../shared/contracts';
+import type {
+  DesktopApi,
+  LocalSetupStatus,
+  Meeting,
+  Result,
+  Settings,
+  UpdateStatus,
+} from '../shared/contracts';
 
 export const settings: Settings = {
   notesProvider: 'openai',
@@ -20,6 +27,12 @@ export const readySetup: LocalSetupStatus = {
   ollama: true,
   notesModel: true,
   notesModelName: 'gemma3:4b',
+};
+
+export const upToDate: UpdateStatus = {
+  current: { version: '0.1.0', commit: 'a'.repeat(40), builtAt: '2026-10-13T10:00:00.000Z' },
+  available: null,
+  canInstall: true,
 };
 
 export const ok = <T>(value: T): Promise<Result<T>> => Promise.resolve({ ok: true, value });
@@ -68,6 +81,10 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     openSetupGuide: () => ok(undefined),
     isFullScreen: () => ok(false),
     onFullScreenChange: () => () => {},
+    getUpdateStatus: () => ok(upToDate),
+    checkForUpdate: () => ok(upToDate),
+    installUpdate: () => ok('started'),
+    onUpdateStatus: () => () => undefined,
   };
 }
 

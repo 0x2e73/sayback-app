@@ -1,0 +1,45 @@
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { BUILD_COMMIT_UNKNOWN, BUILD_INFO_FILE_NAME } from '../src/shared/update-channel.ts';
+import { createBuildInfo } from './build-identity.ts';
+
+// Run by `npm run build` after electron-vite: writes the build identity to `out/build-info.json`
+// (packaged in app.asar). The local update channel is only open with
+// `SAYBACK_LOCAL_UPDATE_CHANNEL=1`; the setting is frozen in the bundle.
+
+const ROOT = join(import.meta.dirname, '..');
+const TARGET_DIR = join(ROOT, 'out');
+const TARGET = join(TARGET_DIR, BUILD_INFO_FILE_NAME);
+
+function headCommit(): string {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return BUILD_COMMIT_UNKNOWN;
+  }
+}
+
+const pkg: unknown = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+const version =
+  typeof pkg === 'object' && pkg !== null && 'version' in pkg ? pkg.version : undefined;
+
+const info = createBuildInfo({
+  version,
+  commit: headCommit(),
+  builtAt: new Date().toISOString(),
+  env: process.env,
+});
+
+mkdirSync(TARGET_DIR, { recursive: true });
+// Written next to it then renamed: an app starting in development never reads half a file.
+writeFileSync(`${TARGET}.tmp`, `${JSON.stringify(info, null, 2)}\n`);
+renameSync(`${TARGET}.tmp`, TARGET);
+const channel = info.localUpdateChannel ? ' — canal de mise à jour local ouvert' : '';
+process.stdout.write(
+  `[build-info] ${info.version} ${info.commit.slice(0, 12)} ${info.builtAt}${channel}\n`,
+);
