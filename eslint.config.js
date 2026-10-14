@@ -48,7 +48,7 @@ export default ts.config(
   },
   {
     files: ['src/renderer/**/*.{ts,tsx}'],
-    ignores: ['**/*.test.{ts,tsx}'],
+    ignores: ['src/renderer/design-tokens.test.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
