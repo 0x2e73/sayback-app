@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Read `AGENTS.md` and every file in `.codex/rules/` before changing code.
-- macOS options, validated by a throwaway window on 2026-10-14: `titleBarStyle: 'hiddenInset'`, `trafficLightPosition: { x: 16, y: 18 }`, `vibrancy: 'sidebar'`, `visualEffectState: 'active'`, `backgroundColor: '#00000000'`, no `transparent`. The left pane carries a 20 % dark veil.
+- macOS options, chosen on 2026-10-14 after a throwaway window that nobody could capture; the visual check happens in the real app at Task 5: `titleBarStyle: 'hiddenInset'`, `trafficLightPosition: { x: 16, y: 18 }`, `vibrancy: 'sidebar'`, `visualEffectState: 'active'`, `backgroundColor: '#00000000'`, no `transparent`. The left pane carries a 20 % dark veil.
 - Windows and Linux keep the default frame and an opaque `#0f1117` background, equal to `--color-bg`.
 - Full-screen handling of the traffic-light inset is out of scope: Chromium does not expose native full screen to CSS (`display-mode: fullscreen` stays false, measured), and the inset only matters once the search sits in the band (step 4).
 - No new colour, size or radius literal: the token guard must stay green.
