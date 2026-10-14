@@ -244,14 +244,15 @@ describe('design tokens', () => {
     expect(read('styles/shared.css')).toMatch(/\.button-danger:hover\s*\{[^}]*background:/);
   });
 
-  it.each(['recording', 'recorded', 'processing', 'ready', 'error'])(
-    'styles the %s status',
-    (status) => {
-      expect(read('styles/recording.css')).toMatch(
-        new RegExp(`\\.badge-${status}(?:\\s*>\\s*span)?\\s*\\{`),
-      );
-    },
-  );
+  it.each(['processing', 'ready', 'recording', 'error'])('colours the %s status', (status) => {
+    const rule = new RegExp(`\\.badge-${status}\\s*\\{[^}]*[\\s;{]color:`);
+    expect(read('styles/recording.css')).toMatch(rule);
+  });
+
+  it('draws the hollow dot of the recorded status', () => {
+    const rule = /\.badge-recorded\s*>\s*span\s*\{[^}]*box-shadow:/;
+    expect(read('styles/recording.css')).toMatch(rule);
+  });
 
   it('draws native option lists on an opaque ground', () => {
     const rule = /\bselect option\s*\{[^}]*background-color:\s*var\(--color-overlay\)/;
