@@ -59,6 +59,14 @@
   -webkit-font-smoothing: antialiased;
 }
 
+@media (prefers-contrast: more) {
+  :root {
+    --color-text-subtle: rgb(255 255 255 / 0.72);
+    --color-border: rgb(255 255 255 / 0.3);
+    --color-border-strong: rgb(255 255 255 / 0.4);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -71,6 +79,10 @@ input,
 select,
 textarea {
   font: inherit;
+}
+select option {
+  background-color: var(--color-overlay);
+  color: var(--color-text);
 }
 button {
   cursor: pointer;

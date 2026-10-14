@@ -44,6 +44,10 @@ function tokenBlock(css: string): string {
   return match[0];
 }
 
+function contrastBlock(css: string): string {
+  return /^@media \(prefers-contrast: more\)\s*\{[\s\S]*?^\}/m.exec(css)?.[0] ?? '';
+}
+
 function declarations(css: string): Declaration[] {
   const body = css.replace(/\/\*[\s\S]*?\*\//g, '');
   return body
@@ -106,7 +110,7 @@ function sheetViolations(sheet: string): string[] {
   const css = read(sheet);
   const declared = declaredTokens(read('styles.css'));
   const body = sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css;
-  return cssViolations(body, declared);
+  return cssViolations(body.replace(contrastBlock(css), ''), declared);
 }
 
 function tokenValue(name: string): string {
@@ -248,6 +252,20 @@ describe('design tokens', () => {
       );
     },
   );
+
+  it('draws native option lists on an opaque ground', () => {
+    const rule = /\bselect option\s*\{[^}]*background-color:\s*var\(--color-overlay\)/;
+    expect(read('styles.css')).toMatch(rule);
+  });
+
+  it('strengthens the muted tokens when more contrast is requested', () => {
+    const css = read('styles.css');
+    const block = contrastBlock(css);
+    for (const token of ['--color-text-subtle', '--color-border', '--color-border-strong']) {
+      expect(block).toContain(`${token}:`);
+    }
+    expect(css.indexOf(block)).toBeGreaterThan(css.indexOf(tokenBlock(css)));
+  });
 
   it('paints the window with the page background before the CSS loads', () => {
     const windowSource = readFileSync(join(rendererDir, '../main/window.ts'), 'utf8');
