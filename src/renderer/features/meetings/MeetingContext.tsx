@@ -2,7 +2,7 @@ import { timeLabel } from '../../../shared/format';
 import type { RefObject } from 'react';
 import type { Meeting } from '../../../shared/contracts';
 
-import { ClarificationForm } from './ClarificationForm';
+import { Clarifications } from './Clarifications';
 import { MediaPlayer, type PlayerHandle } from './MediaPlayer';
 
 interface MeetingContextProps {
@@ -24,28 +24,14 @@ export function MeetingContext(props: MeetingContextProps) {
         <span className="caption">{timeLabel(props.at)}</span>
       </div>
       <MediaPlayer ref={props.playerRef} meeting={props.meeting} onTime={props.onTime} />
-      <ClarificationForm
-        duration={props.meeting.duration}
+      <Clarifications
+        meeting={props.meeting}
         at={props.at}
         disabled={props.analyzing}
         saving={props.saving}
-        onTime={props.onTime}
+        onTimestamp={(at) => props.onSeek(at)}
         onSubmit={props.onClarify}
       />
-      {props.meeting.clarifications.length > 0 && (
-        <div className="clarifications">
-          <h3>Précisions ajoutées</h3>
-          {props.meeting.clarifications.map((item) => (
-            <div className="clarification" key={item.id}>
-              <button className="timestamp-link" onClick={() => props.onSeek(item.at)}>
-                {timeLabel(item.at)}
-              </button>
-              <p>{item.text}</p>
-              <span className="caption">Ajout manuel</span>
-            </div>
-          ))}
-        </div>
-      )}
     </aside>
   );
 }

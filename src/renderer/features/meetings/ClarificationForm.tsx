@@ -1,63 +1,83 @@
 import { useState, type FormEvent } from 'react';
-import { MessageSquarePlus } from 'lucide-react';
+import { timeLabel } from '../../../shared/format';
 import { Button } from '../../components/ui';
+import { parseMoment } from './moment';
 
 interface ClarificationFormProps {
   duration: number;
+  /** Playback position when the form opened. */
   at: number;
-  disabled: boolean;
   saving: boolean;
-  onTime(at: number): void;
+  onClose(): void;
   onSubmit(at: number, text: string): Promise<boolean>;
 }
 
-export function ClarificationForm(props: ClarificationFormProps) {
-  const [text, setText] = useState('');
+const ERROR_ID = 'clarification-moment-error';
 
-  async function submit(event: FormEvent) {
+export function ClarificationForm({
+  duration,
+  at,
+  saving,
+  onClose,
+  onSubmit,
+}: ClarificationFormProps) {
+  const [text, setText] = useState('');
+  const [moment, setMoment] = useState(() => timeLabel(at));
+  const [error, setError] = useState('');
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    const saved = await props.onSubmit(props.at, text);
-    if (saved) setText('');
+    const parsed = parseMoment(moment, duration);
+    if (!parsed.ok) {
+      setError(parsed.error);
+      return;
+    }
+    if (await onSubmit(parsed.seconds, text)) onClose();
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="clarification-form">
-      <h3>
-        <MessageSquarePlus size={17} />
-        Apporter une précision
-      </h3>
+    <form className="clarification-form" onSubmit={(event) => void submit(event)}>
       <p className="caption">
         Un « ça » un peu flou ? Revenez au passage et expliquez ce qu’il désigne.
       </p>
       <label className="field">
-        Moment (secondes)
-        <input
-          type="number"
-          min={0}
-          max={props.duration}
-          step="0.1"
-          value={Number(props.at.toFixed(1))}
-          onChange={(event) => props.onTime(Number(event.target.value))}
-        />
-      </label>
-      <label className="field">
         Votre précision
         <textarea
+          autoFocus
           rows={3}
           maxLength={2000}
           value={text}
-          onChange={(event) => setText(event.target.value)}
           placeholder="Ex. On parle du bouton Exporter…"
+          onChange={(event) => setText(event.target.value)}
         />
       </label>
-      <Button
-        variant="secondary"
-        type="submit"
-        busy={props.saving}
-        disabled={props.disabled || !text.trim()}
-      >
-        Ajouter la précision
-      </Button>
+      <label className="field clarification-moment">
+        Moment
+        <input
+          inputMode="numeric"
+          placeholder="mm:ss"
+          value={moment}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? ERROR_ID : undefined}
+          onChange={(event) => {
+            setMoment(event.target.value);
+            setError('');
+          }}
+        />
+      </label>
+      {error && (
+        <p id={ERROR_ID} className="field-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="clarification-actions">
+        <Button variant="ghost" disabled={saving} onClick={onClose}>
+          Annuler
+        </Button>
+        <Button type="submit" variant="secondary" busy={saving} disabled={!text.trim()}>
+          Ajouter
+        </Button>
+      </div>
     </form>
   );
 }
