@@ -1,0 +1,116 @@
+.meeting-list {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) var(--space-3);
+}
+.date-group {
+  display: grid;
+}
+.date-group-heading {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+.meeting-list .meeting-row {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  cursor: default;
+  user-select: none;
+}
+.meeting-list .meeting-row:hover {
+  background: var(--color-surface);
+}
+.meeting-list .meeting-row[aria-selected='true'] {
+  background: var(--color-surface-raised);
+}
+.meeting-list .meeting-row[aria-disabled='true'] {
+  opacity: 0.55;
+}
+.meeting-list .meeting-row.is-dragging {
+  opacity: 0.5;
+}
+.meeting-list .meeting-row:focus-visible {
+  outline-offset: -2px;
+}
+.meeting-row-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.meeting-row-title {
+  overflow: hidden;
+  font-size: var(--text-body);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meeting-row-date {
+  flex: none;
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+.meeting-row-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.row-status {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+}
+.row-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.row-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+.row-status-recorded .row-status-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.row-status-processing .row-status-dot {
+  background: var(--color-accent);
+}
+.row-status-error .row-status-dot {
+  background: var(--color-paused);
+}
+.row-status-recording .row-status-dot {
+  background: var(--color-live);
+}
+.row-progress {
+  height: 2px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+}
+.row-progress-bar {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transform-origin: left;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.chip-static {
+  justify-self: start;
+  height: 20px;
+  line-height: 18px;
+}

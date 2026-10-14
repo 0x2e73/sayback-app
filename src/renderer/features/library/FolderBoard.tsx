@@ -1,9 +1,9 @@
 import { Folder as FolderIcon, FolderPlus, Pencil, Trash2 } from 'lucide-react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { ConfirmDialog } from '../../components/ui';
-import { useFolderDeletion } from './useFolderDeletion';
-import { useFolderDrop } from './useFolderDrop';
-import { useFolderEditor } from './useFolderEditor';
+import { useFolderDeletion } from '../list/useFolderDeletion';
+import { useFolderDrop } from '../list/useFolderDrop';
+import { useFolderEditor } from '../list/useFolderEditor';
 
 interface FolderBoardProps {
   folders: Folder[];

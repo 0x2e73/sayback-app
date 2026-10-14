@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import type { Meeting } from '../../../shared/contracts';
 import { Library } from './Library';
-import { MEETING_DRAG_TYPE } from './useFolderDrop';
+import { MEETING_DRAG_TYPE } from '../list/useFolderDrop';
 
 afterEach(cleanup);
 

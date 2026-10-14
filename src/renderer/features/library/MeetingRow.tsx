@@ -3,7 +3,7 @@ import { timeLabel } from '../../../shared/format';
 import { ArrowUpRight, Clock3, FileText, GripVertical } from 'lucide-react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { StatusBadge } from '../../components/ui';
-import { MEETING_DRAG_TYPE } from './useFolderDrop';
+import { MEETING_DRAG_TYPE } from '../list/useFolderDrop';
 
 interface MeetingRowProps {
   meeting: Meeting;

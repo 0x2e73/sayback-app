@@ -259,6 +259,9 @@ p {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .row-progress-bar {
+    transition: none;
+  }
   @keyframes state-enter {
     from {
       opacity: 0;

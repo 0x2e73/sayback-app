@@ -70,3 +70,26 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     onFullScreenChange: () => () => {},
   };
 }
+
+export function meetingFixture(
+  id: string,
+  title: string,
+  createdAt: string,
+  extra: Partial<Meeting> = {},
+): Meeting {
+  return {
+    id,
+    title,
+    createdAt,
+    status: 'recorded',
+    duration: 60,
+    hasVideo: false,
+    audioChunks: [],
+    frames: [],
+    transcript: [],
+    notes: null,
+    clarifications: [],
+    error: null,
+    ...extra,
+  };
+}
