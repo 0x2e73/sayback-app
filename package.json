@@ -19,7 +19,8 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
     "package": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "update:publish": "node scripts/update-publish-cli.ts"
   },
   "dependencies": {
     "lucide-react": "^1.45.0",
