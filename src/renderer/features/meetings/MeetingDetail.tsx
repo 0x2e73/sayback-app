@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import type { DesktopApi, Meeting } from '../../../shared/contracts';
-import { Button, Notice } from '../../components/ui';
+import type { DesktopApi, Folder, Meeting } from '../../../shared/contracts';
+import { Notice } from '../../components/ui';
 import type { PlayerHandle } from './MediaPlayer';
 import { MeetingHeader } from './MeetingHeader';
 import { MeetingContent } from './MeetingContent';
@@ -13,17 +12,19 @@ import { downloadMeeting } from './download-meeting';
 interface MeetingDetailProps {
   meeting: Meeting;
   api: DesktopApi;
+  folders: Folder[];
   onUpdate(meeting: Meeting): void;
-  onBack(): void;
+  onMove(meetingId: string, folderId: string | null): Promise<boolean>;
+  onDeleted(): void;
   onSettings(): void;
 }
 
 export function MeetingDetail(props: MeetingDetailProps) {
-  const { meeting, api, onUpdate, onBack, onSettings } = props;
+  const { meeting, api, folders, onUpdate, onMove, onDeleted, onSettings } = props;
   const [at, setAt] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const player = useRef<PlayerHandle>(null);
-  const actions = useMeetingActions({ api, meeting, onUpdate, onDeleted: onBack });
+  const actions = useMeetingActions({ api, meeting, onUpdate, onDeleted });
   const error = actions.error || meeting.error;
 
   function seek(seconds: number) {
@@ -33,13 +34,11 @@ export function MeetingDetail(props: MeetingDetailProps) {
 
   return (
     <div className="detail-page">
-      <Button variant="ghost" className="back-button" onClick={onBack}>
-        <ArrowLeft size={16} />
-        Toutes les réunions
-      </Button>
       <MeetingHeader
         meeting={meeting}
+        folders={folders}
         busy={actions.analyzing}
+        onMove={(folderId) => void onMove(meeting.id, folderId)}
         onExport={() => downloadMeeting(meeting)}
         onDelete={() => setConfirmDelete(true)}
       />

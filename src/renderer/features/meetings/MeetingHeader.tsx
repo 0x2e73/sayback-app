@@ -1,16 +1,52 @@
 import { timeLabel } from '../../../shared/format';
 import { Download, Trash2 } from 'lucide-react';
-import type { Meeting } from '../../../shared/contracts';
+import type { Folder, Meeting } from '../../../shared/contracts';
 import { Button, StatusBadge } from '../../components/ui';
 
 interface MeetingHeaderProps {
   meeting: Meeting;
+  folders: Folder[];
   busy: boolean;
+  onMove(folderId: string | null): void;
   onExport(): void;
   onDelete(): void;
 }
 
-export function MeetingHeader({ meeting, busy, onExport, onDelete }: MeetingHeaderProps) {
+interface FolderSelectProps {
+  meeting: Meeting;
+  folders: Folder[];
+  onMove(folderId: string | null): void;
+}
+
+// The keyboard way to file a meeting now that rows have no <select>; lot 5 restyles it.
+function FolderSelect({ meeting, folders, onMove }: FolderSelectProps) {
+  const settled = meeting.status !== 'recording' && meeting.status !== 'processing';
+  return (
+    <select
+      className="detail-folder-select"
+      aria-label="Dossier de la réunion"
+      value={meeting.folderId ?? ''}
+      disabled={!settled}
+      onChange={(event) => onMove(event.target.value || null)}
+    >
+      <option value="">Sans dossier</option>
+      {folders.map((folder) => (
+        <option key={folder.id} value={folder.id}>
+          {folder.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function MeetingHeader({
+  meeting,
+  folders,
+  busy,
+  onMove,
+  onExport,
+  onDelete,
+}: MeetingHeaderProps) {
   const createdAt = new Intl.DateTimeFormat('fr-CH', {
     dateStyle: 'long',
     timeStyle: 'short',
@@ -22,6 +58,7 @@ export function MeetingHeader({ meeting, busy, onExport, onDelete }: MeetingHead
         <div className="row">
           <StatusBadge status={meeting.status} />
           <span className="caption">{timeLabel(meeting.duration)}</span>
+          <FolderSelect meeting={meeting} folders={folders} onMove={onMove} />
         </div>
         <h1>{meeting.title}</h1>
         <p className="muted">{createdAt}</p>

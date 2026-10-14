@@ -40,8 +40,10 @@ export function WorkspaceContent(props: WorkspaceContentProps) {
         key={props.selected.id}
         meeting={props.selected}
         api={props.api}
+        folders={props.folders}
         onUpdate={props.onUpdate}
-        onBack={props.onBack}
+        onMove={props.onMoveMeeting}
+        onDeleted={props.onBack}
         onSettings={props.onSettings}
       />
     );
