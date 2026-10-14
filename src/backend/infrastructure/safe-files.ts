@@ -1,10 +1,14 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { constants, type Stats } from 'node:fs';
 import { mkdir, open, rename, stat, unlink, type FileHandle } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
 // File access for paths SayBack did not write itself (update channel). Imports nothing from the
-// repository: Node loads it as is from `scripts/`.
+// repository: Node loads it as is from `scripts/`, so the publish script shares these helpers.
+
+/** Write rights of the group and of others. */
+export const WRITABLE_BY_OTHERS = 0o022;
+const HASH_CHUNK_BYTES = 1024 * 1024;
 
 export function errnoOf(error: unknown): string | undefined {
   return error instanceof Error && 'code' in error && typeof error.code === 'string'
@@ -50,6 +54,26 @@ export interface PositionalReader {
     length: number,
     position: number,
   ): Promise<{ bytesRead: number }>;
+}
+
+/**
+ * SHA-256 of an opened file, read in chunks without ever loading it whole; `null` beyond
+ * `maxBytes`, even if the file grows while being read.
+ */
+export async function sha256OfOpenFile(
+  reader: PositionalReader,
+  maxBytes: number,
+): Promise<string | null> {
+  const hash = createHash('sha256');
+  const chunk = Buffer.alloc(HASH_CHUNK_BYTES);
+  let position = 0;
+  for (;;) {
+    const { bytesRead } = await reader.read(chunk, 0, chunk.length, position);
+    if (bytesRead === 0) return hash.digest('hex');
+    position += bytesRead;
+    if (position > maxBytes) return null;
+    hash.update(chunk.subarray(0, bytesRead));
+  }
 }
 
 /** Reads `maxBytes` at most from the start; `exceeded` when the file holds more. */

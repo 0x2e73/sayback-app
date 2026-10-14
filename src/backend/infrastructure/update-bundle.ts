@@ -1,20 +1,21 @@
-import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { constants, type Stats } from 'node:fs';
 import { join } from 'node:path';
-import { APP_BUNDLE_ID, APP_EXECUTABLE_NAME } from '../../shared/update-channel';
+import { APP_BUNDLE_ID, APP_EXECUTABLE_NAME, ASAR_MAX_BYTES } from '../../shared/update-channel';
 import { openRawRegularFile, rawLstatOrNull } from './raw-fs';
-import { readRegularFileUpTo } from './safe-files';
+import { readRegularFileUpTo, sha256OfOpenFile, WRITABLE_BY_OTHERS } from './safe-files';
 
 // Checks of a `.app` bundle: the staged one, and the running one to replace. They rule out a
 // damaged, half-copied or foreign bundle, or one placed through a symbolic link. They do NOT
-// prove where it comes from: the channel trusts a folder the user can write, and the hash only
-// covers app.asar. No reason carries a path: they reach the interface.
+// prove where it comes from: the channel trusts a folder the user can write. Accepted limits:
+// the hash only covers app.asar (not the executable nor the frameworks), and the bundle may still
+// change between this check and the copy (the script re-hashes app.asar after copying). No reason
+// carries a path: they reach the interface.
 
-/** app.asar weighs a few dozen MB; beyond this cap it is not ours and is not read. */
-export const ASAR_MAX_BYTES = 1024 * 1024 * 1024;
 const PLIST_MAX_BYTES = 256 * 1024;
-const HASH_CHUNK_BYTES = 1024 * 1024;
-const WRITABLE_BY_OTHERS = 0o022;
+const PLUTIL = '/usr/bin/plutil';
+const PLUTIL_TIMEOUT_MS = 5_000;
+const IDENTIFIER_MAX_BYTES = 1024;
 
 export type Verdict = { ok: true } | { ok: false; reason: string };
 
@@ -25,47 +26,36 @@ export function isOwnDirectory(info: Stats | null, uid: number): info is Stats {
   return info !== null && info.isDirectory() && !info.isSymbolicLink() && info.uid === uid;
 }
 
-/**
- * `CFBundleIdentifier` of an XML Info.plist, or `null`. Deliberately narrow: the key must appear
- * once, at the top level of the root dictionary, followed by a string. Comments and nested
- * dictionaries do not count.
- */
-export function parseBundleIdentifier(plistXml: string): string | null {
-  const xml = plistXml.replace(/<!--[\s\S]*?-->/g, '');
-  const root = /<plist\b[^>]*>\s*<dict>([\s\S]*)<\/dict>\s*<\/plist>/.exec(xml)?.[1];
-  if (root === undefined) return null;
-  // Nested dictionaries and arrays are removed, deepest first: only the top level remains.
-  let top = root;
-  for (;;) {
-    const flattened = top.replace(
-      /<(dict|array)>(?:(?!<(?:dict|array)>)[\s\S])*?<\/\1>/g,
-      '<nested/>',
+/** Top-level `CFBundleIdentifier` of a property list (XML, binary or JSON), if it is a string. */
+function extractIdentifier(plist: Buffer): Promise<string | null> {
+  const args = ['-extract', 'CFBundleIdentifier', 'raw', '-expect', 'string', '-o', '-', '-'];
+  return new Promise((resolve) => {
+    const child = execFile(
+      PLUTIL,
+      args,
+      { timeout: PLUTIL_TIMEOUT_MS, maxBuffer: IDENTIFIER_MAX_BYTES, encoding: 'utf8' },
+      (error, stdout) => resolve(error ? null : stdout.replace(/\n$/, '') || null),
     );
-    if (flattened === top) break;
-    top = flattened;
-  }
-  const matches = [
-    ...top.matchAll(/<key>CFBundleIdentifier<\/key>\s*(<string>([^<]*)<\/string>)?/g),
-  ];
-  if (matches.length !== 1) return null;
-  const value = matches[0]?.[2];
-  return value === undefined || value === '' ? null : value;
+    child.stdin?.on('error', () => resolve(null));
+    child.stdin?.end(plist);
+  });
 }
 
-/** The identifier of the bundle at `bundlePath`, or `null` if its Info.plist cannot be read. */
+/**
+ * The identifier of the bundle at `bundlePath`, or `null` if its Info.plist cannot be read. The
+ * bytes are read here (never through a link, 256 KB at most) and handed to plutil on its input.
+ */
 export async function readBundleIdentifier(bundlePath: string): Promise<string | null> {
   try {
-    const bytes = await readRegularFileUpTo(
-      join(bundlePath, 'Contents', 'Info.plist'),
-      PLIST_MAX_BYTES,
-    );
-    return bytes === null ? null : parseBundleIdentifier(bytes.toString('utf8'));
+    const plistPath = join(bundlePath, 'Contents', 'Info.plist');
+    const bytes = await readRegularFileUpTo(plistPath, PLIST_MAX_BYTES);
+    return bytes === null ? null : await extractIdentifier(bytes);
   } catch {
     return null;
   }
 }
 
-/** SHA-256 of a regular file read in chunks; `null` if absent, not regular, or over `maxBytes`. */
+/** SHA-256 of a regular file through the raw `fs`; `null` if absent, not regular, or too big. */
 export async function sha256OfRegularFile(path: string, maxBytes: number): Promise<string | null> {
   let opened: Awaited<ReturnType<typeof openRawRegularFile>>;
   try {
@@ -75,18 +65,7 @@ export async function sha256OfRegularFile(path: string, maxBytes: number): Promi
   }
   try {
     if (opened.info.size > maxBytes) return null;
-    const hash = createHash('sha256');
-    const chunk = Buffer.alloc(HASH_CHUNK_BYTES);
-    let position = 0;
-    for (;;) {
-      const { bytesRead } = await opened.handle.read(chunk, 0, chunk.length, position);
-      if (bytesRead === 0) break;
-      position += bytesRead;
-      // The file grew while being read: its announced size no longer bounds anything.
-      if (position > maxBytes) return null;
-      hash.update(chunk.subarray(0, bytesRead));
-    }
-    return hash.digest('hex');
+    return await sha256OfOpenFile(opened.handle, maxBytes);
   } catch {
     return null;
   } finally {

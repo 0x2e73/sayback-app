@@ -15,7 +15,7 @@ import type {
 } from '../application/update-ports';
 import { inspectBundle } from './update-bundle';
 import { rawLstatOrNull } from './raw-fs';
-import { errnoOf, readRegularFileUpTo } from './safe-files';
+import { WRITABLE_BY_OTHERS, errnoOf, readRegularFileUpTo } from './safe-files';
 
 // Reads `updates/latest.json`, then the bundle it names. An update is available only if ALL
 // holds: strictly valid manifest, newer build, compliant staged bundle. The manifest is written
@@ -30,7 +30,6 @@ const MESSAGES = {
   channelWritableByOthers:
     'Le dossier du canal de mise à jour est inscriptible par d’autres utilisateurs.',
 } as const;
-const WRITABLE_BY_OTHERS = 0o022;
 
 type ManifestReading =
   | { kind: 'absent' }

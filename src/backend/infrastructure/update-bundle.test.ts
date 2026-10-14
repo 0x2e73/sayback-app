@@ -7,7 +7,7 @@ import { fakePlist, sha256Of, writeFakeBundle, type FakeBundleOptions } from './
 import {
   inspectBundle,
   isOwnDirectory,
-  parseBundleIdentifier,
+  readBundleIdentifier,
   sha256OfRegularFile,
 } from './update-bundle';
 
@@ -30,39 +30,48 @@ function write(path = bundle, patch: Partial<FakeBundleOptions> = {}): Promise<s
   return writeFakeBundle(path, { asar: ASAR, ...patch });
 }
 
-describe('parseBundleIdentifier', () => {
-  it('lit l’identifiant d’un Info.plist XML', () => {
-    expect(parseBundleIdentifier(fakePlist(APP_BUNDLE_ID, 'SayBack'))).toBe(APP_BUNDLE_ID);
+async function identifierOf(plist: string): Promise<string | null> {
+  await mkdir(join(bundle, 'Contents'), { recursive: true });
+  await writeFile(join(bundle, 'Contents', 'Info.plist'), plist);
+  return readBundleIdentifier(bundle);
+}
+
+const ID = APP_BUNDLE_ID;
+
+describe('readBundleIdentifier (plutil)', () => {
+  it('lit l’identifiant d’un Info.plist', async () => {
+    expect(await identifierOf(fakePlist(ID, 'SayBack'))).toBe(ID);
   });
 
   it.each([
     ['vide', ''],
-    ['pas un plist', `{"CFBundleIdentifier":"${APP_BUNDLE_ID}"}`],
-    ['plist binaire', 'bplist00Ñ\u0001\u0002'],
+    ['plist binaire abîmé', 'bplist00Ñ\u0001\u0002'],
     ['clé absente', fakePlist('x', 'SayBack').replace('CFBundleIdentifier', 'CFBundleName')],
     [
       'valeur qui n’est pas une chaîne',
       '<plist><dict><key>CFBundleIdentifier</key><integer>1</integer></dict></plist>',
     ],
     [
-      'clé présente deux fois',
-      `<plist><dict><key>CFBundleIdentifier</key><string>${APP_BUNDLE_ID}</string><key>CFBundleIdentifier</key><string>autre</string></dict></plist>`,
-    ],
-    [
       'identifiant écrit dans un commentaire seulement',
-      `<plist><dict><!-- <key>CFBundleIdentifier</key><string>${APP_BUNDLE_ID}</string> --><key>CFBundleName</key><string>x</string></dict></plist>`,
+      `<plist><dict><!-- <key>CFBundleIdentifier</key><string>${ID}</string> --><key>CFBundleName</key><string>x</string></dict></plist>`,
     ],
     [
       'identifiant dans un dictionnaire imbriqué seulement',
-      `<plist><dict><key>Autre</key><dict><key>CFBundleIdentifier</key><string>${APP_BUNDLE_ID}</string></dict></dict></plist>`,
+      `<plist><dict><key>Autre</key><dict><key>CFBundleIdentifier</key><string>${ID}</string></dict></dict></plist>`,
     ],
-  ])('%s : null', (_label, xml) => {
-    expect(parseBundleIdentifier(xml)).toBeNull();
+  ])('%s : null', async (_label, plist) => {
+    expect(await identifierOf(plist)).toBeNull();
   });
 
-  it('un commentaire ne masque pas le vrai identifiant', () => {
-    const xml = `<plist><dict><!-- <key>CFBundleIdentifier</key><string>${APP_BUNDLE_ID}</string> --><key>CFBundleIdentifier</key><string>com.autre</string></dict></plist>`;
-    expect(parseBundleIdentifier(xml)).toBe('com.autre');
+  it('ni un commentaire ni une clé répétée ne font passer un autre paquet pour SayBack', async () => {
+    const commented = `<plist><dict><!-- <key>CFBundleIdentifier</key><string>${ID}</string> --><key>CFBundleIdentifier</key><string>com.autre</string></dict></plist>`;
+    expect(await identifierOf(commented)).toBe('com.autre');
+    const repeated = `<plist><dict><key>CFBundleIdentifier</key><string>${ID}</string><key>CFBundleIdentifier</key><string>autre</string></dict></plist>`;
+    expect(await identifierOf(repeated)).not.toBe(ID);
+  });
+
+  it('un Info.plist démesuré n’est pas confié à plutil', async () => {
+    expect(await identifierOf(fakePlist(ID, 'SayBack') + ' '.repeat(2 * 1024 * 1024))).toBeNull();
   });
 });
 

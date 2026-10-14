@@ -15,6 +15,8 @@ export const UPDATES_DIR_NAME = 'updates';
 /** The manifest, written last and atomically. */
 export const UPDATE_MANIFEST_NAME = 'latest.json';
 export const UPDATE_MANIFEST_MAX_BYTES = 64 * 1024;
+/** app.asar weighs a few dozen MB; beyond this cap it is not ours and is not hashed. */
+export const ASAR_MAX_BYTES = 1024 * 1024 * 1024;
 /** Build identity, written by `scripts/build-info.ts` into `out/` (so into app.asar). */
 export const BUILD_INFO_FILE_NAME = 'build-info.json';
 /** `commit` of a build made outside a git repository. */
