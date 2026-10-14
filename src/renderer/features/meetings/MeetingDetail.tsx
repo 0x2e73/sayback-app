@@ -1,13 +1,19 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { DesktopApi, Folder, Meeting } from '../../../shared/contracts';
-import { Notice } from '../../components/ui';
-import type { PlayerHandle } from './MediaPlayer';
-import { MeetingHeader } from './MeetingHeader';
-import { MeetingContent } from './MeetingContent';
-import { MeetingContext } from './MeetingContext';
+import { AnalysisLine } from './AnalysisStatus';
+import type { TimestampHandler } from './Clarifications';
 import { DeleteMeetingDialog } from './DeleteMeetingDialog';
+import { DetailNotices } from './DetailNotices';
+import { detailNotices } from './detail-notices';
+import { MeetingActions } from './MeetingActions';
+import { MeetingContent } from './MeetingContent';
+import { MeetingHeader } from './MeetingHeader';
+import { NotesView } from './NotesView';
+import { PlaybackBar } from './PlaybackBar';
+import { Transcript } from './Transcript';
+import { useMediaPlayback } from './use-media-playback';
+import { VideoBlock } from './VideoBlock';
 import { useMeetingActions } from './use-meeting-actions';
-import { downloadMeeting } from './download-meeting';
 
 interface MeetingDetailProps {
   meeting: Meeting;
@@ -15,54 +21,65 @@ interface MeetingDetailProps {
   folders: Folder[];
   onUpdate(meeting: Meeting): void;
   onMove(meetingId: string, folderId: string | null): Promise<boolean>;
+  onCreateFolder(name: string): Promise<Folder | null>;
   onDeleted(): void;
   onSettings(): void;
 }
 
 export function MeetingDetail(props: MeetingDetailProps) {
-  const { meeting, api, folders, onUpdate, onMove, onDeleted, onSettings } = props;
-  const [at, setAt] = useState(0);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const player = useRef<PlayerHandle>(null);
+  const { meeting, api, onUpdate, onDeleted } = props;
   const actions = useMeetingActions({ api, meeting, onUpdate, onDeleted });
-  const error = actions.error || meeting.error;
+  const playback = useMediaPlayback(meeting);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const analyze = () => void actions.analyze();
+  // Lot 6 also switches to the transcript and highlights the source; lot 5 plays it.
+  const playSource: TimestampHandler = (at) => playback.playAt(at);
 
-  function seek(seconds: number) {
-    setAt(seconds);
-    player.current?.seek(seconds);
-  }
-
-  return (
-    <div className="detail-page">
+  const header = (
+    <>
       <MeetingHeader
         meeting={meeting}
-        folders={folders}
-        busy={actions.analyzing}
-        onMove={(folderId) => void onMove(meeting.id, folderId)}
-        onExport={() => downloadMeeting(meeting)}
-        onDelete={() => setConfirmDelete(true)}
+        folders={props.folders}
+        analyzing={actions.analyzing}
+        onMove={(folderId) => void props.onMove(meeting.id, folderId)}
+        onCreateFolder={props.onCreateFolder}
       />
-      {error && <Notice tone={actions.error ? 'danger' : 'warning'}>{error}</Notice>}
-      <div className="detail-grid">
-        <MeetingContent
+      <DetailNotices
+        notices={detailNotices(meeting, actions.error, actions.analyzing)}
+        canRetry={meeting.audioChunks.length > 0}
+        onRetry={analyze}
+      />
+      {meeting.hasVideo && <VideoBlock mediaProps={playback.mediaProps} />}
+    </>
+  );
+
+  return (
+    <div className="meeting-detail">
+      {actions.analyzing && <AnalysisLine meeting={meeting} />}
+      <MeetingContent
+        header={header}
+        notes={
+          <NotesView
+            meeting={meeting}
+            at={playback.at}
+            analyzing={actions.analyzing}
+            saving={actions.saving}
+            onAnalyze={analyze}
+            onSettings={props.onSettings}
+            onTimestamp={playSource}
+            onClarify={actions.clarify}
+          />
+        }
+        transcript={<Transcript meeting={meeting} at={playback.at} onSeek={playback.playAt} />}
+      />
+      <footer className="playback-bar">
+        <PlaybackBar playback={playback} hasVideo={meeting.hasVideo} />
+        <MeetingActions
           meeting={meeting}
-          at={at}
-          analyzing={actions.analyzing}
-          onAnalyze={() => void actions.analyze()}
-          onSettings={onSettings}
-          onSeek={seek}
+          busy={actions.analyzing}
+          onDelete={() => setConfirmDelete(true)}
         />
-        <MeetingContext
-          meeting={meeting}
-          playerRef={player}
-          at={at}
-          analyzing={actions.analyzing}
-          saving={actions.saving}
-          onTime={setAt}
-          onSeek={seek}
-          onClarify={actions.clarify}
-        />
-      </div>
+      </footer>
       {confirmDelete && (
         <DeleteMeetingDialog
           busy={actions.deleting}

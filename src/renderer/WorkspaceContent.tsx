@@ -18,6 +18,7 @@ interface WorkspaceContentProps {
   onStop(): void;
   onUpdate(meeting: Meeting): void;
   onMove(meetingId: string, folderId: string | null): Promise<boolean>;
+  onCreateFolder(name: string): Promise<Folder | null>;
   onDeleted(meetingId: string): void;
   onSettings(): void;
   onShowOnboarding(): void;
@@ -47,6 +48,7 @@ export function WorkspaceContent(props: WorkspaceContentProps) {
         folders={props.folders}
         onUpdate={props.onUpdate}
         onMove={props.onMove}
+        onCreateFolder={props.onCreateFolder}
         onDeleted={() => props.onDeleted(selected.id)}
         onSettings={props.onSettings}
       />

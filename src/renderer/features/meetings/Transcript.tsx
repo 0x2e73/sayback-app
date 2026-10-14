@@ -21,7 +21,7 @@ function TranscriptEmpty({ status }: { status: MeetingStatus }) {
     <p className="muted">
       {status === 'processing'
         ? 'La transcription arrive au fur et à mesure de l’analyse.'
-        : 'La transcription commence avec la génération du compte rendu, depuis l’onglet Compte rendu.'}
+        : 'La transcription commence avec la génération du compte rendu, depuis l’onglet Notes.'}
     </p>
   );
 }

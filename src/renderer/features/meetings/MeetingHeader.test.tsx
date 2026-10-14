@@ -14,16 +14,15 @@ const folders = [
   { id: 'f2', name: 'Interne', createdAt: '' },
 ];
 
-function renderHeader(meeting: Meeting) {
+function renderHeader(meeting: Meeting, analyzing = false) {
   const onMove = vi.fn();
   render(
     <MeetingHeader
       meeting={meeting}
       folders={folders}
-      busy={false}
+      analyzing={analyzing}
       onMove={onMove}
-      onExport={vi.fn()}
-      onDelete={vi.fn()}
+      onCreateFolder={vi.fn(async () => null)}
     />,
   );
   return { onMove, select: screen.getByRole('combobox', { name: 'Dossier de la réunion' }) };
@@ -57,4 +56,43 @@ it('opens a meeting whose date is unreadable', () => {
   renderHeader(meetingFixture('m1', 'Revue', 'nope'));
   expect(screen.getByRole('heading', { level: 1, name: 'Revue' })).toBeInTheDocument();
   expect(screen.getByText('Date inconnue')).toBeInTheDocument();
+});
+
+it('reads in one line: folder, date, duration and status', () => {
+  renderHeader(meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z', { duration: 3130 }));
+  expect(screen.getByText('Ajouter à un dossier…')).toBeInTheDocument();
+  expect(screen.getByText('14 oct. 2026')).toBeInTheDocument();
+  expect(screen.getByText('52 min')).toBeInTheDocument();
+  expect(screen.getByText('À analyser')).toBeInTheDocument();
+});
+
+it('shows the analysis progress in place of the status', () => {
+  const meeting = meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z', {
+    status: 'processing',
+    audioChunks: Array.from({ length: 12 }, (_, index) => ({
+      index,
+      start: index * 60,
+      duration: 60,
+      transcript: index < 3 ? [] : null,
+    })),
+  });
+  renderHeader(meeting, true);
+  expect(screen.getByRole('status')).toHaveTextContent('Analyse en cours · 3 segments sur 12');
+  expect(screen.queryByText('Analyse en cours')).toBeNull();
+});
+
+it('has no summary sentence under the title', () => {
+  renderHeader(
+    meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z', {
+      status: 'ready',
+      notes: {
+        summary: 'On valide le budget.',
+        keyPoints: [],
+        decisions: [],
+        actions: [],
+        questions: [],
+      },
+    }),
+  );
+  expect(screen.queryByText('On valide le budget.')).toBeNull();
 });

@@ -93,6 +93,7 @@ export function App({ api }: AppProps) {
           onStop={recording.stop}
           onUpdate={library.update}
           onMove={folders.move}
+          onCreateFolder={folders.create}
           onDeleted={workspace.deleted}
           onSettings={workspace.showSettings}
           onShowOnboarding={onboarding.reopen}
