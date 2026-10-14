@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   margin-bottom: 14px;
 }
 
@@ -51,7 +51,7 @@
 
   .meeting-row:hover .row-arrow {
     transform: translate(2px, -2px);
-    color: #3974d6;
+    color: var(--color-accent);
   }
 }
 
@@ -71,19 +71,19 @@
 }
 .meeting-list {
   overflow: hidden;
-  border: 1px solid #e3e9ee;
-  border-radius: 15px;
-  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
 }
 .meeting-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   width: 100%;
   padding: 18px;
   border: 0;
-  border-bottom: 1px solid #edf0f3;
-  background: #fff;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
   text-align: left;
 }
 .meeting-row[draggable='true'] {
@@ -97,7 +97,7 @@
 .meeting-row-open {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   flex: 1;
   min-width: 0;
   border: 0;
@@ -106,16 +106,16 @@
 }
 .row-grip {
   flex: none;
-  color: #9baabb;
+  color: var(--color-text-subtle);
 }
 .meeting-folder-select {
   width: 142px;
   padding: 7px 8px;
-  border: 1px solid #dbe5ef;
-  border-radius: 8px;
-  background: #fff;
-  color: #526476;
-  font-size: 0.78rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-caption);
 }
 .folder-section {
   margin: 28px 0 30px;
@@ -125,59 +125,59 @@
 .library-search-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .folder-section-heading {
   justify-content: space-between;
   margin-bottom: 12px;
 }
 .folder-section-heading strong {
-  font-size: 0.92rem;
+  font-size: var(--text-body);
 }
 .folder-create {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   padding: 7px 10px;
-  border: 1px solid #dce6f1;
-  border-radius: 9px;
-  background: #fff;
-  color: #243b55;
-  font-size: 0.8rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-caption);
 }
 .folder-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .folder-entry {
   display: flex;
   align-items: center;
-  border: 1px solid #dce6f1;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 .folder-item {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
+  gap: var(--space-3);
   min-height: 47px;
   padding: 10px 14px;
-  border: 1px solid #dce6f1;
-  border-radius: 12px;
-  background: #fff;
-  color: #263a50;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
   white-space: nowrap;
 }
 .folder-entry .folder-item {
   border: 0;
 }
 .folder-item[aria-pressed='true'] {
-  background: #edf4ff;
-  border-color: #b9d2f7;
+  background: var(--color-surface-raised);
+  border-color: var(--color-accent-soft);
 }
 .folder-item small {
-  color: #8696a7;
+  color: var(--color-text-subtle);
   font-variant-numeric: tabular-nums;
 }
 .folder-action {
@@ -187,19 +187,19 @@
   height: 32px;
   margin-right: 3px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: #8696a7;
+  color: var(--color-text-subtle);
 }
 .folder-action:hover {
-  background: #f1f5fa;
-  color: #263a50;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .folder-form {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   margin-bottom: 12px;
 }
 .folder-form .field-control {
@@ -208,25 +208,24 @@
 }
 .folder-hint {
   margin: 9px 0 0;
-  color: #8797a7;
-  font-size: 0.76rem;
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
 }
 .search-scope {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #65778b;
-  font-size: 0.78rem;
+  gap: var(--space-2);
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
   white-space: nowrap;
 }
 .library-result-heading strong {
-  font-size: 0.92rem;
+  font-size: var(--text-body);
 }
 .folder-item[data-drag-over='true'],
 .folder-entry[data-drag-over='true'] {
-  outline: 2px solid #3974d6;
-  background: #eaf3ff;
-  box-shadow: 0 9px 25px #3974d62e;
+  outline: 2px solid var(--color-accent);
+  background: var(--color-surface-raised);
   transform: translateY(-4px) scale(1.025);
 }
 .folder-entry[data-drag-over='true'] .folder-item {
@@ -239,7 +238,7 @@
 @keyframes folder-land {
   50% {
     transform: scale(1.045);
-    background: #dcf4e9;
+    background: color-mix(in srgb, var(--color-ready) 14%, transparent);
   }
 }
 @media (hover: hover) and (pointer: fine) {
@@ -285,7 +284,7 @@
   border-bottom: 0;
 }
 .meeting-row:hover {
-  background: #f7f9fb;
+  background: var(--color-surface-raised);
 }
 .meeting-row-main {
   flex: 1;
@@ -299,19 +298,19 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-  color: #788795;
-  font-size: 0.78rem;
+  gap: var(--space-2);
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
 }
 .meeting-row-meta svg {
   flex: none;
 }
 .row-arrow {
-  color: #a8b3bc;
+  color: var(--color-text-subtle);
 }
 .dot-separator {
-  color: #b5bec5;
+  color: var(--color-text-subtle);
 }
 .empty-state,
 .empty-search {
@@ -324,15 +323,15 @@
   width: 92px;
   height: 92px;
   margin: 0 auto 24px;
-  border: 1px solid #e4ebf3;
-  border-radius: 50%;
-  background: #f8fbff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
 }
 .empty-document {
-  color: #6e9ed8;
+  color: var(--color-accent);
 }
 .empty-footnote {
   margin-top: 26px;
-  color: #9aa5ae;
-  font-size: 0.78rem;
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
 }

@@ -6,7 +6,12 @@ const rendererDir = import.meta.dirname;
 const read = (path: string) => readFileSync(join(rendererDir, path), 'utf8');
 
 // Each task adds the sheets it migrates. Task 7 replaces this list with every sheet.
-const migratedSheets = ['styles.css', 'styles/shared.css', 'styles/recording.css'];
+const migratedSheets = [
+  'styles.css',
+  'styles/shared.css',
+  'styles/recording.css',
+  'styles/library.css',
+];
 
 const colourLiteral = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:white|black)\b/i;
 const tokenOnly = /^(?:font-size|border-radius|gap|row-gap|column-gap)$/;
