@@ -46,7 +46,7 @@ const api: DesktopApi = {
       ipcRenderer.removeListener('window:full-screen-changed', relay);
     };
   },
-  announceRecording: (state) => ipcRenderer.invoke('menu-bar:recording', state),
+  announceRecordingState: (state) => ipcRenderer.invoke('recording:state', state),
   onMenuBarNewRecording: (listener) => listenTo('menu-bar:new-recording', listener),
   onMenuBarStopRecording: (listener) => listenTo('menu-bar:stop-recording', listener),
   getUpdateStatus: () => ipcRenderer.invoke('updates:status'),

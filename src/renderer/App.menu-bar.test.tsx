@@ -22,7 +22,15 @@ class FakeSession {
   meeting = { ...finished, status: 'recording' as const };
   analyser = { frequencyBinCount: 4, getByteFrequencyData: () => {} };
   stop = vi.fn(async () => finished);
-  togglePause = vi.fn();
+  pauseListeners = new Set<() => void>();
+  togglePause = vi.fn(() => {
+    this.paused = !this.paused;
+    this.pauseListeners.forEach((listener) => listener());
+  });
+  onPauseChange(listener: () => void) {
+    this.pauseListeners.add(listener);
+    return () => this.pauseListeners.delete(listener);
+  }
 }
 
 interface Fixture {
@@ -41,7 +49,7 @@ function menuBarApi(): Fixture {
   api.getSettings = () => ok({ ...settings, hasOpenAiKey: true });
   api.getSources = () => ok([{ id: 's:1', name: 'Écran', thumbnail: 'data:image/png;base64,a' }]);
   api.processMeeting = () => ok({ ...finished, status: 'ready' });
-  api.announceRecording = announce;
+  api.announceRecordingState = announce;
   api.onMenuBarNewRecording = (listener) => {
     listeners.create = listener;
     return unsubscribed;
@@ -89,12 +97,27 @@ describe('Menu bar events in the page', () => {
     await waitFor(() =>
       expect(menu.announce).toHaveBeenLastCalledWith({
         recording: true,
-        startedAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/),
+        elapsed: 90,
+        paused: false,
       }),
     );
     menu.stopRecording();
     await waitFor(() => expect(session.stop).toHaveBeenCalledOnce());
     await waitFor(() => expect(menu.announce).toHaveBeenLastCalledWith({ recording: false }));
+  });
+
+  it('announces every pause and resume with the time recorded so far', async () => {
+    const user = userEvent.setup();
+    const menu = menuBarApi();
+    render(<App api={menu.api} />);
+    menu.newRecording();
+    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
+    await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
+    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    await user.click(await screen.findByRole('button', { name: 'Pause' }));
+    expect(menu.announce).toHaveBeenLastCalledWith({ recording: true, elapsed: 90, paused: true });
+    await user.click(screen.getByRole('button', { name: 'Reprendre' }));
+    expect(menu.announce).toHaveBeenLastCalledWith({ recording: true, elapsed: 90, paused: false });
   });
 
   it('ignores a stop request when nothing is recording', async () => {

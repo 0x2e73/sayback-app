@@ -24,6 +24,7 @@ class FakeSession {
   analyser = { frequencyBinCount: 4, getByteFrequencyData: () => {} };
   stop = vi.fn(async () => finished);
   togglePause = vi.fn();
+  onPauseChange = () => () => false;
 }
 
 let session: FakeSession;

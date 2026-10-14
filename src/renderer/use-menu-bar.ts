@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { DesktopApi } from '../shared/contracts';
+import type { RecordingState } from '../shared/recording-state';
 import type { CaptureSession } from './features/recording/capture-session';
 
 interface MenuBarHandlers {
@@ -9,7 +10,7 @@ interface MenuBarHandlers {
 
 type MenuBarApi = Pick<
   DesktopApi,
-  'announceRecording' | 'onMenuBarNewRecording' | 'onMenuBarStopRecording'
+  'announceRecordingState' | 'onMenuBarNewRecording' | 'onMenuBarStopRecording'
 >;
 
 // The menu bar icon of the main process starts a recording, stops it, and shows its timer.
@@ -34,11 +35,13 @@ export function useMenuBar(
   }, [api]);
 
   useEffect(() => {
-    // The page's own elapsed time is the source: the start is derived once per recording.
-    const startedAt = capture ? new Date(Date.now() - capture.elapsed * 1000).toISOString() : null;
-    const state = startedAt
-      ? { recording: true as const, startedAt }
-      : { recording: false as const };
-    void api.announceRecording(state).catch(() => undefined);
+    const announce = () => {
+      const state: RecordingState = capture
+        ? { recording: true, elapsed: capture.elapsed, paused: capture.paused }
+        : { recording: false };
+      void api.announceRecordingState(state).catch(() => undefined);
+    };
+    announce();
+    return capture?.onPauseChange(announce);
   }, [api, capture]);
 }

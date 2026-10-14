@@ -16,6 +16,7 @@ export class CaptureSession {
   private readonly started = performance.now();
   private pausedAt = 0;
   private pausedDuration = 0;
+  private readonly pauseListeners = new Set<() => void>();
   private audioIndex = 0;
   private videoIndex = 0;
   private frameIndex = 0;
@@ -203,6 +204,12 @@ export class CaptureSession {
       if (this.audioRecorder?.state === 'recording') this.audioRecorder.pause();
       if (this.videoRecorder?.state === 'recording') this.videoRecorder.pause();
     }
+    this.pauseListeners.forEach((listener) => listener());
+  }
+  /** Called on every pause and resume. Returns the unsubscribe function. */
+  onPauseChange(listener: () => void): () => void {
+    this.pauseListeners.add(listener);
+    return () => this.pauseListeners.delete(listener);
   }
   private stopRecorder(recorder?: MediaRecorder): Promise<void> {
     if (!recorder || recorder.state === 'inactive') return Promise.resolve();

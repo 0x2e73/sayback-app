@@ -1,4 +1,4 @@
-import { recordingAnnouncementSchema, type RecordingAnnouncement } from '../shared/menu-bar';
+import { recordingStateSchema, type RecordingState } from '../shared/recording-state';
 import type { RegisterHandler } from './ipc';
 import {
   chronoLabel,
@@ -21,7 +21,7 @@ interface MenuBarDeps {
 }
 
 export interface MenuBar {
-  announce(state: RecordingAnnouncement): void;
+  announce(state: RecordingState): void;
   destroy(): void;
 }
 
@@ -40,17 +40,21 @@ export function createMenuBar({
     timer = undefined;
   }
 
-  function announce(state: RecordingAnnouncement): void {
+  function announce(state: RecordingState): void {
     stopTimer();
     tray.setContextMenu(buildMenu(menuBarTemplate(state.recording, actions)));
     if (!state.recording) {
       tray.setTitle('');
       return;
     }
-    const startedAt = Date.parse(state.startedAt);
-    const refresh = () => tray.setTitle(chronoLabel((now() - startedAt) / 1000));
-    refresh();
-    timer = setInterval(refresh, 1000);
+    const announcedAt = now();
+    const label = () => chronoLabel(state.elapsed + (now() - announcedAt) / 1000);
+    if (state.paused) {
+      tray.setTitle(chronoLabel(state.elapsed));
+      return;
+    }
+    tray.setTitle(label());
+    timer = setInterval(() => tray.setTitle(label()), 1000);
   }
 
   function destroy(): void {
@@ -66,8 +70,8 @@ export function registerMenuBarHandlers(
   menuBar: Pick<MenuBar, 'announce'>,
   rendererReady: () => void,
 ): void {
-  handle('menu-bar:recording', (input) => {
-    menuBar.announce(recordingAnnouncementSchema.parse(input));
+  handle('recording:state', (input) => {
+    menuBar.announce(recordingStateSchema.parse(input));
     rendererReady();
   });
 }

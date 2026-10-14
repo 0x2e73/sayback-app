@@ -43,9 +43,9 @@ describe('createMenuBar', () => {
     expect(titles).toEqual([]);
   });
 
-  it('shows the timer every second during a recording, then clears it', () => {
+  it('counts from the announced elapsed time every second, then clears the title', () => {
     const { menuBar, titles, menus } = fixture();
-    menuBar.announce({ recording: true, startedAt: '2026-10-14T09:59:55.000Z' });
+    menuBar.announce({ recording: true, elapsed: 5, paused: false });
     expect(menus.at(-1)?.[0]?.label).toBe('Arrêter l’enregistrement');
     vi.advanceTimersByTime(2000);
     expect(titles).toEqual(['00:05', '00:06', '00:07']);
@@ -56,24 +56,36 @@ describe('createMenuBar', () => {
     expect(menus.at(-1)?.[0]?.label).toBe('Nouvel enregistrement…');
   });
 
-  it('runs a single timer when the recording is announced twice', () => {
+  it('freezes the title while paused, then resumes from the announced time', () => {
     const { menuBar, titles } = fixture();
-    menuBar.announce({ recording: true, startedAt: '2026-10-14T10:00:00.000Z' });
-    menuBar.announce({ recording: true, startedAt: '2026-10-14T10:00:00.000Z' });
+    menuBar.announce({ recording: true, elapsed: 30, paused: false });
+    vi.advanceTimersByTime(2000);
+    menuBar.announce({ recording: true, elapsed: 32, paused: true });
+    vi.advanceTimersByTime(60_000);
+    expect(titles).toEqual(['00:30', '00:31', '00:32', '00:32']);
+    menuBar.announce({ recording: true, elapsed: 32, paused: false });
+    vi.advanceTimersByTime(1000);
+    expect(titles.slice(-2)).toEqual(['00:32', '00:33']);
+  });
+
+  it('keeps the stop entry while paused', () => {
+    const { menuBar, menus } = fixture();
+    menuBar.announce({ recording: true, elapsed: 3, paused: true });
+    expect(menus.at(-1)?.[0]?.label).toBe('Arrêter l’enregistrement');
+  });
+
+  it('runs a single timer when the state is announced twice', () => {
+    const { menuBar, titles } = fixture();
+    menuBar.announce({ recording: true, elapsed: 0, paused: false });
+    menuBar.announce({ recording: true, elapsed: 0, paused: false });
     titles.length = 0;
     vi.advanceTimersByTime(1000);
     expect(titles).toEqual(['00:01']);
   });
 
-  it('never shows a negative time for a start in the future', () => {
-    const { menuBar, titles } = fixture();
-    menuBar.announce({ recording: true, startedAt: '2026-10-14T10:05:00.000Z' });
-    expect(titles).toEqual(['00:00']);
-  });
-
   it('stops the timer and removes the icon when destroyed', () => {
     const { menuBar, tray, titles } = fixture();
-    menuBar.announce({ recording: true, startedAt: '2026-10-14T10:00:00.000Z' });
+    menuBar.announce({ recording: true, elapsed: 0, paused: false });
     menuBar.destroy();
     titles.length = 0;
     vi.advanceTimersByTime(3000);
@@ -91,16 +103,16 @@ describe('registerMenuBarHandlers', () => {
       handlers.set(channel, action);
     };
     registerMenuBarHandlers(handle, { announce }, ready);
-    const call = (input: unknown) => handlers.get('menu-bar:recording')?.(input);
+    const call = (input: unknown) => handlers.get('recording:state')?.(input);
     return { announce, ready, call };
   }
 
   it('passes a valid announcement on and tells the page is ready', () => {
     const { announce, ready, call } = registered();
-    call({ recording: true, startedAt: '2026-10-14T10:00:00.000Z' });
+    call({ recording: true, elapsed: 12.5, paused: true });
     call({ recording: false });
     expect(announce.mock.calls).toEqual([
-      [{ recording: true, startedAt: '2026-10-14T10:00:00.000Z' }],
+      [{ recording: true, elapsed: 12.5, paused: true }],
       [{ recording: false }],
     ]);
     expect(ready).toHaveBeenCalledTimes(2);
@@ -113,8 +125,13 @@ describe('registerMenuBarHandlers', () => {
     'recording',
     { recording: 'yes' },
     { recording: true },
-    { recording: true, startedAt: 'yesterday' },
-    { recording: true, startedAt: 42 },
+    { recording: true, elapsed: 3 },
+    { recording: true, paused: false },
+    { recording: true, elapsed: -1, paused: false },
+    { recording: true, elapsed: '3', paused: false },
+    { recording: true, elapsed: Infinity, paused: false },
+    { recording: true, elapsed: 1e9, paused: false },
+    { recording: true, elapsed: 3, paused: 'no' },
   ])('refuses %j without touching the menu bar', (input) => {
     const { announce, ready, call } = registered();
     expect(() => call(input)).toThrow();
