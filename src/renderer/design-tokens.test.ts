@@ -6,7 +6,7 @@ const rendererDir = import.meta.dirname;
 const read = (path: string) => readFileSync(join(rendererDir, path), 'utf8');
 
 // Each task adds the sheets it migrates. Task 7 replaces this list with every sheet.
-const migratedSheets = ['styles.css', 'styles/shared.css'];
+const migratedSheets = ['styles.css', 'styles/shared.css', 'styles/recording.css'];
 
 const colourLiteral = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:white|black)\b/i;
 const tokenOnly = /^(?:font-size|border-radius|gap|row-gap|column-gap)$/;
@@ -108,6 +108,15 @@ describe('design tokens', () => {
   ] as const)('%s stays readable over %j', (foreground, grounds, minimum) => {
     expect(contrast(foreground, ...grounds)).toBeGreaterThanOrEqual(minimum);
   });
+
+  it.each(['recording', 'recorded', 'processing', 'ready', 'error'])(
+    'styles the %s status',
+    (status) => {
+      expect(read('styles/recording.css')).toMatch(
+        new RegExp(`\\.badge-${status}(?:\\s*>\\s*span)?\\s*\\{`),
+      );
+    },
+  );
 
   it('paints the window with the page background before the CSS loads', () => {
     const windowSource = readFileSync(join(rendererDir, '../main/window.ts'), 'utf8');
