@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="body" gradientUnits="userSpaceOnUse" cx="430" cy="350" r="520">
+      <stop offset="0" stop-color="#cdbbff" />
+      <stop offset="0.45" stop-color="#8253ff" />
+      <stop offset="1" stop-color="#4a1fd6" />
+    </radialGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#e9ebf2" />
+    </linearGradient>
+    <path id="ghost" d="M322,440 A190,190 0 0 1 702,440 L702,650 A47.5,47.5 0 0 1 607,650 L607,720 A47.5,47.5 0 0 1 512,720 L512,690 A47.5,47.5 0 0 1 417,690 L417,630 A47.5,47.5 0 0 1 322,630 Z" />
+    <clipPath id="ghostClip">
+      <use href="#ghost" />
+    </clipPath>
+    <filter id="tileShadow" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0b0a1e" flood-opacity="0.26" />
+    </filter>
+    <filter id="drop" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#3410b8" flood-opacity="0.38" />
+    </filter>
+    <!-- Volume from two inner rims and a grain, no lighting primitives: those band at full size. -->
+    <filter id="volume" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="-24" dy="-30" result="shiftedUp" />
+      <feGaussianBlur in="shiftedUp" stdDeviation="30" result="softUp" />
+      <feComposite in="SourceAlpha" in2="softUp" operator="out" result="lowerRim" />
+      <feFlood flood-color="#1e0a80" flood-opacity="0.72" result="deep" />
+      <feComposite in="deep" in2="lowerRim" operator="in" result="shade" />
+      <feOffset in="SourceAlpha" dx="16" dy="20" result="shiftedDown" />
+      <feGaussianBlur in="shiftedDown" stdDeviation="20" result="softDown" />
+      <feComposite in="SourceAlpha" in2="softDown" operator="out" result="upperRim" />
+      <feFlood flood-color="#ffffff" flood-opacity="0.42" result="white" />
+      <feComposite in="white" in2="upperRim" operator="in" result="light" />
+      <feMerge result="lit">
+        <feMergeNode in="SourceGraphic" />
+        <feMergeNode in="shade" />
+        <feMergeNode in="light" />
+      </feMerge>
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="noise" />
+      <feColorMatrix in="noise" type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1" result="grey" />
+      <feBlend in="grey" in2="lit" mode="soft-light" result="grainy" />
+      <feComposite in="grainy" in2="SourceAlpha" operator="in" />
+    </filter>
+    <filter id="sheen" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <feGaussianBlur stdDeviation="20" />
+    </filter>
+    <filter id="glint" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <feGaussianBlur stdDeviation="5" />
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)" filter="url(#tileShadow)" />
+  <g filter="url(#drop)">
+    <use href="#ghost" fill="url(#body)" filter="url(#volume)" />
+    <g clip-path="url(#ghostClip)" fill="#ffffff">
+      <ellipse cx="432" cy="356" rx="84" ry="44" transform="rotate(-38 432 356)" opacity="0.5" filter="url(#sheen)" />
+      <ellipse cx="418" cy="338" rx="30" ry="13" transform="rotate(-38 418 338)" opacity="0.8" filter="url(#glint)" />
+    </g>
+    <path d="M440,474 Q462,440 484,474 M540,474 Q562,440 584,474" fill="none" stroke="#1b1640" stroke-width="15" stroke-linecap="round" />
+  </g>
+</svg>
