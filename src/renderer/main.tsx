@@ -10,7 +10,6 @@ import './styles/empty-state.css';
 import './styles/meeting-list.css';
 import './styles/folder-filter.css';
 import './styles/list-pane.css';
-import './styles/library.css';
 import './styles/meetings.css';
 import './styles/recording.css';
 import './styles/model-select.css';

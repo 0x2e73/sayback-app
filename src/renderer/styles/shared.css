@@ -1,16 +1,14 @@
 .settings-card,
 .notes-panel,
 .context-panel,
-.media-player,
-.empty-state {
+.media-player {
   padding: 24px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
 }
 .muted,
-.caption,
-.count {
+.caption {
   color: var(--color-text-subtle);
 }
 .caption {

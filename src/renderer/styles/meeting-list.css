@@ -12,7 +12,7 @@
   font-size: var(--text-caption);
   font-weight: 600;
 }
-.meeting-list .meeting-row {
+.meeting-row {
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
@@ -22,19 +22,19 @@
   cursor: default;
   user-select: none;
 }
-.meeting-list .meeting-row:hover {
+.meeting-row:hover {
   background: var(--color-surface);
 }
-.meeting-list .meeting-row[aria-selected='true'] {
+.meeting-row[aria-selected='true'] {
   background: var(--color-surface-raised);
 }
-.meeting-list .meeting-row[aria-disabled='true'] {
+.meeting-row[aria-disabled='true'] {
   opacity: 0.55;
 }
-.meeting-list .meeting-row.is-dragging {
+.meeting-row.is-dragging {
   opacity: 0.5;
 }
-.meeting-list .meeting-row:focus-visible {
+.meeting-row:focus-visible {
   outline-offset: -2px;
 }
 .meeting-row-heading {

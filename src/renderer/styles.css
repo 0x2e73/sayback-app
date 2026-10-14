@@ -195,18 +195,13 @@ p {
 .button,
 .chip,
 .folder-menu button,
-.nav-item,
 .tabs button,
 .meeting-row,
-.folder-item,
-.folder-entry,
-.folder-action,
 .transcript-turn,
 .timestamp-link,
 .capture-source-row,
 .model-select-trigger,
 .model-select-list button,
-.row-arrow,
 .field input,
 .field select,
 .field textarea,
@@ -300,8 +295,7 @@ p {
   grid-template-columns: var(--pane-list-width) minmax(0, 1fr);
   height: 100%;
 }
-.section-icon,
-.meeting-icon {
+.section-icon {
   display: inline-grid;
   place-items: center;
   flex: none;
@@ -319,34 +313,6 @@ p {
   font-size: var(--text-caption);
   font-weight: 600;
   letter-spacing: 0;
-}
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  padding: 11px 12px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  text-align: left;
-}
-.nav-item:hover,
-.nav-item.active {
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-}
-.nav-count {
-  margin-left: auto;
-  font-size: var(--text-caption);
-}
-.orbit-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-pill);
-  background: var(--color-ready);
 }
 .main-card {
   position: relative;

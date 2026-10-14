@@ -41,10 +41,11 @@ it('hands the band back to the page under a dialog or a full-screen video', () =
   );
 });
 
-it('keeps the left pane band on its own line in the narrow layout', () => {
-  expect(read('styles/recording.css')).toMatch(
-    /@media \(max-width: 800px\)[\s\S]*\.sidebar \.window-band\s*\{[^}]*flex-basis:\s*100%/,
-  );
+it('keeps the list beside the card in the narrow layout', () => {
+  const narrow =
+    /@media \(max-width: 800px\)\s*\{([\s\S]*?)\n\}/.exec(read('styles/recording.css'))?.[1] ?? '';
+  expect(narrow).not.toMatch(/\.app-shell|\.sidebar/);
+  expect(narrow).toMatch(/\.page-content\s*\{/);
 });
 
 it('keeps the onboarding logo clear of the traffic lights in one column', () => {
