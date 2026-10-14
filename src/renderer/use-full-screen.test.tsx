@@ -2,6 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import type { Result } from '../shared/contracts';
 import { ok } from './test-api';
 import { useFullScreen } from './use-full-screen';
 
@@ -38,4 +39,25 @@ it('stops listening when the app goes away', () => {
   const view = renderHook(() => useFullScreen(api));
   view.unmount();
   expect(stop).toHaveBeenCalledOnce();
+});
+
+it('ignores the answer to isFullScreen once a change event has arrived', async () => {
+  let answer: (result: Result<boolean>) => void = () => {};
+  const { api, emit } = fakeApi(false);
+  const slow = { ...api, isFullScreen: () => new Promise<Result<boolean>>((r) => (answer = r)) };
+  renderHook(() => useFullScreen(slow));
+  emit(false);
+  answer({ ok: true, value: true });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(document.documentElement).not.toHaveAttribute('data-fullscreen');
+});
+
+it('takes the answer to isFullScreen when no event came first', async () => {
+  let answer: (result: Result<boolean>) => void = () => {};
+  const { api } = fakeApi(false);
+  const slow = { ...api, isFullScreen: () => new Promise<Result<boolean>>((r) => (answer = r)) };
+  renderHook(() => useFullScreen(slow));
+  answer({ ok: true, value: true });
+  await waitFor(() => expect(document.documentElement).toHaveAttribute('data-fullscreen'));
 });

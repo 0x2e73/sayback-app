@@ -8,11 +8,16 @@ function markFullScreen(fullScreen: boolean): void {
 export function useFullScreen(api: Pick<DesktopApi, 'isFullScreen' | 'onFullScreenChange'>): void {
   useEffect(() => {
     let mounted = true;
-    const stop = api.onFullScreenChange(markFullScreen);
+    // An event is newer than the answer to a question asked before it.
+    let eventSeen = false;
+    const stop = api.onFullScreenChange((fullScreen) => {
+      eventSeen = true;
+      markFullScreen(fullScreen);
+    });
     void api
       .isFullScreen()
       .then((result) => {
-        if (mounted && result.ok) markFullScreen(result.value);
+        if (mounted && !eventSeen && result.ok) markFullScreen(result.value);
       })
       .catch(() => undefined);
     return () => {

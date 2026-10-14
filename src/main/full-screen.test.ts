@@ -5,7 +5,11 @@ import { registerWindowHandlers, relayFullScreen } from './full-screen';
 
 class FakeWindow extends EventEmitter {
   fullScreen = false;
-  readonly webContents = { send: vi.fn<(channel: string, fullScreen: boolean) => void>() };
+  destroyed = false;
+  readonly webContents = {
+    send: vi.fn<(channel: string, fullScreen: boolean) => void>(),
+    isDestroyed: () => this.destroyed,
+  };
   isFullScreen(): boolean {
     return this.fullScreen;
   }
@@ -30,6 +34,16 @@ describe('relayFullScreen', () => {
       ['window:full-screen-changed', true],
       ['window:full-screen-changed', false],
     ]);
+  });
+});
+
+describe('relayFullScreen on a closing window', () => {
+  it('sends nothing once the page is gone', () => {
+    const window = new FakeWindow();
+    relayFullScreen(window);
+    window.destroyed = true;
+    expect(() => window.emit('leave-full-screen')).not.toThrow();
+    expect(window.webContents.send).not.toHaveBeenCalled();
   });
 });
 
