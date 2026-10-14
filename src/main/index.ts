@@ -1,4 +1,4 @@
-import { app, protocol, safeStorage, type BrowserWindow } from 'electron';
+import { app, nativeTheme, protocol, safeStorage, type BrowserWindow } from 'electron';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -46,6 +46,8 @@ function openWindow() {
 }
 
 void app.whenReady().then(() => {
+  // The app has a single dark theme: title bar, menus and system dialogs follow it.
+  nativeTheme.themeSource = 'dark';
   const root = app.getPath('userData');
   const desktop = createServices(root, {
     available: () => safeStorage.isEncryptionAvailable(),

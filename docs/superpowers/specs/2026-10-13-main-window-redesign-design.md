@@ -69,7 +69,7 @@ Window 1320×870 (min 900×650), vibrancy behind everything, no separate title b
 
 Removed: `Sidebar`, `.topbar`, `.workspace-footer`, the Library page (eyebrow, `h1`, subtitle, intro strip, folder row, toolbar), the five slogans.
 
-Window options, macOS, to confirm by the throwaway build: `titleBarStyle: 'hiddenInset'`, `trafficLightPosition: { x: 16, y: 18 }`, `vibrancy: 'sidebar'`, `visualEffectState: 'active'`, `backgroundColor: '#00000000'`, no `transparent`, `show: false` until `ready-to-show`. In full screen the traffic lights disappear and `--traffic-inset` drops to 0. Windows and Linux keep the default frame, an opaque `#10141d` background and no vibrancy.
+Window options, macOS, to confirm by the throwaway build: `titleBarStyle: 'hiddenInset'`, `trafficLightPosition: { x: 16, y: 18 }`, `vibrancy: 'sidebar'`, `visualEffectState: 'active'`, `backgroundColor: '#00000000'`, no `transparent`, `show: false` until `ready-to-show`. In full screen the traffic lights disappear and `--traffic-inset` drops to 0. Windows and Linux keep the default frame, an opaque `#0f1117` background (`--color-bg`, pinned by `design-tokens.test.ts`) and no vibrancy. On macOS the transparent background replaces that pin, and the test changes with it.
 
 ## Screens
 
