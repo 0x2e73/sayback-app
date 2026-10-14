@@ -7,15 +7,25 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button(props: ButtonProps) {
-  const { variant = 'primary', className = '', busy, children, disabled, ...attributes } = props;
+  const {
+    variant = 'primary',
+    className = '',
+    busy = false,
+    type = 'button',
+    children,
+    disabled,
+    ...attributes
+  } = props;
   return (
     <button
+      type={type}
       className={`button button-${variant} ${className}`}
       disabled={disabled || busy}
+      aria-busy={busy || undefined}
       {...attributes}
     >
-      {busy && <LoaderCircle size={16} className="spin" />}
-      {children}
+      <span className="button-label">{children}</span>
+      {busy && <LoaderCircle size={16} className="spin button-spinner" aria-hidden="true" />}
     </button>
   );
 }

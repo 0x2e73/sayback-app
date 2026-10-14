@@ -157,6 +157,20 @@ p {
     color var(--duration-fast) var(--ease-out);
 }
 
+.button {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.button[aria-busy='true'] .button-label {
+  visibility: hidden;
+}
+
 .spin {
   animation: spin var(--duration-loop) linear infinite;
 }
@@ -186,6 +200,16 @@ p {
   }
   .spin {
     animation: none;
+  }
+  .button:active:not(:disabled) {
+    transform: none;
+  }
+  .button[aria-busy='true'] .button-label {
+    visibility: visible;
+    opacity: 0.4;
+  }
+  .button[aria-busy='true'] .button-spinner {
+    display: none;
   }
 }
 
