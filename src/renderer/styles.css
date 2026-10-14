@@ -91,7 +91,8 @@ select option {
 button {
   cursor: pointer;
 }
-button:disabled {
+button:disabled,
+button[aria-disabled='true'] {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -164,11 +165,11 @@ p {
     color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
-.button:active:not(:disabled) {
+.button:active:not(:disabled, [aria-disabled='true']) {
   transform: scale(0.97);
 }
 .button[aria-busy='true'] .button-label {
-  visibility: hidden;
+  opacity: 0;
 }
 
 .spin {
@@ -201,11 +202,10 @@ p {
   .spin {
     animation: none;
   }
-  .button:active:not(:disabled) {
+  .button:active:not(:disabled, [aria-disabled='true']) {
     transform: none;
   }
   .button[aria-busy='true'] .button-label {
-    visibility: visible;
     opacity: 0.4;
   }
   .button[aria-busy='true'] .button-spinner {

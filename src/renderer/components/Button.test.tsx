@@ -20,7 +20,7 @@ it('does not submit a form unless asked to', () => {
   expect(submit).toHaveBeenCalledOnce();
 });
 
-it('keeps its label while busy and blocks clicks', () => {
+it('stays focusable and inert while busy', () => {
   const click = vi.fn();
   render(
     <Button busy onClick={click}>
@@ -28,8 +28,37 @@ it('keeps its label while busy and blocks clicks', () => {
     </Button>,
   );
   const button = screen.getByRole('button', { name: 'Supprimer' });
-  expect(button).toBeDisabled();
+  expect(button).not.toBeDisabled();
+  expect(button).toHaveAttribute('aria-disabled', 'true');
   expect(button).toHaveAttribute('aria-busy', 'true');
+  button.focus();
+  expect(button).toHaveFocus();
+  fireEvent.click(button);
+  expect(click).not.toHaveBeenCalled();
+});
+
+it('does not submit a form while busy', () => {
+  const submit = vi.fn((event: Event) => event.preventDefault());
+  render(
+    <form onSubmit={(event) => submit(event.nativeEvent)}>
+      <Button type="submit" busy>
+        Enregistrer
+      </Button>
+    </form>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+  expect(submit).not.toHaveBeenCalled();
+});
+
+it('keeps native disabling for the disabled prop', () => {
+  const click = vi.fn();
+  render(
+    <Button disabled onClick={click}>
+      Exporter
+    </Button>,
+  );
+  const button = screen.getByRole('button', { name: 'Exporter' });
+  expect(button).toBeDisabled();
   fireEvent.click(button);
   expect(click).not.toHaveBeenCalled();
 });

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, MouseEvent } from 'react';
 import { LoaderCircle } from 'lucide-react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -14,15 +14,23 @@ export function Button(props: ButtonProps) {
     type = 'button',
     children,
     disabled,
+    onClick,
     ...attributes
   } = props;
+  // Busy keeps the button focusable (no `disabled`), so the focus survives the request.
+  function handleClick(event: MouseEvent<HTMLButtonElement>): void {
+    if (busy) event.preventDefault();
+    else onClick?.(event);
+  }
   return (
     <button
+      {...attributes}
       type={type}
       className={`button button-${variant} ${className}`}
-      disabled={disabled || busy}
+      disabled={disabled}
       aria-busy={busy || undefined}
-      {...attributes}
+      aria-disabled={busy || undefined}
+      onClick={handleClick}
     >
       <span className="button-label">{children}</span>
       {busy && <LoaderCircle size={16} className="spin button-spinner" aria-hidden="true" />}
