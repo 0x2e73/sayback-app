@@ -17,3 +17,4 @@ test-results/
 .vscode/
 TEST-MANUEL.md
 docs/handoff-*.md
+.claude/

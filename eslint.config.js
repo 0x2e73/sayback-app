@@ -3,7 +3,7 @@ import ts from 'typescript-eslint';
 import hooks from 'eslint-plugin-react-hooks';
 
 export default ts.config(
-  { ignores: ['node_modules/**', 'out/**', 'dist/**', 'test-results/**'] },
+  { ignores: ['node_modules/**', 'out/**', 'dist/**', 'test-results/**', '.claude/**'] },
   js.configs.recommended,
   ...ts.configs.recommended,
   {
