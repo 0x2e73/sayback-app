@@ -109,3 +109,48 @@ it('narrows the list and the card padding under 640 px', () => {
   expect(narrow).toMatch(/--pane-list-width:\s*clamp\(200px,\s*38vw,\s*280px\)/);
   expect(narrow).toMatch(/\.page-content\s*\{[^}]*padding-inline:\s*var\(--space-3\)/);
 });
+
+it('scrolls the meeting in one container under a sticky tab bar, above a fixed player bar', () => {
+  const detail = read('styles/meeting-detail.css');
+  expect(detail).toMatch(/\.page-content:has\(> \.meeting-detail\)\s*\{[^}]*overflow:\s*hidden/);
+  expect(detail).toMatch(/\.detail-scroll\s*\{[^}]*overflow-y:\s*auto/);
+  expect(detail).toMatch(/\.detail-tabs\s*\{[^}]*position:\s*sticky[^}]*top:\s*0/);
+  expect(read('styles/playback-bar.css')).toMatch(
+    /\.playback-bar\s*\{[^}]*flex:\s*none[^}]*height:\s*56px/,
+  );
+});
+
+it('no longer nests a scrolling frame in the transcript', () => {
+  expect(read('styles/meetings.css')).not.toMatch(
+    /\.transcript-turns\s*\{[^}]*(?:max-height|overflow-y)/,
+  );
+});
+
+it('draws the analysis line over the top of the card without moving the content', () => {
+  const detail = read('styles/meeting-detail.css');
+  expect(detail).toMatch(/\.analysis-line\s*\{[^}]*position:\s*absolute[^}]*top:\s*0/);
+  expect(detail).not.toMatch(/\.meeting-detail\s*\{[^}]*position:/);
+  expect(css()).toMatch(
+    /prefers-reduced-motion[\s\S]*\.analysis-line-bar[\s\S]*?transition:\s*none/,
+  );
+});
+
+it('reads the notes in a 680 px column', () => {
+  expect(tokenValue('--reading-width')).toBe('680px');
+  expect(read('styles/meeting-detail.css')).toMatch(
+    /\.detail-column\s*\{[^}]*max-width:\s*var\(--reading-width\)/,
+  );
+});
+
+it('keeps the floating notice above the player bar', () => {
+  expect(read('styles/meeting-detail.css')).toMatch(
+    /\.main-card:has\(\.playback-bar\) \.notice\.notice-floating\s*\{[^}]*bottom:/,
+  );
+});
+
+it('lays the full screen button over the corner of the video block', () => {
+  const detail = read('styles/meeting-detail.css');
+  expect(detail).toMatch(/\.detail-video-block\s*\{[^}]*position:\s*relative/);
+  expect(detail).toMatch(/\.detail-video-fullscreen\s*\{[^}]*position:\s*absolute/);
+  expect(detail).toMatch(/\.detail-video:fullscreen\s*\{[^}]*width:\s*100vw/);
+});

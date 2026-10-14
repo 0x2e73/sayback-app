@@ -311,8 +311,9 @@
   .page-content {
     padding: 8px 18px 50px;
   }
-  .detail-grid {
-    grid-template-columns: 1fr;
+  .detail-scroll,
+  .playback-bar {
+    padding-inline: 18px;
   }
 }
 /* Zoomed in on the smallest window, the card keeps room for its content. */
@@ -321,6 +322,10 @@
     --pane-list-width: clamp(200px, 38vw, 280px);
   }
   .page-content {
+    padding-inline: var(--space-3);
+  }
+  .detail-scroll,
+  .playback-bar {
     padding-inline: var(--space-3);
   }
 }
