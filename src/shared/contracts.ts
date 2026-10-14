@@ -1,8 +1,8 @@
 import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
-import type { UpdateStatus } from '../backend/domain/update';
+import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
-export type { UpdateInfo, UpdateStatus } from '../backend/domain/update';
+export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type {
   Segment,
   NoteItem,
@@ -95,10 +95,12 @@ export interface DesktopApi {
   /** Re-reads the update channel now. */
   checkForUpdate(): Promise<Result<UpdateStatus>>;
   /**
-   * Replaces the app with the staged version and relaunches it; the app quits right after the
-   * answer. Refused, with a sentence to display, during a recording or when nothing can install.
+   * Asks the user natively (« Installer et redémarrer » / « Plus tard »), then replaces the app
+   * with the staged version and relaunches it: `started` means the app quits right after the
+   * answer, `postponed` that nothing was done. Refused, with a sentence to display, during a
+   * recording or when nothing can install.
    */
-  installUpdate(): Promise<Result<void>>;
+  installUpdate(): Promise<Result<UpdateInstallOutcome>>;
   /** Called on every change of update state. Returns the unsubscribe function. */
   onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
 }

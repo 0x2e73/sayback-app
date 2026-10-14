@@ -10,18 +10,13 @@ import type { InstallTarget, UpdatePorts } from '../application/update-ports';
 import { createChannelReader } from './update-channel-reader';
 import {
   describeInstallCommand,
-  installArgs,
+  installCommand,
   launchDetached,
-  writeInstallScript,
+  terminateDetached,
   type InstallPlan,
 } from './update-install';
-import {
-  DITTO_PROGRAM,
-  INSTALL_SCRIPT_NAME,
-  INSTALL_SHELL,
-  OPEN_PROGRAM,
-} from './update-install-script';
-import { resolveInstallTarget } from './update-target';
+import { DITTO_PROGRAM, OPEN_PROGRAM } from './update-install-script';
+import { isQuarantined, resolveInstallTarget } from './update-target';
 import { appendLogLine } from './safe-files';
 
 /** The script waits this long for the app to end before giving up without touching anything. */
@@ -41,7 +36,9 @@ export interface LocalUpdateOptions {
   waitSeconds?: number;
   openProgram?: string;
   dittoProgram?: string;
-  launch?: (program: string, args: readonly string[]) => Promise<void>;
+  /** Launches the script detached and returns its pid. */
+  launch?: (program: string, args: readonly string[]) => Promise<number>;
+  terminate?: (pid: number) => void;
 }
 
 /** The build identity, or `null` when absent, oversized or of another shape. */
@@ -58,7 +55,13 @@ export async function readBuildInfo(path: string): Promise<BuildInfo | null> {
 
 type LocalPorts = Pick<
   UpdatePorts,
-  'loadBuildInfo' | 'channel' | 'locateTarget' | 'launchInstall' | 'log'
+  | 'loadBuildInfo'
+  | 'isQuarantined'
+  | 'channel'
+  | 'locateTarget'
+  | 'launchInstall'
+  | 'cancelInstall'
+  | 'log'
 >;
 
 /** The filesystem side of the update service. */
@@ -69,7 +72,7 @@ export function localUpdatePorts(options: LocalUpdateOptions): LocalPorts {
   const launch = options.launch ?? launchDetached;
   const appendLog = (line: string) => appendLogLine(logPath, line, UPDATE_LOG_MAX_BYTES);
 
-  async function launchInstall(manifest: UpdateManifest, target: InstallTarget): Promise<void> {
+  async function launchInstall(manifest: UpdateManifest, target: InstallTarget): Promise<number> {
     const plan: InstallPlan = {
       pid: options.pid ?? process.pid,
       stagedPath: join(updatesDir, manifest.bundle),
@@ -80,21 +83,20 @@ export function localUpdatePorts(options: LocalUpdateOptions): LocalPorts {
       openProgram: options.openProgram ?? OPEN_PROGRAM,
       dittoProgram: options.dittoProgram ?? DITTO_PROGRAM,
     };
-    const scriptPath = join(updatesDir, INSTALL_SCRIPT_NAME);
-    const args = installArgs(plan);
-    await writeInstallScript(scriptPath);
-    const command = describeInstallCommand(scriptPath, plan);
+    const command = installCommand(plan);
     await appendLog(
-      `${new Date().toISOString()} [app] installation de ${manifest.version} (${manifest.commit}) : ${command}\n`,
+      `${new Date().toISOString()} [app] installation de ${manifest.version} (${manifest.commit}) : ${describeInstallCommand(plan)}\n`,
     );
-    await launch(INSTALL_SHELL, [scriptPath, ...args]);
+    return launch(command.program, command.args);
   }
 
   return {
     loadBuildInfo: () => readBuildInfo(options.buildInfoPath),
+    isQuarantined: () => isQuarantined(options.exePath),
     channel: createChannelReader({ updatesDir, uid }),
     locateTarget: () => resolveInstallTarget({ exePath: options.exePath, uid, updatesDir }),
     launchInstall,
+    cancelInstall: options.terminate ?? terminateDetached,
     log: (message) => {
       appendLog(`${new Date().toISOString()} [app] ${message}\n`).catch(() => undefined);
     },

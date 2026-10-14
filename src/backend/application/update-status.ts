@@ -20,6 +20,10 @@ export const UPDATE_MESSAGES = {
   alreadyInstalling: 'Une installation est déjà en cours.',
   launchFailed: 'La mise à jour n’a pas pu être lancée. Rien n’a été modifié.',
   readFailed: 'Le canal de mise à jour n’a pas pu être lu.',
+  quarantined:
+    'Cette copie de SayBack a été téléchargée : le canal de mise à jour local est fermé.',
+  changedMeanwhile: 'Une autre version a été publiée entre-temps : relancez la mise à jour.',
+  installing: 'Installation en cours : SayBack va redémarrer.',
 } as const;
 
 /** What prevents installing, if anything. */
@@ -45,7 +49,7 @@ export interface Snapshot {
 /** Where the running app stands: not packaged, or the verdict on its location. */
 export type Placement = { packaged: false } | { packaged: true; verdict: TargetVerdict };
 
-function infoOf(manifest: UpdateManifest): UpdateInfo {
+export function infoOf(manifest: UpdateManifest): UpdateInfo {
   const { version, commit, builtAt, notes } = manifest;
   return { version, commit, builtAt, ...(notes === undefined ? {} : { notes }) };
 }

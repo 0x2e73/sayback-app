@@ -33,7 +33,9 @@ const dataRoot =
 mkdirSync(dataRoot, { recursive: true });
 app.setPath('userData', dataRoot);
 const rendererPath = join(import.meta.dirname, '../renderer/index.html');
-const rendererUrl = process.env.ELECTRON_RENDERER_URL ?? pathToFileURL(rendererPath).href;
+// The development server URL is never honoured by a packaged app.
+const devRendererUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
+const rendererUrl = devRendererUrl ?? pathToFileURL(rendererPath).href;
 let window: BrowserWindow | null = null;
 let services: DesktopServices | undefined;
 let updates: UpdateService | undefined;

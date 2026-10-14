@@ -9,6 +9,7 @@ import {
   realpath,
   rm,
   stat,
+  symlink,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -16,8 +17,13 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { APP_EXECUTABLE_NAME } from '../../shared/update-channel';
 import { sha256Of, writeFakeBundle } from './test-bundle';
-import { installArgs, writeInstallScript, type InstallPlan } from './update-install';
-import { INSTALL_EXIT } from './update-install-script';
+import { installArgs, type InstallPlan } from './update-install';
+import {
+  INSTALL_EXIT,
+  INSTALL_SCRIPT,
+  INSTALL_SCRIPT_LABEL,
+  INSTALL_SHELL,
+} from './update-install-script';
 
 // The install script, run for real by /bin/sh against fake bundles in a temporary folder: a fake
 // app process that ends, a witness instead of `open`, the real `ditto` or a sabotaged one. Paths
@@ -33,7 +39,6 @@ let target: string;
 let previous: string;
 let staged: string;
 let logPath: string;
-let scriptPath: string;
 let witness: string;
 let opened: string;
 
@@ -45,13 +50,11 @@ beforeEach(async () => {
   previous = join(appsDir, 'SayBack.previous.app');
   staged = join(channelRoot, 'updates', 'SayBack.app');
   logPath = join(channelRoot, 'logs', 'update.log');
-  scriptPath = join(channelRoot, 'updates', 'install-update.sh');
   witness = join(root, "témoin d'ouverture.sh");
   opened = `${witness}.ouvert`;
   await mkdir(join(channelRoot, 'logs'), { recursive: true });
   await writeFakeBundle(target, { asar: OLD });
   await writeFakeBundle(staged, { asar: NEW });
-  await writeInstallScript(scriptPath);
   // The fake `open` writes its arguments next to itself, one per line.
   await writeFile(
     witness,
@@ -96,10 +99,11 @@ function plan(patch: Partial<InstallPlan> = {}): InstallPlan {
   };
 }
 
-/** Runs the script like the app does (`/bin/sh <script> <args>`) and returns its exit code. */
+/** Runs the script like the app does (`/bin/sh -c <script> <label> <args>`): its exit code. */
 async function execute(args: readonly string[]): Promise<number> {
   try {
-    await run('/bin/sh', [scriptPath, ...args], { env: { PATH: '/usr/bin:/bin' } });
+    const argv = ['-c', INSTALL_SCRIPT, INSTALL_SCRIPT_LABEL, ...args];
+    await run(INSTALL_SHELL, argv, { env: { PATH: '/usr/bin:/bin' } });
     return 0;
   } catch (error) {
     if (error instanceof Error && 'code' in error && typeof error.code === 'number') {
@@ -189,6 +193,16 @@ describe('le script d’installation, exécuté pour de vrai', () => {
     expect(await asarOf(target)).toBe(OLD);
     expect(await readdir(appsDir)).toEqual(['SayBack.app']);
     expect(await openedPaths()).toEqual([]);
+  });
+
+  it('le journal est un lien symbolique : rien n’est écrit à travers lui', async () => {
+    const elsewhere = join(root, 'ailleurs.txt');
+    await writeFile(elsewhere, 'intact');
+    await rm(logPath, { force: true });
+    await symlink(elsewhere, logPath);
+    expect(await execute(installArgs(plan()))).toBe(INSTALL_EXIT.Installed);
+    expect(await readFile(elsewhere, 'utf8')).toBe('intact');
+    expect(await asarOf(target)).toBe(NEW);
   });
 
   it('rien du chemin n’est interprété par le shell', async () => {

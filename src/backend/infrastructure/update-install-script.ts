@@ -1,8 +1,10 @@
-// The install script: written by the app, launched DETACHED right before it quits. Its text is
-// FIXED; everything that varies arrives as arguments passed by `spawn` without a shell, and each
-// argument is read between double quotes. No path is ever interpolated into shell text.
+// The install script, launched DETACHED right before the app quits, as `/bin/sh -c <script>`:
+// it is never written to disk. Its text is FIXED; everything that varies arrives as arguments
+// passed by `spawn` without a shell, and each argument is read between double quotes. No path is
+// ever interpolated into shell text.
 
-export const INSTALL_SCRIPT_NAME = 'install-update.sh';
+/** `$0` of the script, shown by `ps`. */
+export const INSTALL_SCRIPT_LABEL = 'sayback-install';
 export const INSTALL_SHELL = '/bin/sh';
 /** `PATH` of the script: the system only. */
 export const INSTALL_PATH = '/usr/bin:/bin';
@@ -34,7 +36,7 @@ const exit = (code: number) => `exit ${String(code)}`;
  * 5. relaunch the app (`open`), new or restored. Every step is logged to `$5`.
  */
 export const INSTALL_SCRIPT = `#!/bin/sh
-# SayBack : installation d'une mise à jour locale. Écrit par l'app, lancé détaché juste avant qu'elle quitte.
+# SayBack : installation d'une mise à jour locale. Lancé détaché par l'app (sh -c) juste avant qu'elle quitte.
 # Ce texte est fixe : tout ce qui varie arrive en arguments.
 #   $1 pid de l'app            $2 paquet en attente        $3 paquet à remplacer (chemin réel)
 #   $4 SHA-256 de app.asar     $5 journal                  $6 attente maximale, en secondes
@@ -52,6 +54,11 @@ log="$5"
 wait_max="$6"
 open_bin="$7"
 ditto_bin="$8"
+
+# Never write through a link put in place of the log.
+if [ -L "$log" ]; then
+  log=/dev/null
+fi
 
 say() {
   printf '%s [%s] %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$$" "$*" >>"$log" 2>/dev/null

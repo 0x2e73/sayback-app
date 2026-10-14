@@ -12,7 +12,7 @@ import {
   type UpdateFixture,
 } from '../infrastructure/test-update-fixture';
 import { launchDetached } from '../infrastructure/update-install';
-import { INSTALL_SCRIPT } from '../infrastructure/update-install-script';
+import { INSTALL_SCRIPT, INSTALL_SCRIPT_LABEL } from '../infrastructure/update-install-script';
 import { UpdateRefusal } from './update-status';
 
 let f: UpdateFixture;
@@ -25,7 +25,6 @@ afterEach(async () => {
   await f.cleanup();
 });
 
-const scriptPath = () => join(f.updatesDir, 'install-update.sh');
 const asarOf = (path: string) => readFile(join(path, 'Contents', 'Resources', 'app.asar'), 'utf8');
 const exists = (path: string) =>
   stat(path).then(
@@ -68,11 +67,11 @@ describe('install refusé', () => {
     await expect(updates.install()).rejects.toThrow(/Arrêtez l’enregistrement/);
     expect(f.launches).toEqual([]);
     expect(f.quits).toBe(0);
-    expect(await exists(scriptPath())).toBe(false);
     expect(await exists(f.logPath)).toBe(false);
     expect(await asarOf(f.runningPath)).toBe(OLD_ASAR);
+    expect(f.confirms).toEqual([]);
     f.recording = false;
-    await updates.install();
+    expect(await updates.install()).toBe('started');
     expect(f.launches).toHaveLength(1);
   });
 
@@ -112,7 +111,7 @@ describe('install refusé', () => {
     expect(String(failure)).not.toContain('EAGAIN');
     await settle();
     expect(f.quits).toBe(0);
-    await updates.install();
+    expect(await updates.install()).toBe('started');
     expect(f.launches).toHaveLength(1);
   });
 
@@ -128,18 +127,21 @@ describe('install refusé', () => {
 });
 
 describe('install réussi', () => {
-  it('le script fixe est écrit, lancé détaché avec ses huit arguments, puis l’app quitte', async () => {
+  it('consentement, script fixe lancé détaché sans fichier, état « en cours », puis sortie', async () => {
     const manifest = await f.publish();
     const updates = f.create();
     await updates.start();
-    await updates.install();
+    expect(await updates.install()).toBe('started');
     // The app quits AFTER answering the interface.
     expect(f.quits).toBe(0);
+    expect(f.confirms).toEqual([NEXT]);
     expect(f.launches).toEqual([
       {
         program: '/bin/sh',
         args: [
-          scriptPath(),
+          '-c',
+          INSTALL_SCRIPT,
+          INSTALL_SCRIPT_LABEL,
           String(APP_PID),
           f.stagedPath,
           f.runningPath,
@@ -151,8 +153,13 @@ describe('install réussi', () => {
         ],
       },
     ]);
-    expect(await readFile(scriptPath(), 'utf8')).toBe(INSTALL_SCRIPT);
-    expect((await stat(scriptPath())).mode & 0o777).toBe(0o700);
+    // Nothing written in the channel: the script travels in the arguments.
+    expect((await readdir(f.updatesDir)).sort()).toEqual([APP_BUNDLE_NAME, 'latest.json'].sort());
+    expect(f.published.at(-1)).toMatchObject({
+      canInstall: false,
+      reason: expect.stringMatching(/en cours/),
+    });
+    expect((await updates.status()).canInstall).toBe(false);
     await vi.waitFor(() => expect(f.quits).toBe(1));
     const log = await readFile(f.logPath, 'utf8');
     expect(log).toContain(NEXT.commit);

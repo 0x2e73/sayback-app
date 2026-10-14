@@ -20,12 +20,18 @@ export interface UpdateStatus {
   reason?: string;
 }
 
+/** `started`: the app quits right after; `postponed`: the user answered « Plus tard ». */
+export type UpdateInstallOutcome = 'started' | 'postponed';
+
 export interface BuildIdentity {
   commit: string;
   builtAt: string;
 }
 
-/** An update is ANOTHER commit built AFTER the running one. An unreadable date proves nothing. */
+/**
+ * An update is ANOTHER commit built AFTER the running one. An unreadable date proves nothing.
+ * Accepted: an older commit rebuilt later counts as an update (going back is allowed on purpose).
+ */
 export function isNewer(candidate: BuildIdentity, current: BuildIdentity): boolean {
   return (
     candidate.commit !== current.commit &&

@@ -1,7 +1,11 @@
 import { spawn } from 'node:child_process';
 import { isAbsolute } from 'node:path';
-import { writeFileAtomic } from './safe-files';
-import { INSTALL_PATH, INSTALL_SCRIPT, INSTALL_SHELL } from './update-install-script';
+import {
+  INSTALL_PATH,
+  INSTALL_SCRIPT,
+  INSTALL_SCRIPT_LABEL,
+  INSTALL_SHELL,
+} from './update-install-script';
 
 export interface InstallPlan {
   /** The app process: the script waits for its end. */
@@ -64,14 +68,18 @@ function shellQuote(arg: string): string {
   return `'${arg.replaceAll("'", "'\\''")}'`;
 }
 
-/** The launched command as one line the shell would read back identically: for the log only. */
-export function describeInstallCommand(scriptPath: string, plan: InstallPlan): string {
-  return [INSTALL_SHELL, ...[scriptPath, ...installArgs(plan)].map(shellQuote)].join(' ');
+/** `/bin/sh -c <fixed script> <label> <arguments>`: nothing is written to disk. */
+export function installCommand(plan: InstallPlan): { program: string; args: string[] } {
+  return {
+    program: INSTALL_SHELL,
+    args: ['-c', INSTALL_SCRIPT, INSTALL_SCRIPT_LABEL, ...installArgs(plan)],
+  };
 }
 
-/** Writes the fixed script, readable and executable by its owner only, atomically. */
-export async function writeInstallScript(scriptPath: string): Promise<void> {
-  await writeFileAtomic(scriptPath, INSTALL_SCRIPT, { mode: 0o700, ensureDirMode: 0o700 });
+/** The launched command for the log: the fixed script elided, the arguments quoted for replay. */
+export function describeInstallCommand(plan: InstallPlan): string {
+  const quoted = [INSTALL_SCRIPT_LABEL, ...installArgs(plan)].map(shellQuote);
+  return [INSTALL_SHELL, '-c', '<script fixe>', ...quoted].join(' ');
 }
 
 /** What the script inherits: enough to talk to the user session (`open`), nothing else. */
@@ -86,9 +94,12 @@ export function detachedEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return env;
 }
 
-/** Launches a program detached from the app (new session, no shared I/O): it outlives it. */
-export function launchDetached(program: string, args: readonly string[]): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
+/**
+ * Launches a program detached from the app (new session, no shared I/O): it outlives it.
+ * Resolves with its pid once it runs.
+ */
+export function launchDetached(program: string, args: readonly string[]): Promise<number> {
+  return new Promise<number>((resolve, reject) => {
     const child = spawn(program, [...args], {
       detached: true,
       stdio: 'ignore',
@@ -98,7 +109,17 @@ export function launchDetached(program: string, args: readonly string[]): Promis
     child.once('error', reject);
     child.once('spawn', () => {
       child.unref();
-      resolve();
+      if (child.pid === undefined) reject(new Error('installation : processus sans pid'));
+      else resolve(child.pid);
     });
   });
+}
+
+/** Stops a detached program and its children (its whole process group). Never throws. */
+export function terminateDetached(pid: number): void {
+  try {
+    process.kill(-pid, 'SIGTERM');
+  } catch {
+    // Already gone.
+  }
 }

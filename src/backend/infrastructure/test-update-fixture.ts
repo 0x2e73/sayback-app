@@ -9,7 +9,7 @@ import {
   type BuildInfo,
   type UpdateManifest,
 } from '../../shared/update-channel';
-import type { UpdateStatus } from '../domain/update';
+import type { UpdateInfo, UpdateStatus } from '../domain/update';
 import type { UpdatePorts } from '../application/update-ports';
 import { UpdateService } from '../application/updates';
 import { writeFakeBundle } from './test-bundle';
@@ -35,6 +35,8 @@ export const CURRENT_INFO = {
   builtAt: CURRENT.builtAt,
 };
 export const APP_PID = 424_242;
+/** Pid the fake launcher gives to the script. */
+export const SCRIPT_PID = 535_353;
 export const OLD_ASAR = 'version en cours';
 export const NEW_ASAR = 'version suivante';
 
@@ -52,7 +54,13 @@ export interface Launch {
 export class UpdateFixture {
   readonly published: UpdateStatus[] = [];
   readonly launches: Launch[] = [];
+  /** Updates the user was asked about, and the answer given (`onConfirm` runs first). */
+  readonly confirms: UpdateInfo[] = [];
+  confirmAnswer = true;
+  onConfirm: (() => Promise<void>) | null = null;
+  readonly terminated: number[] = [];
   quits = 0;
+  quitError: Error | null = null;
   recording = false;
   failNextLaunch = false;
   private readonly services: UpdateService[] = [];
@@ -98,6 +106,9 @@ export class UpdateFixture {
       exePath: join(this.runningPath, 'Contents', 'MacOS', APP_EXECUTABLE_NAME),
       pid: APP_PID,
       launch: (program, args) => this.launch(program, args),
+      terminate: (pid) => {
+        this.terminated.push(pid);
+      },
       ...patch.local,
     });
     const service = new UpdateService(
@@ -106,8 +117,10 @@ export class UpdateFixture {
         appVersion: '9.9.9-test',
         isPackaged: true,
         isRecording: () => this.recording,
+        confirmInstall: (update) => this.confirm(update),
         quit: () => {
           this.quits += 1;
+          if (this.quitError) throw this.quitError;
         },
         publish: (status) => {
           this.published.push(status);
@@ -126,13 +139,19 @@ export class UpdateFixture {
     await rm(this.root, { recursive: true, force: true });
   }
 
-  private launch(program: string, args: readonly string[]): Promise<void> {
+  private launch(program: string, args: readonly string[]): Promise<number> {
     if (this.failNextLaunch) {
       this.failNextLaunch = false;
       return Promise.reject(new Error('spawn EAGAIN'));
     }
     this.launches.push({ program, args });
-    return Promise.resolve();
+    return Promise.resolve(SCRIPT_PID);
+  }
+
+  private async confirm(update: UpdateInfo): Promise<boolean> {
+    this.confirms.push(update);
+    if (this.onConfirm) await this.onConfirm();
+    return this.confirmAnswer;
   }
 }
 

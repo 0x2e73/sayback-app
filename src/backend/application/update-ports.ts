@@ -1,5 +1,5 @@
 import type { BuildInfo, UpdateManifest } from '../../shared/update-channel';
-import type { BuildIdentity, UpdateStatus } from '../domain/update';
+import type { BuildIdentity, UpdateInfo, UpdateStatus } from '../domain/update';
 
 export type ChannelReading =
   /** No manifest, or one that offers nothing newer. */
@@ -32,12 +32,18 @@ export interface UpdatePorts {
   isPackaged: boolean;
   /** The build identity, or `null` if absent or invalid. */
   loadBuildInfo(): Promise<BuildInfo | null>;
+  /** Does the running bundle carry `com.apple.quarantine` (downloaded, not built here)? */
+  isQuarantined(): Promise<boolean>;
   channel: ChannelReader;
   /** Can the running app be replaced where it is? */
   locateTarget(): Promise<TargetVerdict>;
   isRecording(): boolean;
-  /** Writes the install script and launches it detached; it waits for the app to exit. */
-  launchInstall(manifest: UpdateManifest, target: InstallTarget): Promise<void>;
+  /** Asks the user, from the main process, whether to install now. */
+  confirmInstall(update: UpdateInfo): Promise<boolean>;
+  /** Launches the install script detached and returns its pid; it waits for the app to exit. */
+  launchInstall(manifest: UpdateManifest, target: InstallTarget): Promise<number>;
+  /** Stops a launched script that is still waiting. Never throws. */
+  cancelInstall(pid: number): void;
   quit(): void;
   /** Announces a new state to the interface. */
   publish(status: UpdateStatus): void;

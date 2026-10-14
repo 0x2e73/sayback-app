@@ -81,7 +81,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     openSetupGuide: () => ok(undefined),
     getUpdateStatus: () => ok(upToDate),
     checkForUpdate: () => ok(upToDate),
-    installUpdate: () => ok(undefined),
+    installUpdate: () => ok('started'),
     onUpdateStatus: () => () => undefined,
   };
 }

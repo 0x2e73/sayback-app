@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { UpdateService } from '../backend/application/updates';
 import { localUpdatePorts } from '../backend/infrastructure/local-updates';
 import { APP_NAME, BUILD_INFO_FILE_NAME } from '../shared/update-channel';
+import { confirmUpdateInstall } from './update-dialog';
 
 interface UpdateWiring {
   getWindow(): BrowserWindow | null;
@@ -21,6 +22,7 @@ export function createUpdateService({ getWindow, isRecording }: UpdateWiring): U
     appVersion: app.getVersion(),
     isPackaged: app.isPackaged,
     isRecording,
+    confirmInstall: (update) => confirmUpdateInstall(getWindow(), update),
     quit: () => app.quit(),
     publish: (status) => {
       const window = getWindow();
