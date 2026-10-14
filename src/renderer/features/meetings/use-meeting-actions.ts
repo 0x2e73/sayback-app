@@ -47,14 +47,16 @@ export function useMeetingActions({ api, meeting, onUpdate, onDeleted }: Meeting
     }
   }
 
-  async function remove(): Promise<void> {
+  async function remove(): Promise<boolean> {
     setPending('deletion');
     setError('');
     try {
       unwrap(await api.deleteMeeting(meeting.id));
       onDeleted();
+      return true;
     } catch (failure) {
       setError(errorMessage(failure));
+      return false;
     } finally {
       setPending(null);
     }

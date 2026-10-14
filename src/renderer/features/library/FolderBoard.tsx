@@ -160,7 +160,7 @@ function useFolderDrop(onMove: FolderBoardProps['onMove'], folders: Folder[]) {
 interface FolderDeletionDialogProps {
   folder: Folder;
   busy: boolean;
-  onConfirm(folder: Folder): Promise<void>;
+  onConfirm(folder: Folder): Promise<boolean>;
   onClose(): void;
 }
 

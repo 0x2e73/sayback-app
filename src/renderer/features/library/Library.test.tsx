@@ -159,3 +159,23 @@ it('asks in the app before deleting a folder', async () => {
   await user.click(await screen.findByRole('button', { name: 'Supprimer le dossier' }));
   expect(onDelete).toHaveBeenCalledWith('f1');
 });
+
+it('keeps the folder dialog open when the deletion fails', async () => {
+  const onDelete = vi.fn(async () => false);
+  const user = userEvent.setup();
+  render(
+    <Library
+      meetings={[]}
+      folders={[{ id: 'f1', name: 'Acme', createdAt: '' }]}
+      onOpen={vi.fn()}
+      onCreateFolder={vi.fn()}
+      onRenameFolder={vi.fn()}
+      onDeleteFolder={onDelete}
+      onMoveMeeting={vi.fn()}
+    />,
+  );
+  await user.click(screen.getByRole('button', { name: 'Supprimer Acme' }));
+  await user.click(await screen.findByRole('button', { name: 'Supprimer le dossier' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('La suppression a échoué.');
+  expect(screen.getByRole('button', { name: 'Supprimer le dossier' })).toBeEnabled();
+});
