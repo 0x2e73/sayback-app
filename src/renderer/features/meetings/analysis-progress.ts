@@ -25,19 +25,3 @@ export function analysisLabel(meeting: Chunked): string {
   if (done >= total) return 'Analyse en cours · rédaction du compte rendu';
   return `Analyse en cours · ${done} segment${done > 1 ? 's' : ''} sur ${total}`;
 }
-
-/** Measured pace of the segments done so far; nothing before the first one. */
-export function remainingLabel(
-  meeting: Pick<Meeting, 'audioChunks' | 'processingStartedAt'>,
-  now: number,
-): string | null {
-  const { done, total } = analysisProgress(meeting);
-  if (done === 0 || done >= total) return null;
-  const started = meeting.processingStartedAt
-    ? Date.parse(meeting.processingStartedAt)
-    : Number.NaN;
-  if (!Number.isFinite(started)) return null;
-  const elapsed = Math.max(0, (now - started) / 1_000);
-  const minutes = Math.max(1, Math.ceil((elapsed * (total - done)) / done / 60));
-  return `environ ${minutes} min`;
-}

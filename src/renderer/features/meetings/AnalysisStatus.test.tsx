@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
-import type { AudioChunk } from '../../../shared/contracts';
+import type { AudioChunk, Meeting } from '../../../shared/contracts';
 import { meetingFixture } from '../../test-api';
 import { AnalysisStatus } from './AnalysisStatus';
 
@@ -19,30 +19,37 @@ const chunks = (total: number, done: number): AudioChunk[] =>
     transcript: index < done ? [] : null,
   }));
 
-it('says how far the analysis is, then how long it should last', () => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date('2026-09-12T12:02:00Z'));
-  const meeting = meetingFixture('m1', 'Test', '2026-09-12T12:00:00Z', {
+function processing(done: number, extra: Partial<Meeting> = {}): Meeting {
+  return meetingFixture('m1', 'Test', '2026-09-12T12:00:00Z', {
     status: 'processing',
-    processingStartedAt: '2026-09-12T12:00:00Z',
-    duration: 180,
-    audioChunks: chunks(3, 1),
+    processingStartedAt: '2026-09-12T10:00:00Z',
+    duration: 720,
+    audioChunks: chunks(12, done),
+    ...extra,
   });
-  render(<AnalysisStatus meeting={meeting} />);
-  expect(screen.getByRole('status')).toHaveTextContent('Analyse en cours · 1 segment sur 3');
-  expect(screen.getByText(/environ 4 min/)).toBeInTheDocument();
+}
+
+it('says how far the analysis is, then how long it should last once a pace is seen', () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-09-12T12:00:00Z'));
+  const { rerender } = render(<AnalysisStatus meeting={processing(1)} />);
+  expect(screen.getByRole('status')).toHaveTextContent('Analyse en cours · 1 segment sur 12');
+  // Met two hours into the run: no estimate from an age it did not watch.
+  expect(screen.queryByText(/environ/)).toBeNull();
   act(() => {
     vi.advanceTimersByTime(60_000);
   });
-  expect(screen.getByText(/environ 6 min/)).toBeInTheDocument();
-});
-
-it('keeps the estimate out of the announced status', () => {
-  const meeting = meetingFixture('m1', 'Test', '2026-09-12T12:00:00Z', {
-    status: 'processing',
-    processingStartedAt: new Date(Date.now() - 60_000).toISOString(),
-    audioChunks: chunks(12, 3),
+  rerender(<AnalysisStatus meeting={processing(2)} />);
+  expect(screen.queryByText(/environ/)).toBeNull();
+  act(() => {
+    vi.advanceTimersByTime(60_000);
   });
-  render(<AnalysisStatus meeting={meeting} />);
+  rerender(<AnalysisStatus meeting={processing(3)} />);
+  // The estimate shows with the next tick of the clock.
+  act(() => {
+    vi.advanceTimersByTime(5_000);
+  });
+  expect(screen.getByText(/environ 9 min/)).toBeInTheDocument();
+  // The estimate stays out of the announced status.
   expect(screen.getByRole('status')).toHaveTextContent(/^Analyse en cours · 3 segments sur 12$/);
 });
