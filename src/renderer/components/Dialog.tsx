@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
 
@@ -12,11 +12,30 @@ interface DialogProps {
 
 export function Dialog({ title, children, footer, busy = false, onClose }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const pressTarget = useRef<EventTarget | null>(null);
+  // Read during the first render, before autoFocus moves the focus into the dialog.
+  const [opener] = useState(() => document.activeElement);
   useEffect(() => {
-    ref.current?.showModal();
-  }, []);
+    const dialog = ref.current;
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, [opener]);
   const close = () => {
     if (!busy) onClose();
+  };
+  // A second Escape arrives uncancelable and closes the element natively. An open dialog
+  // here is a stale event, such as the one queued by the effect cleanup in development.
+  const handleNativeClose = () => {
+    const dialog = ref.current;
+    if (dialog?.open) return;
+    if (busy) {
+      dialog?.showModal();
+      return;
+    }
+    onClose();
   };
 
   return (
@@ -28,9 +47,17 @@ export function Dialog({ title, children, footer, busy = false, onClose }: Dialo
         event.preventDefault();
         close();
       }}
+      onClose={handleNativeClose}
+      onPointerDown={(event) => {
+        pressTarget.current = event.target;
+      }}
       onClick={(event) => {
         // The padding lives on .dialog-inner, so only the backdrop targets the dialog itself.
-        if (event.target === event.currentTarget) close();
+        // Press and release must both land there: a drag out of a field must not close it.
+        const pressed = pressTarget.current;
+        pressTarget.current = null;
+        const onBackdrop = event.target === event.currentTarget && pressed === event.currentTarget;
+        if (onBackdrop && event.detail <= 1) close();
       }}
     >
       <div className="dialog-inner">

@@ -1,17 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Meeting } from '../../../shared/contracts';
 import { Library } from './Library';
 import { MEETING_DRAG_TYPE } from './FolderBoard';
 
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
-    this.open = true;
-  };
-});
 afterEach(cleanup);
 
 const meeting = (id: string, title: string, folderId?: string): Meeting => ({

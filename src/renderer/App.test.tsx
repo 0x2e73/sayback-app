@@ -146,9 +146,6 @@ describe('Meeting workspace', () => {
     expect(dropdown).toHaveTextContent('gpt-4o');
   });
   it('shows a denied screen permission prominently in the new meeting dialog', async () => {
-    HTMLDialogElement.prototype.showModal = function () {
-      this.setAttribute('open', '');
-    };
     const api = apiFor();
     const openSettings = vi.fn(() => ok(undefined));
     api.openScreenRecordingSettings = openSettings;
@@ -170,9 +167,6 @@ describe('Meeting workspace', () => {
     expect(openSettings).toHaveBeenCalledOnce();
   });
   it('explains and enables automatic analysis when a personal key is configured', async () => {
-    HTMLDialogElement.prototype.showModal = function () {
-      this.setAttribute('open', '');
-    };
     const api = apiFor();
     api.getSettings = () => ok({ ...settings, hasOpenAiKey: true });
     api.getSources = () =>
