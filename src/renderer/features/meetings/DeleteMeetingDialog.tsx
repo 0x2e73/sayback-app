@@ -1,4 +1,4 @@
-import { Button, Dialog } from '../../components/ui';
+import { ConfirmDialog } from '../../components/ui';
 
 interface DeleteMeetingDialogProps {
   busy: boolean;
@@ -13,16 +13,14 @@ export function DeleteMeetingDialog({ busy, onClose, onDelete }: DeleteMeetingDi
   }
 
   return (
-    <Dialog title="Supprimer cette réunion ?" onClose={onClose}>
-      <p>Les notes et les enregistrements locaux seront supprimés.</p>
-      <div className="dialog-actions">
-        <Button variant="secondary" disabled={busy} onClick={onClose}>
-          Annuler
-        </Button>
-        <Button variant="danger" busy={busy} onClick={() => void remove()}>
-          Supprimer
-        </Button>
-      </div>
-    </Dialog>
+    <ConfirmDialog
+      title="Supprimer cette réunion ?"
+      confirmLabel="Supprimer"
+      busy={busy}
+      onConfirm={remove}
+      onClose={onClose}
+    >
+      Les notes et les enregistrements locaux seront supprimés. Cette action est définitive.
+    </ConfirmDialog>
   );
 }

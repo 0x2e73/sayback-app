@@ -1,6 +1,8 @@
 import { useState, type DragEvent } from 'react';
 import { Folder as FolderIcon, FolderPlus, Pencil, Trash2 } from 'lucide-react';
 import type { Folder, Meeting } from '../../../shared/contracts';
+import { ConfirmDialog } from '../../components/ui';
+import { useFolderDeletion } from './useFolderDeletion';
 import { useFolderEditor } from './useFolderEditor';
 
 interface FolderBoardProps {
@@ -74,7 +76,7 @@ interface FolderEntryProps {
   dropHandlers: ReturnType<typeof useFolderDrop>['dropProps'];
   onSelect(id: string): void;
   onEdit(folder: Folder): void;
-  onDelete(id: string): Promise<boolean>;
+  onRequestDelete(folder: Folder): void;
 }
 
 function FolderEntry({
@@ -84,7 +86,7 @@ function FolderEntry({
   dropHandlers,
   onSelect,
   onEdit,
-  onDelete,
+  onRequestDelete,
 }: FolderEntryProps) {
   return (
     <div className="folder-entry" {...dropHandlers(folder.id)}>
@@ -110,10 +112,7 @@ function FolderEntry({
         type="button"
         className="folder-action"
         aria-label={`Supprimer ${folder.name}`}
-        onClick={() => {
-          if (window.confirm(`Supprimer « ${folder.name} » ? Les réunions resteront disponibles.`))
-            void onDelete(folder.id);
-        }}
+        onClick={() => onRequestDelete(folder)}
       >
         <Trash2 size={14} />
       </button>
@@ -158,8 +157,30 @@ function useFolderDrop(onMove: FolderBoardProps['onMove'], folders: Folder[]) {
   return { dropProps, announcement };
 }
 
+interface FolderDeletionDialogProps {
+  folder: Folder;
+  busy: boolean;
+  onConfirm(folder: Folder): Promise<void>;
+  onClose(): void;
+}
+
+function FolderDeletionDialog(props: FolderDeletionDialogProps) {
+  return (
+    <ConfirmDialog
+      title={`Supprimer « ${props.folder.name} » ?`}
+      confirmLabel="Supprimer le dossier"
+      busy={props.busy}
+      onConfirm={() => props.onConfirm(props.folder)}
+      onClose={props.onClose}
+    >
+      Les réunions qu’il contient restent disponibles, sans dossier.
+    </ConfirmDialog>
+  );
+}
+
 export function FolderBoard(props: FolderBoardProps) {
   const editor = useFolderEditor(props);
+  const deletion = useFolderDeletion(props.onDelete);
   const { dropProps, announcement } = useFolderDrop(props.onMove, props.folders);
 
   return (
@@ -201,7 +222,7 @@ export function FolderBoard(props: FolderBoardProps) {
             dropHandlers={dropProps}
             onSelect={props.onSelect}
             onEdit={editor.startRename}
-            onDelete={props.onDelete}
+            onRequestDelete={deletion.request}
           />
         ))}
       </div>
@@ -209,6 +230,14 @@ export function FolderBoard(props: FolderBoardProps) {
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
+      {deletion.confirming && (
+        <FolderDeletionDialog
+          folder={deletion.confirming}
+          busy={deletion.deleting}
+          onConfirm={deletion.confirm}
+          onClose={deletion.cancel}
+        />
+      )}
     </section>
   );
 }

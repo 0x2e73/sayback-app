@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Meeting } from '../../../shared/contracts';
 import { Library } from './Library';
 import { MEETING_DRAG_TYPE } from './FolderBoard';
 
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
+    this.open = true;
+  };
+});
 afterEach(cleanup);
 
 const meeting = (id: string, title: string, folderId?: string): Meeting => ({
@@ -136,4 +141,26 @@ it('announces where a dropped meeting went', async () => {
   const target = view.container.querySelector('.folder-entry:not(.folder-unfiled)')!;
   fireEvent.drop(target, { dataTransfer: dragTransfer('a') });
   expect(await screen.findByRole('status')).toHaveTextContent('Réunion déplacée dans « Acme ».');
+});
+
+it('asks in the app before deleting a folder', async () => {
+  const onDelete = vi.fn(async () => true);
+  const confirmSpy = vi.spyOn(window, 'confirm');
+  const user = userEvent.setup();
+  render(
+    <Library
+      meetings={[]}
+      folders={[{ id: 'f1', name: 'Acme', createdAt: '' }]}
+      onOpen={vi.fn()}
+      onCreateFolder={vi.fn()}
+      onRenameFolder={vi.fn()}
+      onDeleteFolder={onDelete}
+      onMoveMeeting={vi.fn()}
+    />,
+  );
+  await user.click(screen.getByRole('button', { name: 'Supprimer Acme' }));
+  expect(confirmSpy).not.toHaveBeenCalled();
+  expect(onDelete).not.toHaveBeenCalled();
+  await user.click(await screen.findByRole('button', { name: 'Supprimer le dossier' }));
+  expect(onDelete).toHaveBeenCalledWith('f1');
 });
