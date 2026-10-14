@@ -5,15 +5,32 @@ import { describe, expect, it } from 'vitest';
 const rendererDir = import.meta.dirname;
 const read = (path: string) => readFileSync(join(rendererDir, path), 'utf8');
 
-const migratedSheets = [
-  'styles.css',
-  ...readdirSync(join(rendererDir, 'styles'))
-    .filter((file) => file.endsWith('.css'))
-    .map((file) => `styles/${file}`),
-];
+const sheets = readdirSync(rendererDir, { recursive: true, encoding: 'utf8' }).filter((file) =>
+  file.endsWith('.css'),
+);
 
 const colourLiteral = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:white|black)\b/i;
-const tokenOnly = /^(?:font-size|border-radius|gap|row-gap|column-gap)$/;
+const colourProperty =
+  /^(?:color|background(?:-[a-z]+)*|border(?:-[a-z]+)*|outline(?:-[a-z]+)*|box-shadow|text-shadow|fill|stroke|accent-color|caret-color|scrollbar-color|text-decoration(?:-[a-z]+)*|column-rule(?:-[a-z]+)*)$/;
+const tokenOnly = /^(?:font-size|font|gap|row-gap|column-gap|(?:[a-z]+-)*radius)$/;
+const measure = /^-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|%|vw|vh|dvh|deg|s|ms)?$/;
+const structuralWords = new Set([
+  'solid',
+  'dashed',
+  'dotted',
+  'none',
+  'inset',
+  'transparent',
+  'currentcolor',
+  'inherit',
+  'initial',
+  'unset',
+  'color-mix',
+  'in',
+  'srgb',
+  'underline',
+  'line-through',
+]);
 const allowed: Record<string, Set<string>> = {
   'font-weight': new Set(['400', '500', '600', 'inherit']),
   'letter-spacing': new Set(['0', '-0.02em', 'normal']),
@@ -31,14 +48,65 @@ function declarations(css: string): Declaration[] {
   const body = css.replace(/\/\*[\s\S]*?\*\//g, '');
   return body
     .split(/[;{}]/)
-    .map((chunk) => /^\s*([a-z-]+)\s*:\s*([\s\S]+?)\s*$/.exec(chunk))
+    .map((chunk) => /^\s*([a-z-]+)\s*:\s*([\s\S]+?)\s*$/i.exec(chunk))
     .filter((match): match is RegExpExecArray => match !== null)
-    .map(([, property = '', value = '']) => ({ property, value: value.replace(/\s+/g, ' ') }));
+    .map(([, property = '', value = '']) => ({
+      property: property.toLowerCase(),
+      value: value.replace(/\s*!important$/i, '').replace(/\s+/g, ' '),
+    }));
 }
 
-function sheetBody(sheet: string): string {
+function declaredTokens(css: string): Set<string> {
+  const names = [...tokenBlock(css).matchAll(/(--[a-z0-9-]+)\s*:/gi)];
+  return new Set(names.flatMap(([, name]) => (name ? [name] : [])));
+}
+
+const withoutTokens = (value: string) => value.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
+
+function usesUnknownToken(value: string, declared: ReadonlySet<string>): boolean {
+  return [...value.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)].some(
+    ([, name]) => name === undefined || !declared.has(name),
+  );
+}
+
+function breaksTokenOnly(property: string, value: string): boolean {
+  if (property === 'font' && value === 'inherit') return false;
+  return withoutTokens(value)
+    .split(/\s+/)
+    .some((part) => part !== '' && part !== '0');
+}
+
+function hasForeignColourValue(value: string): boolean {
+  return withoutTokens(value)
+    .toLowerCase()
+    .split(/[\s,()]+/)
+    .filter(Boolean)
+    .some((word) => !structuralWords.has(word) && !measure.test(word));
+}
+
+function isViolation({ property, value }: Declaration, declared: ReadonlySet<string>): boolean {
+  if (colourLiteral.test(value)) return true;
+  if (/var\(\s*--[a-z0-9-]+\s*,/i.test(value)) return true;
+  if (usesUnknownToken(value, declared)) return true;
+  if (tokenOnly.test(property)) return breaksTokenOnly(property, value);
+  if (colourProperty.test(property)) return hasForeignColourValue(value);
+  const values = allowed[property];
+  return values !== undefined && !values.has(value);
+}
+
+function cssViolations(css: string, declared: ReadonlySet<string>): string[] {
+  const found = /@import\b/i.test(css) ? ['@import'] : [];
+  const offenders = declarations(css)
+    .filter((declaration) => isViolation(declaration, declared))
+    .map(({ property, value }) => `${property}: ${value}`);
+  return [...found, ...offenders];
+}
+
+function sheetViolations(sheet: string): string[] {
   const css = read(sheet);
-  return sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css;
+  const declared = declaredTokens(read('styles.css'));
+  const body = sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css;
+  return cssViolations(body, declared);
 }
 
 function tokenValue(name: string): string {
@@ -83,23 +151,54 @@ function contrast(foreground: string, ...grounds: string[]): number {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
-describe('design tokens', () => {
-  it.each(migratedSheets)('%s has no colour literal outside the token block', (sheet) => {
-    const offenders = declarations(sheetBody(sheet))
-      .filter(({ value }) => colourLiteral.test(value))
-      .map(({ property, value }) => `${property}: ${value}`);
-    expect(offenders).toEqual([]);
+describe('guard', () => {
+  const declared = new Set(['--color-text', '--color-live', '--color-border', '--space-2']);
+  const violations = (css: string) => cssViolations(css, declared);
+
+  it.each([
+    'color: red',
+    'color: Canvas',
+    'color: oklch(70% 0.1 250)',
+    'background: color-mix(in srgb, var(--color-live) 10%, gray)',
+    'font: 700 1.3rem/1 sans-serif',
+    'border-top-left-radius: 5px',
+    'gap: var(--space-2, 7px)',
+    'font-size: var(--text-nope)',
+    `background: url("data:image/svg+xml,<svg><path fill='%23ffcc00'/></svg>")`,
+  ])('catches %s', (declaration) => {
+    expect(violations(`.x { ${declaration}; }`)).not.toEqual([]);
   });
 
-  it.each(migratedSheets)('%s takes type, radius and gap from tokens', (sheet) => {
-    const offenders = declarations(sheetBody(sheet))
-      .filter(({ property, value }) => {
-        if (tokenOnly.test(property)) return value !== '0' && !value.startsWith('var(');
-        const values = allowed[property];
-        return values !== undefined && !values.has(value);
-      })
-      .map(({ property, value }) => `${property}: ${value}`);
-    expect(offenders).toEqual([]);
+  it('catches @import', () => {
+    expect(violations('@import url("x.css");')).not.toEqual([]);
+  });
+
+  it.each([
+    'color: var(--color-text)',
+    'background: color-mix(in srgb, var(--color-live) 10%, transparent)',
+    'border: 1px solid var(--color-border)',
+    'box-shadow: inset 0 0 0 1px currentColor',
+    'gap: var(--space-2) var(--space-2)',
+    'border-radius: 0',
+    'font: inherit',
+    'font-weight: 600',
+  ])('lets %s through', (declaration) => {
+    expect(violations(`.x { ${declaration}; }`)).toEqual([]);
+  });
+});
+
+describe('design tokens', () => {
+  it('finds the stylesheets', () => {
+    expect(sheets).toContain('styles.css');
+    expect(sheets.length).toBeGreaterThan(1);
+  });
+
+  it.each(sheets)('%s holds only tokens, no literal', (sheet) => {
+    expect(sheetViolations(sheet)).toEqual([]);
+  });
+
+  it('keeps inline styles out of index.html', () => {
+    expect(read('index.html')).not.toMatch(/<style[\s>]/i);
   });
 
   it.each([
