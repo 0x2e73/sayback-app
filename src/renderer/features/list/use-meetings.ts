@@ -7,14 +7,14 @@ export function useMeetings(api: DesktopApi) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Loading lasts until the first success: a failed first load must not read as an empty library.
   const refresh = useCallback(async () => {
     try {
       setMeetings(unwrap(await api.listMeetings()));
       setError('');
+      setLoading(false);
     } catch (failure) {
       setError(errorMessage(failure));
-    } finally {
-      setLoading(false);
     }
   }, [api]);
 
@@ -37,5 +37,9 @@ export function useMeetings(api: DesktopApi) {
     });
   }, []);
 
-  return { meetings, loading, error, refresh, update };
+  const remove = useCallback((id: string) => {
+    setMeetings((current) => current.filter((meeting) => meeting.id !== id));
+  }, []);
+
+  return { meetings, loading, error, refresh, update, remove };
 }

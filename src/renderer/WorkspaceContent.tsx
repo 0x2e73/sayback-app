@@ -1,26 +1,29 @@
-import type { ComponentProps } from 'react';
-import type { DesktopApi, Meeting } from '../shared/contracts';
-import type { WorkspaceSection } from './components/Sidebar';
-import { LibraryPage } from './features/library/LibraryPage';
+import type { DesktopApi, Folder, Meeting } from '../shared/contracts';
+import { EmptyState } from './components/ui';
 import { MeetingDetail } from './features/meetings/MeetingDetail';
 import { RecordingView } from './features/recording/RecordingView';
 import type { CaptureSession } from './features/recording/capture-session';
 import { SettingsView } from './features/settings/SettingsView';
+import type { CardView } from './use-workspace';
 
-interface WorkspaceContentProps extends ComponentProps<typeof LibraryPage> {
+interface WorkspaceContentProps {
   api: DesktopApi;
-  section: WorkspaceSection;
+  card: CardView;
   selected?: Meeting;
+  loading: boolean;
+  folders: Folder[];
   capture: CaptureSession | null;
   stopping: boolean;
   onStop(): void;
   onUpdate(meeting: Meeting): void;
-  onBack(): void;
+  onMove(meetingId: string, folderId: string | null): Promise<boolean>;
+  onDeleted(meetingId: string): void;
   onSettings(): void;
   onShowOnboarding(): void;
 }
 
 export function WorkspaceContent(props: WorkspaceContentProps) {
+  const { selected } = props;
   if (props.capture) {
     return (
       <RecordingView
@@ -31,34 +34,23 @@ export function WorkspaceContent(props: WorkspaceContentProps) {
       />
     );
   }
-  if (props.section === 'settings') {
+  if (props.card === 'settings') {
     return <SettingsView api={props.api} onShowOnboarding={props.onShowOnboarding} />;
   }
-  if (props.selected) {
+  if (selected) {
     return (
       <MeetingDetail
-        key={props.selected.id}
-        meeting={props.selected}
+        key={selected.id}
+        meeting={selected}
         api={props.api}
         folders={props.folders}
         onUpdate={props.onUpdate}
-        onMove={props.onMoveMeeting}
-        onDeleted={props.onBack}
+        onMove={props.onMove}
+        onDeleted={() => props.onDeleted(selected.id)}
         onSettings={props.onSettings}
       />
     );
   }
-  return (
-    <LibraryPage
-      meetings={props.meetings}
-      folders={props.folders}
-      onCreateFolder={props.onCreateFolder}
-      onRenameFolder={props.onRenameFolder}
-      onDeleteFolder={props.onDeleteFolder}
-      onMoveMeeting={props.onMoveMeeting}
-      loading={props.loading}
-      onNew={props.onNew}
-      onOpen={props.onOpen}
-    />
-  );
+  if (props.loading) return null;
+  return <EmptyState title="Enregistrez votre première réunion" />;
 }

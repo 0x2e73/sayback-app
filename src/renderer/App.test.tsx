@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Meeting } from '../shared/contracts';
 import { App } from './App';
 import { apiFor, ok, settings } from './test-api';
 
@@ -32,7 +31,7 @@ describe('Meeting workspace', () => {
     expect(await screen.findByText('Le mode local est prêt.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Commencer' }));
     expect(complete).toHaveBeenCalledOnce();
-    expect(await screen.findByText('Votre prochaine réunion commence ici.')).toBeInTheDocument();
+    expect(await screen.findByText('Enregistrez votre première réunion')).toBeInTheDocument();
   });
   it('lets people replay the introduction from settings', async () => {
     const user = userEvent.setup();
@@ -47,8 +46,10 @@ describe('Meeting workspace', () => {
   });
   it('shows an honest empty library and a recording action', async () => {
     render(<App api={apiFor()} />);
-    expect(await screen.findByText('Votre prochaine réunion commence ici.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Nouvelle réunion' })).toBeEnabled();
+    const pane = await screen.findByRole('complementary', { name: 'Liste des réunions' });
+    expect(await within(pane).findByText('Aucune réunion')).toBeInTheDocument();
+    expect(screen.getByText('Enregistrez votre première réunion')).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: 'Démarrer l’enregistrement' })).toBeEnabled();
   });
   it('saves the personal API key through settings with visible feedback', async () => {
     const user = userEvent.setup();
@@ -155,7 +156,7 @@ describe('Meeting workspace', () => {
     });
     const user = userEvent.setup();
     render(<App api={api} />);
-    await user.click(await screen.findByRole('button', { name: 'Nouvelle réunion' }));
+    await user.click(await screen.findByRole('button', { name: 'Démarrer l’enregistrement' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Accès à l’écran refusé');
     expect(alert.compareDocumentPosition(screen.getByLabelText('Titre de la réunion'))).toBe(
@@ -173,7 +174,7 @@ describe('Meeting workspace', () => {
       ok([{ id: 'screen:1:0', name: 'Écran principal', thumbnail: 'data:image/png;base64,a' }]);
     const user = userEvent.setup();
     render(<App api={api} />);
-    await user.click(await screen.findByRole('button', { name: 'Nouvelle réunion' }));
+    await user.click(await screen.findByRole('button', { name: 'Démarrer l’enregistrement' }));
     expect(
       await screen.findByRole('checkbox', {
         name: /Transcrire et créer le compte rendu après l’arrêt/,
@@ -183,38 +184,9 @@ describe('Meeting workspace', () => {
       screen.getByText(/OpenAI facture la transcription avec identification des voix/),
     ).toBeInTheDocument();
   });
-  it('filters persisted meetings without creating sample data', async () => {
-    const fixture: Meeting = {
-      id: 'm1',
-      title: 'Revue produit',
-      createdAt: '2026-09-11T10:00:00Z',
-      status: 'recorded',
-      duration: 60,
-      hasVideo: false,
-      audioChunks: [],
-      frames: [],
-      transcript: [],
-      notes: null,
-      clarifications: [],
-      error: null,
-    };
-    const user = userEvent.setup();
-    render(<App api={apiFor([fixture])} />);
-    expect(await screen.findByText('Revue produit')).toBeInTheDocument();
-    await user.type(screen.getByRole('searchbox'), 'Budget');
-    expect(screen.queryByText('Revue produit')).not.toBeInTheDocument();
-    expect(screen.getByText('Aucune réunion trouvée.')).toBeInTheDocument();
-  });
-  it('shows a backend failure with a retry action', async () => {
-    const api = apiFor();
-    api.listMeetings = async () => ({ ok: false, error: 'Lecture impossible' });
-    render(<App api={api} />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Lecture impossible');
-    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeEnabled();
-  });
   it('has no top bar, footer or marketing line around the workspace', async () => {
     render(<App api={apiFor()} />);
-    await screen.findByRole('navigation', { name: 'Navigation principale' });
+    await screen.findByRole('complementary', { name: 'Liste des réunions' });
     for (const text of [
       'Espace de travail',
       'En local',
@@ -230,14 +202,5 @@ describe('Meeting workspace', () => {
     render(<App api={api} />);
     await screen.findByRole('heading', { name: 'Gardez le fil de vos réunions.' });
     expect(document.querySelector('.onboarding > .window-band')).not.toBeNull();
-  });
-  it('keeps only the navigation in the left pane', async () => {
-    render(<App api={apiFor()} />);
-    const nav = await screen.findByRole('navigation', { name: 'Navigation principale' });
-    const pane = nav.closest('.sidebar')!;
-    for (const text of ['Votre espace personnel', 'Votre mémoire, chez vous.', 'Espace local']) {
-      expect(pane).not.toHaveTextContent(text);
-    }
-    expect(pane.firstElementChild).toHaveClass('window-band');
   });
 });

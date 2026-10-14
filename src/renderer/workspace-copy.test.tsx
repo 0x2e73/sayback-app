@@ -8,11 +8,12 @@ import { apiFor } from './test-api';
 
 afterEach(cleanup);
 describe('Workspace without marketing copy', () => {
-  it('opens on the meetings without slogans', async () => {
+  it('opens on the meeting list without slogans', async () => {
     render(<App api={apiFor()} />);
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Mes réunions' }),
+      await screen.findByRole('complementary', { name: 'Liste des réunions' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Mes réunions' })).toBeNull();
     for (const text of [
       'Moins de notes. Plus de présence.',
       'Les conversations passent. Les bonnes idées restent.',
