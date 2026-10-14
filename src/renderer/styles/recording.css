@@ -59,12 +59,12 @@
 .recording-pill {
   padding: 7px 13px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--color-live) 14%, transparent);
+  background: var(--color-live-tint);
   color: var(--color-live);
   font-weight: 600;
 }
 .recording-pill.is-paused {
-  background: color-mix(in srgb, var(--color-paused) 14%, transparent);
+  background: var(--color-paused-tint);
   color: var(--color-paused);
 }
 .recording-time {
@@ -189,9 +189,9 @@
 }
 .notice {
   padding: 12px 15px;
-  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+  border: 1px solid var(--color-danger-line);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  background: var(--color-danger-tint);
   color: var(--color-danger);
 }
 .badge {
@@ -215,19 +215,19 @@
   box-shadow: inset 0 0 0 1px currentColor;
 }
 .badge-processing {
-  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  background: var(--color-accent-tint);
   color: var(--color-accent);
 }
 .badge-ready {
-  background: color-mix(in srgb, var(--color-ready) 14%, transparent);
+  background: var(--color-ready-tint);
   color: var(--color-ready);
 }
 .badge-recording {
-  background: color-mix(in srgb, var(--color-live) 14%, transparent);
+  background: var(--color-live-tint);
   color: var(--color-live);
 }
 .badge-error {
-  background: color-mix(in srgb, var(--color-paused) 14%, transparent);
+  background: var(--color-paused-tint);
   color: var(--color-paused);
 }
 .dialog {

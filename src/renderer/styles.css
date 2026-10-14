@@ -12,16 +12,22 @@
   --color-text: rgb(255 255 255 / 0.95);
   --color-text-muted: rgb(255 255 255 / 0.72);
   --color-text-subtle: rgb(255 255 255 / 0.55);
-  --color-accent: #7aa9ff;
+  --color-accent: #8fb6ff;
   --color-accent-soft: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  --color-focus: #7aa9ff;
+  --color-focus: var(--color-accent);
   --color-action: #f4f6fa;
   --color-action-hover: #ffffff;
   --color-on-action: #0d1017;
-  --color-live: #ff6b61;
-  --color-danger: #ff6b61;
+  --color-live: #ff958c;
+  --color-danger: #ff8077;
   --color-paused: #f5b94a;
   --color-ready: #5fd3a0;
+  --color-live-tint: color-mix(in srgb, var(--color-live) 10%, transparent);
+  --color-danger-tint: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  --color-danger-line: color-mix(in srgb, var(--color-danger) 30%, transparent);
+  --color-paused-tint: color-mix(in srgb, var(--color-paused) 10%, transparent);
+  --color-ready-tint: color-mix(in srgb, var(--color-ready) 10%, transparent);
+  --color-accent-tint: color-mix(in srgb, var(--color-accent) 10%, transparent);
 
   --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
   --text-caption: 0.75rem;

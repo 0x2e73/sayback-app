@@ -238,7 +238,7 @@
 @keyframes folder-land {
   50% {
     transform: scale(1.045);
-    background: color-mix(in srgb, var(--color-ready) 14%, transparent);
+    background: var(--color-ready-tint);
   }
 }
 @media (hover: hover) and (pointer: fine) {

@@ -125,6 +125,13 @@ function parseColour(value: string): Rgba {
   }
   const rgb = /^rgb\((\d+) (\d+) (\d+)(?: \/ ([\d.]+))?\)$/.exec(value);
   if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), rgb[4] ? Number(rgb[4]) : 1];
+  const alias = /^var\((--[a-z0-9-]+)\)$/.exec(value)?.[1];
+  if (alias) return parseColour(tokenValue(alias));
+  const mix = /^color-mix\(in srgb, var\((--[a-z0-9-]+)\) ([\d.]+)%, transparent\)$/.exec(value);
+  if (mix) {
+    const [r, g, b, a] = parseColour(tokenValue(mix[1] ?? ''));
+    return [r, g, b, a * (Number(mix[2]) / 100)];
+  }
   throw new Error(`unparsed colour ${value}`);
 }
 
@@ -205,12 +212,24 @@ describe('design tokens', () => {
     ['--color-text', ['--color-bg', '--color-surface-raised'], 4.5],
     ['--color-text-muted', ['--color-bg', '--color-surface-raised'], 4.5],
     ['--color-text-subtle', ['--color-bg', '--color-surface-raised'], 4.5],
-    ['--color-accent', ['--color-bg', '--color-surface'], 4.5],
     ['--color-focus', ['--color-bg'], 3],
     ['--color-on-action', ['--color-action'], 4.5],
   ] as const)('%s stays readable over %j', (foreground, grounds, minimum) => {
     expect(contrast(foreground, ...grounds)).toBeGreaterThanOrEqual(minimum);
   });
+
+  it.each(['live', 'danger', 'paused', 'ready', 'accent'])(
+    '--color-%s stays readable on its tint',
+    (name) => {
+      const grounds = [
+        '--color-bg',
+        '--color-surface',
+        '--color-surface-raised',
+        `--color-${name}-tint`,
+      ];
+      expect(contrast(`--color-${name}`, ...grounds)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
 
   it.each(['recording', 'recorded', 'processing', 'ready', 'error'])(
     'styles the %s status',
