@@ -14,7 +14,11 @@
   color: var(--color-text-subtle);
   font-size: var(--text-caption);
 }
-.detail-meta > :not(:first-child)::before {
+.detail-meta-item {
+  display: inline-flex;
+  align-items: center;
+}
+.detail-meta-item:not(:first-child)::before {
   content: '·';
   margin-right: var(--space-2);
 }

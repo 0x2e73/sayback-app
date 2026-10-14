@@ -96,3 +96,11 @@ it('has no summary sentence under the title', () => {
   );
   expect(screen.queryByText('On valide le budget.')).toBeNull();
 });
+
+it('puts the status badge in its own slot so the separator never lands inside the pill', () => {
+  renderHeader(meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z'));
+  const badge = screen.getByText('À analyser');
+  expect(badge).toHaveClass('badge');
+  expect(badge.parentElement).toHaveClass('detail-meta-item');
+  expect(badge.parentElement?.parentElement).toHaveClass('detail-meta');
+});

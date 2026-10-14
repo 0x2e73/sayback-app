@@ -154,3 +154,9 @@ it('lays the full screen button over the corner of the video block', () => {
   expect(detail).toMatch(/\.detail-video-fullscreen\s*\{[^}]*position:\s*absolute/);
   expect(detail).toMatch(/\.detail-video:fullscreen\s*\{[^}]*width:\s*100vw/);
 });
+
+it('draws the meta line separator before a slot, never before a badge or chip', () => {
+  const detail = read('styles/meeting-detail.css');
+  expect(detail).toMatch(/\.detail-meta-item:not\(:first-child\)::before\s*\{[^}]*content:\s*'·'/);
+  expect(detail).not.toMatch(/\.detail-meta\s*>\s*:not/);
+});
