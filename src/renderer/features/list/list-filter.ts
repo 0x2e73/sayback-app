@@ -19,14 +19,23 @@ interface EmptyListInput {
   folders: readonly Folder[];
 }
 
-/** Case, accent and ligature insensitive, with runs of whitespace collapsed. */
+const APOSTROPHES = /[’‘ʼ`´]/g;
+// Hyphen, non-breaking hyphen and en dash read as a space.
+const DASHES = /[-\u2011–]/g;
+const MARKS_AND_VARIATION_SELECTORS = /[\u0300-\u036f\ufe0f]/g;
+
+/** Case, accent, ligature, apostrophe and dash insensitive, with whitespace collapsed. */
 export function normalizeSearch(text: string): string {
   return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(APOSTROPHES, "'")
+    .replace(DASHES, ' ')
+    .normalize('NFKD')
+    .replace(MARKS_AND_VARIATION_SELECTORS, '')
     .toLocaleLowerCase('fr-CH')
     .replace(/œ/g, 'oe')
     .replace(/æ/g, 'ae')
+    .replace(/ß/g, 'ss')
+    .replace(/ø/g, 'o')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -37,10 +46,22 @@ function inScope(meeting: Filterable, scope: FolderScope): boolean {
   return meeting.folderId === scope.id;
 }
 
+// Normalising every meeting on every keystroke is the cost of the search: do it once per object.
+const searchable = new WeakMap<Filterable, string>();
+
+// The title and the summary are joined by a newline, which a normalised query never holds:
+// a phrase cannot match across the two.
+function searchText(meeting: Filterable): string {
+  const cached = searchable.get(meeting);
+  if (cached !== undefined) return cached;
+  const text = `${normalizeSearch(meeting.title)}\n${normalizeSearch(meeting.notes?.summary ?? '')}`;
+  searchable.set(meeting, text);
+  return text;
+}
+
 function matches(meeting: Filterable, needle: string): boolean {
   if (!needle) return true;
-  const summary = meeting.notes?.summary ?? '';
-  return normalizeSearch(`${meeting.title} ${summary}`).includes(needle);
+  return searchText(meeting).includes(needle);
 }
 
 export function filterMeetings<T extends Filterable>(

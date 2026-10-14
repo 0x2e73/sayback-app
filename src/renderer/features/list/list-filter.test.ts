@@ -49,6 +49,13 @@ describe('normalizeSearch', () => {
     ['Zürich', 'zurich'],
     ['e\u0301quipe', 'equipe'],
     ['Revue\nproduit\t2026', 'revue produit 2026'],
+    ['Point d’équipe', "point d'equipe"],
+    ['d‘équipe d\u02bcéquipe d`équipe d´équipe', "d'equipe d'equipe d'equipe d'equipe"],
+    ['Straße', 'strasse'],
+    ['Søren', 'soren'],
+    ['Kick-off Kick\u2011off Kick–off', 'kick off kick off kick off'],
+    ['ﬁnal', 'final'],
+    ['Rendez-vous\ufe0f', 'rendez vous'],
   ])('%j reads as %j', (text, expected) => {
     expect(normalizeSearch(text)).toBe(expected);
   });
@@ -67,6 +74,30 @@ describe('filterMeetings', () => {
     ['nothing for an unknown word', ALL_MEETINGS, 'zzz', []],
   ])('finds %s', (_case, scope, query, expected) => {
     expect(ids(scope, query)).toEqual(expected);
+  });
+
+  it.each<[string, string, string[]]>([
+    ['an apostrophe typed straight', "d'equipe", ['m5']],
+    ['a word with ß typed as ss', 'strasse', ['m6']],
+    ['a hyphenated word typed with a space', 'kick off', ['m7']],
+    ['a hyphen typed for a space', 'point-hebdo', ['m2']],
+  ])('finds %s', (_case, query, expected) => {
+    const more = [
+      ...meetings,
+      { id: 'm5', title: 'Point d’équipe', folderId: null, notes: null },
+      { id: 'm6', title: 'Rue de la Straße', folderId: null, notes: null },
+      { id: 'm7', title: 'Kick-off', folderId: null, notes: null },
+    ];
+    expect(filterMeetings(more, ALL_MEETINGS, query).map((meeting) => meeting.id)).toEqual(
+      expected,
+    );
+  });
+
+  it('does not match a phrase that straddles the title and the summary', () => {
+    const straddling = [{ id: 'x', title: 'Revue', folderId: null, notes: notes('Budget validé') }];
+    expect(filterMeetings(straddling, ALL_MEETINGS, 'revue budget')).toEqual([]);
+    expect(filterMeetings(straddling, ALL_MEETINGS, 'revue')).toHaveLength(1);
+    expect(filterMeetings(straddling, ALL_MEETINGS, 'budget')).toHaveLength(1);
   });
 
   it('returns nothing from an empty list', () => {

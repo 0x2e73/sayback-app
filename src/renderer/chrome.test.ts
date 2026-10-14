@@ -96,3 +96,9 @@ it('keeps the search clear of the traffic lights in a 52 px list header', () => 
 it('scrolls the list only, never the whole pane', () => {
   expect(read('styles/list-pane.css')).toMatch(/\.list-pane-body\s*\{[^}]*overflow-y:\s*auto/);
 });
+
+it('breaks a long search term inside the empty-list message', () => {
+  expect(read('styles/empty-state.css')).toMatch(
+    /\.empty-message-title\s*\{[^}]*overflow-wrap:\s*anywhere/,
+  );
+});
