@@ -51,9 +51,13 @@ function heading(date: Date, now: Date): Heading {
   return { key: monthKey(date), label: capitalise(monthFormat.format(date)) };
 }
 
+export function sortNewestFirst<T extends Dated>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+}
+
 /** Newest first. A date ahead of the clock counts as today. */
 export function groupByDate<T extends Dated>(items: readonly T[], now: Date): DateGroup<T>[] {
-  const sorted = [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const sorted = sortNewestFirst(items);
   const groups: DateGroup<T>[] = [];
   for (const item of sorted) {
     const { key, label } = heading(new Date(item.createdAt), now);

@@ -11,6 +11,7 @@ interface WorkspaceContentProps {
   card: CardView;
   selected?: Meeting;
   loading: boolean;
+  hasMeetings: boolean;
   folders: Folder[];
   capture: CaptureSession | null;
   stopping: boolean;
@@ -52,5 +53,6 @@ export function WorkspaceContent(props: WorkspaceContentProps) {
     );
   }
   if (props.loading) return null;
+  if (props.hasMeetings) return <EmptyState title="Aucune réunion sélectionnée" />;
   return <EmptyState title="Enregistrez votre première réunion" />;
 }

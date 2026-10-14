@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adjacentId, resolveSelection } from './selection';
+import { adjacentId, neighbourAfter, resolveSelection } from './selection';
 
 const meetings: { id: string; createdAt: string }[] = [
   { id: 'monday', createdAt: '2026-10-12T08:00:00.000Z' },
@@ -35,7 +35,9 @@ describe('adjacentId', () => {
   it.each<[string, string[], string | null, 1 | -1, string | null]>([
     ['nothing in an empty list', [], null, 1, null],
     ['the first row when nothing is selected', ids, null, 1, 'a'],
-    ['the first row when the selection is filtered out', ids, 'gone', -1, 'a'],
+    ['the first row going down when the selection is filtered out', ids, 'gone', 1, 'a'],
+    ['the last row going up when the selection is filtered out', ids, 'gone', -1, 'c'],
+    ['the last row going up when nothing is selected', ids, null, -1, 'c'],
     ['the next row going down', ids, 'b', 1, 'c'],
     ['the previous row going up', ids, 'b', -1, 'a'],
     ['the last row again at the bottom, no wrap', ids, 'c', 1, 'c'],
@@ -43,5 +45,19 @@ describe('adjacentId', () => {
     ['the only row of a single-row list', ['a'], 'a', 1, 'a'],
   ])('gives %s', (_case, list, current, step, expected) => {
     expect(adjacentId(list, current, step)).toBe(expected);
+  });
+});
+
+describe('neighbourAfter', () => {
+  const ids = ['a', 'b', 'c'];
+  it.each<[string, string[], string, string | null]>([
+    ['the next row', ids, 'b', 'c'],
+    ['the next row from the top', ids, 'a', 'b'],
+    ['the previous row at the bottom', ids, 'c', 'b'],
+    ['nothing when the only row goes', ['a'], 'a', null],
+    ['nothing for an unknown id', ids, 'zzz', null],
+    ['nothing in an empty list', [], 'a', null],
+  ])('gives %s', (_case, list, removed, expected) => {
+    expect(neighbourAfter(list, removed)).toBe(expected);
   });
 });

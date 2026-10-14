@@ -47,13 +47,20 @@ export function App({ api }: AppProps) {
 
   if (onboarding.state !== 'done') return <OnboardingScreen api={api} onboarding={onboarding} />;
 
+  // While the card shows the settings, no row stands for it.
+  const paneSelection = workspace.card === 'meeting' ? (workspace.selected?.id ?? null) : null;
   const pane = (
     <ListPane
       meetings={library.meetings}
+      visibleMeetings={workspace.filter.visible}
+      scope={workspace.filter.scope}
+      query={workspace.filter.query}
+      onScope={workspace.filter.setScope}
+      onQuery={workspace.filter.setQuery}
       folders={folders.folders}
       folderActions={folders}
       loading={library.loading}
-      selectedId={workspace.selected?.id ?? null}
+      selectedId={paneSelection}
       settingsOpen={workspace.card === 'settings'}
       recording={recording.capture}
       onSelect={workspace.select}
@@ -75,13 +82,14 @@ export function App({ api }: AppProps) {
         card={workspace.card}
         selected={workspace.selected}
         loading={library.loading}
+        hasMeetings={library.meetings.length > 0}
         folders={folders.folders}
         capture={recording.capture}
         stopping={recording.stopping}
         onStop={recording.stop}
         onUpdate={library.update}
         onMove={folders.move}
-        onDeleted={library.remove}
+        onDeleted={workspace.deleted}
         onSettings={workspace.showSettings}
         onShowOnboarding={onboarding.reopen}
       />

@@ -132,4 +132,16 @@ describe('Recording from the list pane', () => {
     const content = document.getElementById('card-content');
     expect(content).toHaveFocus();
   });
+
+  it('drops the filter and the search so the new meeting is listed and selected', async () => {
+    const user = userEvent.setup();
+    render(<App api={configuredApi()} />);
+    await user.type(await screen.findByRole('searchbox'), 'Point');
+    await startRecording(user);
+    await user.click(await screen.findByRole('button', { name: 'Terminer la réunion' }));
+    const row = await screen.findByRole('option', { name: /Revue du vendredi/ });
+    expect(row).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('searchbox')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Tous' })).toHaveAttribute('aria-pressed', 'true');
+  });
 });
