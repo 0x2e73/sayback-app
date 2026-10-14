@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { meetingFixture } from '../../test-api';
 import { downloadMeeting } from './download-meeting';
@@ -82,4 +82,48 @@ it('has nothing to copy or export before the analysis', () => {
   );
   expect(screen.getByRole('button', { name: 'Copier les notes' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Exporter' })).toBeDisabled();
+});
+
+it('lets a failed copy fade away like a successful one', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('refusé'));
+    render(<MeetingActions meeting={analysed} busy={false} onDelete={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Copier les notes' }));
+    expect(await screen.findByText('La copie a échoué. Réessayez.')).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_100);
+    });
+    expect(screen.queryByText('La copie a échoué. Réessayez.')).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('holds the copy and the export back during an analysis, and says why', () => {
+  render(<MeetingActions meeting={analysed} busy onDelete={vi.fn()} />);
+  for (const name of ['Copier les notes', 'Exporter']) {
+    const button = screen.getByRole('button', { name });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Disponible à la fin de l’analyse.');
+  }
+});
+
+it('says what is missing when there is nothing to copy or export yet', () => {
+  render(
+    <MeetingActions
+      meeting={meetingFixture('m2', 'Point', '2026-10-14T08:00:00Z')}
+      busy={false}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByRole('button', { name: 'Copier les notes' })).toHaveAttribute(
+    'title',
+    'Aucune note à copier pour le moment.',
+  );
+  expect(screen.getByRole('button', { name: 'Exporter' })).toHaveAttribute(
+    'title',
+    'Aucune transcription à exporter pour le moment.',
+  );
 });

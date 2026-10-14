@@ -11,9 +11,21 @@ interface MeetingActionsProps {
   onDelete(): void;
 }
 
+/** Why an action is unavailable, or null when it is available. */
+function holdBack(busy: boolean, ready: boolean, missing: string): string | null {
+  if (busy) return 'Disponible à la fin de l’analyse.';
+  return ready ? null : missing;
+}
+
 export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps) {
   const copy = useCopyNotes(meeting);
   const hasNotes = meeting.notes !== null || meeting.clarifications.length > 0;
+  const copyHint = holdBack(busy, hasNotes, 'Aucune note à copier pour le moment.');
+  const exportHint = holdBack(
+    busy,
+    meeting.transcript.length > 0,
+    'Aucune transcription à exporter pour le moment.',
+  );
 
   return (
     <div className="meeting-actions">
@@ -25,8 +37,8 @@ export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps)
           variant="ghost"
           shape="round"
           aria-label="Copier les notes"
-          title="Copier les notes"
-          disabled={!hasNotes}
+          title={copyHint ?? 'Copier les notes'}
+          disabled={copyHint !== null}
           onClick={() => void copy.copy()}
         >
           <Copy size={16} aria-hidden="true" />
@@ -35,8 +47,8 @@ export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps)
           variant="ghost"
           shape="round"
           aria-label="Exporter"
-          title="Exporter"
-          disabled={!meeting.transcript.length}
+          title={exportHint ?? 'Exporter'}
+          disabled={exportHint !== null}
           onClick={() => downloadMeeting(meeting)}
         >
           <Download size={16} aria-hidden="true" />

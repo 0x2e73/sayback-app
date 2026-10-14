@@ -21,42 +21,55 @@ export interface NoteSource {
   at: number;
 }
 
-/** Playable sources of a note, in order; sources within the same second show one stamp. */
-export function noteSources(meeting: Meeting, sourceIds: readonly string[]): NoteSource[] {
-  const seconds = new Set<number>();
-  const sources: NoteSource[] = [];
-  for (const id of sourceIds) {
+/** Every playable source of a note, in order: what the export keeps. */
+export function playableSources(meeting: Meeting, sourceIds: readonly string[]): NoteSource[] {
+  return sourceIds.flatMap((id) => {
     const at = sourceTime(meeting, id);
-    if (at === undefined || seconds.has(Math.floor(at))) continue;
-    seconds.add(Math.floor(at));
-    sources.push({ id, at });
-  }
-  return sources;
+    return at === undefined ? [] : [{ id, at }];
+  });
 }
 
-function formatSection(meeting: Meeting, title: string, items: NoteItem[]): string {
+/** What a note shows: sources within the same second share one stamp. */
+export function noteSources(meeting: Meeting, sourceIds: readonly string[]): NoteSource[] {
+  const seconds = new Set<number>();
+  return playableSources(meeting, sourceIds).filter((source) => {
+    const second = Math.floor(source.at);
+    if (seconds.has(second)) return false;
+    seconds.add(second);
+    return true;
+  });
+}
+
+function formatSection(meeting: Meeting, title: string, items: NoteItem[]): string | null {
+  if (!items.length) return null;
   const lines = items.map((item) => {
-    const timestamps = noteSources(meeting, item.sourceIds).map((source) => timeLabel(source.at));
-    return `- ${item.text} (${timestamps.join(', ')})`;
+    const stamps = playableSources(meeting, item.sourceIds).map((source) => timeLabel(source.at));
+    return stamps.length ? `- ${item.text} (${stamps.join(', ')})` : `- ${item.text}`;
   });
   return [`## ${title}`, ...lines].join('\n');
 }
 
+function noteSections(meeting: Meeting): string[] {
+  if (!meeting.notes) return [];
+  const { summary, keyPoints, decisions, actions, questions } = meeting.notes;
+  return [
+    summary.trim(),
+    formatSection(meeting, 'Points clés', keyPoints),
+    formatSection(meeting, 'Décisions', decisions),
+    formatSection(meeting, 'Actions', actions),
+    formatSection(meeting, 'À clarifier', questions),
+  ].filter((section): section is string => Boolean(section));
+}
+
 /** What « Copier les notes » puts on the clipboard: everything but the transcript. */
 export function notesMarkdown(meeting: Meeting): string {
-  const sections = [`# ${meeting.title}`];
-  if (meeting.notes) {
-    const { summary, keyPoints, decisions, actions, questions } = meeting.notes;
-    sections.push(summary);
-    sections.push(formatSection(meeting, 'Points clés', keyPoints));
-    sections.push(formatSection(meeting, 'Décisions', decisions));
-    sections.push(formatSection(meeting, 'Actions', actions));
-    sections.push(formatSection(meeting, 'À clarifier', questions));
+  const sections = [`# ${meeting.title}`, ...noteSections(meeting)];
+  if (meeting.clarifications.length) {
+    const corrections = meeting.clarifications.map(
+      (item) => `- [${timeLabel(item.at)}] ${item.text}`,
+    );
+    sections.push(['## Précisions', ...corrections].join('\n'));
   }
-  const corrections = meeting.clarifications.map(
-    (item) => `- [${timeLabel(item.at)}] ${item.text}`,
-  );
-  sections.push(['## Précisions', ...corrections].join('\n'));
   return sections.join('\n\n');
 }
 

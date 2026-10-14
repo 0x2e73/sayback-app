@@ -34,7 +34,7 @@ export function MeetingHeader(props: MeetingHeaderProps) {
           />
         </MetaItem>
         <MetaItem>{meetingDateLabel(meeting.createdAt)}</MetaItem>
-        <MetaItem>{durationLabel(meeting.duration)}</MetaItem>
+        {meeting.duration > 0 && <MetaItem>{durationLabel(meeting.duration)}</MetaItem>}
         <MetaItem>
           {analyzing ? (
             <AnalysisStatus meeting={meeting} />

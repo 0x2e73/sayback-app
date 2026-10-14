@@ -14,7 +14,7 @@ export function useCopyNotes(meeting: Meeting) {
   const [state, setState] = useState<CopyState>('idle');
 
   useEffect(() => {
-    if (state !== 'done') return;
+    if (state === 'idle') return;
     const timer = setTimeout(() => setState('idle'), 2_000);
     return () => clearTimeout(timer);
   }, [state]);

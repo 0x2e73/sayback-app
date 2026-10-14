@@ -31,21 +31,40 @@ describe('noteSources', () => {
 });
 
 describe('notesMarkdown', () => {
-  it('copies the notes and the clarifications without the transcript', () => {
+  it('copies the notes and the clarifications without the transcript or empty sections', () => {
     const notes = notesMarkdown(meeting);
     expect(notes).toBe(
       [
         '# Revue produit',
         'On valide le budget.',
-        '## Points clés\n- Budget validé (01:01, 00:04, 01:30)',
-        '## Décisions',
-        '## Actions',
-        '## À clarifier',
+        '## Points clés\n- Budget validé (01:01, 00:04, 00:04, 01:30)',
         '## Précisions\n- [01:30] Le budget 2027.',
       ].join('\n\n'),
     );
     expect(meetingMarkdown(meeting)).toBe(
       `${notes}\n\n## Transcription\n\n[00:04] Intervenant A · extrait 1 : Bonjour.\n\n[00:04] Intervenant B · extrait 1 : Salut.\n\n[01:01] Intervenant A · extrait 2 : Le budget.`,
     );
+  });
+
+  it('writes a note without any source as a plain line', () => {
+    const plain = meetingFixture('m2', 'Point', '2026-10-14T08:00:00Z', {
+      status: 'ready',
+      notes: {
+        summary: '',
+        keyPoints: [{ text: 'Sans horodatage', sourceIds: [] }],
+        decisions: [{ text: 'Source inconnue', sourceIds: ['inconnu'] }],
+        actions: [],
+        questions: [],
+      },
+    });
+    expect(notesMarkdown(plain)).toBe(
+      ['# Point', '## Points clés\n- Sans horodatage', '## Décisions\n- Source inconnue'].join(
+        '\n\n',
+      ),
+    );
+  });
+
+  it('has no « Précisions » section without a clarification', () => {
+    expect(notesMarkdown(meetingFixture('m3', 'Vide', '2026-10-14T08:00:00Z'))).toBe('# Vide');
   });
 });

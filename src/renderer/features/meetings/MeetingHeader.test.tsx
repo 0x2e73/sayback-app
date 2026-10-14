@@ -104,3 +104,9 @@ it('puts the status badge in its own slot so the separator never lands inside th
   expect(badge.parentElement).toHaveClass('detail-meta-item');
   expect(badge.parentElement?.parentElement).toHaveClass('detail-meta');
 });
+
+it('leaves the duration out until the meeting has one', () => {
+  renderHeader(meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z', { duration: 0 }));
+  expect(screen.queryByText('0 s')).toBeNull();
+  expect(screen.getByText('14 oct. 2026')).toBeInTheDocument();
+});
