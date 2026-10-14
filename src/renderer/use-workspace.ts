@@ -10,6 +10,7 @@ import type { CaptureOptions } from './features/recording/capture-session';
 import { useRecording } from './features/recording/use-recording';
 import { useUpdateInstall } from './features/updates/use-update-install';
 import { useUpdateStatus } from './features/updates/use-update-status';
+import { useMenuBar } from './use-menu-bar';
 import { workspaceNotice } from './workspace-notice';
 
 export type CardView = 'meeting' | 'settings';
@@ -40,6 +41,13 @@ export function useWorkspace(api: DesktopApi) {
     [clearFilter, runAutoAnalysis, updateMeeting],
   );
   const recording = useRecording(api, onFinished);
+  useMenuBar(api, recording.capture, {
+    // One recording at a time: the pane is locked meanwhile.
+    onNewRecording: () => {
+      if (!recording.capture) setNewMeeting(true);
+    },
+    onStopRecording: recording.stop,
+  });
 
   async function start(title: string, options: StartOptions, autoAnalyze: boolean) {
     analysis.clearError();

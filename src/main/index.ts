@@ -12,6 +12,9 @@ import {
 import { registerCapture } from './capture-permissions';
 import { registerWindowHandlers } from './full-screen';
 import { createWindow } from './window';
+import { createMenuBarActions } from './menu-bar-actions';
+import { createElectronMenuBar } from './menu-bar-electron';
+import { registerMenuBarHandlers, type MenuBar } from './menu-bar';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
@@ -40,17 +43,20 @@ const rendererUrl = devRendererUrl ?? pathToFileURL(rendererPath).href;
 let window: BrowserWindow | null = null;
 let services: DesktopServices | undefined;
 let updates: UpdateService | undefined;
+let menuBar: MenuBar | null = null;
 
 function isRecording(): boolean {
   return services?.meetings.list().some((meeting) => meeting.status === 'recording') ?? false;
 }
 
-function openWindow() {
-  if (!services) return;
-  window = createWindow({ rendererUrl, isRecording });
-  window.on('closed', () => {
+function openWindow(): BrowserWindow | null {
+  if (!services) return null;
+  const opened = createWindow({ rendererUrl, isRecording });
+  window = opened;
+  opened.on('closed', () => {
     window = null;
   });
+  return opened;
 }
 
 void app.whenReady().then(() => {
@@ -75,6 +81,19 @@ void app.whenReady().then(() => {
   protocol.handle('meeting-media', (request) =>
     serveMedia(request, desktop.media, desktop.meetings),
   );
+  const menuBarActions = createMenuBarActions({
+    getWindow: () => window,
+    openWindow,
+    isRecording,
+    quitApp: () => app.quit(),
+  });
+  // A single icon for the whole run: `activate` and page reloads never come through here.
+  menuBar = createElectronMenuBar(menuBarActions);
+  registerMenuBarHandlers(
+    handle,
+    { announce: (state) => menuBar?.announce(state) },
+    menuBarActions.rendererReady,
+  );
   openWindow();
 });
 
@@ -87,6 +106,7 @@ app.on('window-all-closed', () => {
 // Back in the foreground: the update channel is re-read.
 app.on('browser-window-focus', () => updates?.windowFocused());
 app.on('will-quit', () => {
+  menuBar?.destroy();
   void updates?.stop();
   services?.close();
 });

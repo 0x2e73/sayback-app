@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog } from 'electron';
 import { join } from 'node:path';
+import { guardClose } from './close-guard';
 import { relayFullScreen } from './full-screen';
 import { windowChrome } from './window-chrome';
 
@@ -29,12 +30,12 @@ export function createWindow({ rendererUrl, isRecording }: WindowOptions): Brows
     if (url !== rendererUrl) event.preventDefault();
   });
   window.on('close', (event) => {
-    if (!isRecording()) return;
-    event.preventDefault();
-    void dialog.showMessageBox(window, {
-      type: 'info',
-      message: 'Arrêtez l’enregistrement avant de fermer SayBack.',
-      buttons: ['Revenir à la réunion'],
+    guardClose(isRecording, event, () => {
+      void dialog.showMessageBox(window, {
+        type: 'info',
+        message: 'Arrêtez l’enregistrement avant de fermer SayBack.',
+        buttons: ['Revenir à la réunion'],
+      });
     });
   });
   void window.loadURL(rendererUrl);

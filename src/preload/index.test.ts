@@ -37,3 +37,20 @@ it('passes full-screen changes to the page, ignoring anything but a boolean', ()
   stop();
   expect(electron.listeners.has('window:full-screen-changed')).toBe(false);
 });
+
+it.each([
+  ['onMenuBarNewRecording', 'menu-bar:new-recording'],
+  ['onMenuBarStopRecording', 'menu-bar:stop-recording'],
+] as const)('relays %s to the page until it unsubscribes', (method, channel) => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  let count = 0;
+  const stop = api[method](() => {
+    count += 1;
+  });
+  electron.listeners.get(channel)?.({}, undefined);
+  electron.listeners.get(channel)?.({}, 'anything');
+  expect(count).toBe(2);
+  stop();
+  expect(electron.listeners.has(channel)).toBe(false);
+});

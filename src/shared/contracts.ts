@@ -1,5 +1,6 @@
 import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
+import type { RecordingAnnouncement } from './menu-bar';
 import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
 export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
@@ -93,6 +94,12 @@ export interface DesktopApi {
   isFullScreen(): Promise<Result<boolean>>;
   /** Returns the function that stops listening. */
   onFullScreenChange(listener: (fullScreen: boolean) => void): () => void;
+  /** Tells the menu bar whether a recording runs, and since when (ISO date). */
+  announceRecording(state: RecordingAnnouncement): Promise<Result<void>>;
+  /** Menu bar « Nouvel enregistrement… ». Returns the unsubscribe function. */
+  onMenuBarNewRecording(listener: () => void): () => void;
+  /** Menu bar « Arrêter l’enregistrement ». Returns the unsubscribe function. */
+  onMenuBarStopRecording(listener: () => void): () => void;
   /** Last known update state; the first call waits for the startup read of the channel. */
   getUpdateStatus(): Promise<Result<UpdateStatus>>;
   /** Re-reads the update channel now. */

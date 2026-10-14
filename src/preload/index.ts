@@ -1,6 +1,15 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { DesktopApi, UpdateStatus } from '../shared/contracts';
 
+// Payload-free event: the page is only told that it happened.
+function listenTo(channel: string, listener: () => void): () => void {
+  const relay = () => listener();
+  ipcRenderer.on(channel, relay);
+  return () => {
+    ipcRenderer.removeListener(channel, relay);
+  };
+}
+
 const api: DesktopApi = {
   listMeetings: () => ipcRenderer.invoke('meetings:list'),
   listFolders: () => ipcRenderer.invoke('folders:list'),
@@ -37,6 +46,9 @@ const api: DesktopApi = {
       ipcRenderer.removeListener('window:full-screen-changed', relay);
     };
   },
+  announceRecording: (state) => ipcRenderer.invoke('menu-bar:recording', state),
+  onMenuBarNewRecording: (listener) => listenTo('menu-bar:new-recording', listener),
+  onMenuBarStopRecording: (listener) => listenTo('menu-bar:stop-recording', listener),
   getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
   checkForUpdate: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
