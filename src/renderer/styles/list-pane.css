@@ -1,0 +1,68 @@
+.list-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-sidebar);
+}
+/* Two classes: beats the .window-band height, which is 0 outside macOS. */
+.list-pane > .list-pane-header {
+  display: flex;
+  align-items: center;
+  height: var(--header-height);
+  padding: 0 var(--space-3) 0 max(var(--space-3), var(--traffic-inset));
+}
+.list-search {
+  width: 100%;
+}
+.list-search > svg {
+  left: 10px;
+}
+.list-search input {
+  min-height: 28px;
+  padding-block: 4px;
+  padding-left: 30px;
+  font-size: var(--text-control);
+}
+.list-pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: var(--space-2);
+}
+.list-pane-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 56px;
+  padding: 0 var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-live);
+}
+.list-skeleton {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+.skeleton-row {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+.skeleton-line {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+.skeleton-line-short {
+  width: 60%;
+  background: var(--color-surface);
+}

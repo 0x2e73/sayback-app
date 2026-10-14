@@ -81,3 +81,17 @@ it('drops the inset and the top band in full screen, after the macOS values', ()
 it('scrolls the folder chips sideways, never the pane', () => {
   expect(read('styles/folder-filter.css')).toMatch(/\.folder-chips\s*\{[^}]*overflow-x:\s*auto/);
 });
+
+it('keeps the search clear of the traffic lights in a 52 px list header', () => {
+  const pane = read('styles/list-pane.css');
+  expect(pane).toMatch(
+    /\.list-pane > \.list-pane-header\s*\{[^}]*height:\s*var\(--header-height\)/,
+  );
+  expect(pane).toMatch(
+    /\.list-pane > \.list-pane-header\s*\{[^}]*padding:[^;]*max\(var\(--space-3\),\s*var\(--traffic-inset\)\)/,
+  );
+});
+
+it('scrolls the list only, never the whole pane', () => {
+  expect(read('styles/list-pane.css')).toMatch(/\.list-pane-body\s*\{[^}]*overflow-y:\s*auto/);
+});
