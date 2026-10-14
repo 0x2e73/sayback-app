@@ -66,7 +66,7 @@ it('keeps a drag band on the screens that have no shell', () => {
 
 it('insets the list header for the traffic lights on macOS only', () => {
   expect(tokenValue('--traffic-inset')).toBe('0px');
-  expect(css()).toMatch(/:root\[data-platform='mac'\]\s*\{[^}]*--traffic-inset:\s*76px/);
+  expect(css()).toMatch(/:root\[data-platform='mac'\]\s*\{[^}]*--traffic-inset:\s*96px/);
 });
 
 it('drops the inset and the top band in full screen, after the macOS values', () => {

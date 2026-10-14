@@ -83,7 +83,8 @@
 
 :root[data-platform='mac'] {
   --chrome-band: 52px;
-  --traffic-inset: 76px;
+  /* Room for the window buttons placed at x 16: macOS 26 and later draws them wider. */
+  --traffic-inset: 96px;
   --color-sidebar: var(--color-sidebar-veil);
   background: transparent;
 }
