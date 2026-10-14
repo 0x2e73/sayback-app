@@ -7,25 +7,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
   min-height: 42px;
   padding: 9px 11px;
-  border: 1px solid #dbe3e9;
-  border-radius: 9px;
-  background: #fff;
-  color: #17212b;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
   text-align: left;
 }
 
 .model-select-trigger:hover,
 .model-select-trigger[aria-expanded='true'] {
-  border-color: #9db9dc;
+  border-color: var(--color-accent-soft);
 }
 
 .model-select-trigger svg {
   flex: none;
-  color: #7c8995;
+  color: var(--color-text-subtle);
 }
 
 .model-select-popover {
@@ -35,19 +35,19 @@
   left: 0;
   width: 100%;
   padding: 8px;
-  border: 1px solid #dbe3e9;
-  border-radius: 11px;
-  background: #fff;
-  box-shadow: 0 14px 36px #17212b1c;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-float);
 }
 
 .model-select-popover input {
   width: 100%;
   min-height: 38px;
   padding: 8px 10px;
-  border: 1px solid #dbe3e9;
-  border-radius: 7px;
-  background: #fff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
 }
 
 .model-select-list {
@@ -63,19 +63,19 @@
   width: 100%;
   padding: 9px 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: #243343;
+  color: var(--color-text);
   text-align: left;
 }
 
 .model-select-list button:hover,
 .model-select-list button.active {
-  background: #eff4fa;
+  background: var(--color-surface-raised);
 }
 
 .model-select-list button svg {
-  color: #3974d6;
+  color: var(--color-accent);
 }
 
 .model-select-list p {

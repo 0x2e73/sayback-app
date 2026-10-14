@@ -2,8 +2,8 @@
   display: grid;
   place-items: center;
   min-height: 100dvh;
-  color: #62707f;
-  background: #f6f8fa;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
 }
 
 .app-enter {
@@ -14,7 +14,7 @@
   display: grid;
   grid-template-columns: minmax(320px, 42%) minmax(0, 1fr);
   min-height: 100dvh;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .onboarding-visual {
@@ -24,17 +24,17 @@
   justify-content: space-between;
   min-height: 100dvh;
   padding: 38px;
-  background: #eef4fb;
+  background: var(--color-surface-raised);
 }
 
 .onboarding-brand {
   display: flex;
   align-items: center;
   align-self: flex-start;
-  gap: 7px;
-  font-size: 1.28rem;
-  font-weight: 760;
-  letter-spacing: -0.05em;
+  gap: var(--space-2);
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .onboarding-brand img {
@@ -53,8 +53,8 @@
 
 .onboarding-orbit {
   position: absolute;
-  border: 1px solid #cfdef1;
-  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
 }
 
 .orbit-outer {
@@ -69,11 +69,10 @@
   place-items: center;
   width: 38%;
   aspect-ratio: 1;
-  border: 1px solid #cadcf2;
-  border-radius: 28%;
-  background: #fff;
-  color: #3974d6;
-  box-shadow: 0 20px 50px #3569a91a;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-accent);
   animation: symbol-enter 420ms var(--ease-out) both;
 }
 
@@ -86,8 +85,8 @@
   align-self: flex-start;
   max-width: 240px;
   margin: 0;
-  color: #74889f;
-  font-size: 0.82rem;
+  color: var(--color-text-subtle);
+  font-size: var(--text-control);
 }
 
 .onboarding-main {
@@ -102,19 +101,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: var(--space-5);
 }
 
 .onboarding-topline {
-  color: #7c8995;
-  font-size: 0.82rem;
+  color: var(--color-text-subtle);
+  font-size: var(--text-control);
 }
 
 .onboarding-topline button {
   padding: 5px;
   border: 0;
   background: transparent;
-  color: #62707f;
+  color: var(--color-text-muted);
 }
 
 .onboarding-copy {
@@ -127,7 +126,7 @@
 .onboarding-copy h1 {
   max-width: 600px;
   margin: 18px 0 24px;
-  font-size: clamp(2.5rem, 4.5vw, 4.6rem);
+  font-size: var(--text-title-lg);
   line-height: 1.05;
 }
 
@@ -138,36 +137,36 @@
 .onboarding-body {
   max-width: 570px;
   margin-bottom: 28px;
-  color: #435160;
-  font-size: clamp(1.05rem, 1.4vw, 1.26rem);
+  color: var(--color-text-muted);
+  font-size: var(--text-section);
   line-height: 1.55;
 }
 
 .onboarding-detail {
   max-width: 540px;
   padding-left: 16px;
-  border-left: 2px solid #91b9e9;
-  color: #71808c;
-  font-size: 0.9rem;
+  border-left: 2px solid var(--color-accent-soft);
+  color: var(--color-text-subtle);
+  font-size: var(--text-body);
 }
 
 .onboarding-progress,
 .onboarding-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .onboarding-progress span {
   width: 28px;
   height: 4px;
-  border-radius: 5px;
-  background: #dce6f1;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
   transition: background-color 160ms ease;
 }
 
 .onboarding-progress span.active {
-  background: #3974d6;
+  background: var(--color-accent);
 }
 
 @keyframes app-enter {

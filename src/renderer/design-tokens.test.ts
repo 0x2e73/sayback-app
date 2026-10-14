@@ -12,6 +12,8 @@ const migratedSheets = [
   'styles/recording.css',
   'styles/library.css',
   'styles/meetings.css',
+  'styles/onboarding.css',
+  'styles/model-select.css',
 ];
 
 const colourLiteral = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:white|black)\b/i;
