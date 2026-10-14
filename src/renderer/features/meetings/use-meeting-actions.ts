@@ -13,6 +13,8 @@ interface MeetingActionsOptions {
 export function useMeetingActions({ api, meeting, onUpdate, onDeleted }: MeetingActionsOptions) {
   const [pending, setPending] = useState<'analysis' | 'clarification' | 'deletion' | null>(null);
   const [error, setError] = useState('');
+  // Shown inside the clarification form, where the typed text is.
+  const [clarifyError, setClarifyError] = useState('');
 
   async function analyze() {
     setPending('analysis');
@@ -35,12 +37,12 @@ export function useMeetingActions({ api, meeting, onUpdate, onDeleted }: Meeting
 
   async function clarify(at: number, text: string): Promise<boolean> {
     setPending('clarification');
-    setError('');
+    setClarifyError('');
     try {
       onUpdate(unwrap(await api.clarify(meeting.id, at, text)));
       return true;
     } catch (failure) {
-      setError(errorMessage(failure));
+      setClarifyError(errorMessage(failure));
       return false;
     } finally {
       setPending(null);
@@ -64,6 +66,7 @@ export function useMeetingActions({ api, meeting, onUpdate, onDeleted }: Meeting
 
   return {
     error,
+    clarifyError,
     analyzing: pending === 'analysis' || meeting.status === 'processing',
     saving: pending === 'clarification',
     deleting: pending === 'deletion',

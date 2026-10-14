@@ -15,7 +15,9 @@ const meeting = meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z', {
   clarifications: [{ id: 'c1', at: 45, text: 'On parle du bouton Exporter.', createdAt: '' }],
 });
 
-function renderSection(extra: { meeting?: Meeting; disabled?: boolean } = {}) {
+function renderSection(
+  extra: { meeting?: Meeting; disabled?: boolean; submitError?: string } = {},
+) {
   const onTimestamp = vi.fn();
   const onSubmit = vi.fn(async () => true);
   render(
@@ -24,6 +26,7 @@ function renderSection(extra: { meeting?: Meeting; disabled?: boolean } = {}) {
       at={30}
       disabled={extra.disabled ?? false}
       saving={false}
+      submitError={extra.submitError ?? ''}
       onTimestamp={onTimestamp}
       onSubmit={onSubmit}
     />,
@@ -62,4 +65,11 @@ it('closes the form with « Annuler »', async () => {
 it('cannot add a clarification while the analysis runs', () => {
   renderSection({ disabled: true });
   expect(screen.getByRole('button', { name: 'Ajouter une précision' })).toBeDisabled();
+});
+
+it('shows the error of a failed save inside the open form', async () => {
+  const user = userEvent.setup();
+  renderSection({ submitError: 'Impossible d’enregistrer la précision.' });
+  await user.click(screen.getByRole('button', { name: 'Ajouter une précision' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('Impossible d’enregistrer la précision.');
 });

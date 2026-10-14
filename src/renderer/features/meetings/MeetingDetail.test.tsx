@@ -179,3 +179,19 @@ it('has no context panel and no audio passage picker', () => {
   expect(screen.queryByRole('heading', { name: 'Le contexte' })).toBeNull();
   expect(screen.queryByLabelText('Passage audio')).toBeNull();
 });
+
+it('says in the form that a clarification could not be saved, and keeps the text', async () => {
+  const user = userEvent.setup();
+  const api = apiFor([analysed]);
+  api.clarify = async () => ({ ok: false, error: 'Impossible d’enregistrer la précision.' });
+  render(detail(analysed, api));
+  await user.click(screen.getByRole('button', { name: 'Ajouter une précision' }));
+  await user.type(screen.getByRole('textbox', { name: 'Votre précision' }), 'Le budget 2027');
+  await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('Impossible d’enregistrer la précision.');
+  expect(screen.getByRole('textbox', { name: 'Votre précision' }).closest('form')).toContainElement(
+    alert,
+  );
+  expect(screen.getByRole('textbox', { name: 'Votre précision' })).toHaveValue('Le budget 2027');
+});

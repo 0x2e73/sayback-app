@@ -8,6 +8,8 @@ interface ClarificationFormProps {
   /** Playback position when the form opened. */
   at: number;
   saving: boolean;
+  /** Why the last save failed: shown under the text, which stays as typed. */
+  submitError: string;
   onClose(): void;
   onSubmit(at: number, text: string): Promise<boolean>;
 }
@@ -18,11 +20,12 @@ export function ClarificationForm({
   duration,
   at,
   saving,
+  submitError,
   onClose,
   onSubmit,
 }: ClarificationFormProps) {
   const [text, setText] = useState('');
-  const [moment, setMoment] = useState(() => timeLabel(at));
+  const [moment, setMoment] = useState(() => timeLabel(Math.min(at, duration)));
   const [error, setError] = useState('');
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -51,6 +54,11 @@ export function ClarificationForm({
           onChange={(event) => setText(event.target.value)}
         />
       </label>
+      {submitError && (
+        <p className="field-error" role="alert">
+          {submitError}
+        </p>
+      )}
       <label className="field clarification-moment">
         Moment
         <input

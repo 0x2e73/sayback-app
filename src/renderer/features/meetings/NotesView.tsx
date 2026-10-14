@@ -9,6 +9,7 @@ interface NotesViewProps {
   at: number;
   analyzing: boolean;
   saving: boolean;
+  clarifyError: string;
   onAnalyze(): void;
   onSettings(): void;
   onTimestamp: TimestampHandler;
@@ -73,6 +74,7 @@ export function NotesView(props: NotesViewProps) {
         at={props.at}
         disabled={props.analyzing}
         saving={props.saving}
+        submitError={props.clarifyError}
         onTimestamp={props.onTimestamp}
         onSubmit={props.onClarify}
       />

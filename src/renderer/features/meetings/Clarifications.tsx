@@ -13,12 +13,13 @@ interface ClarificationsProps {
   at: number;
   disabled: boolean;
   saving: boolean;
+  submitError: string;
   onTimestamp: TimestampHandler;
   onSubmit(at: number, text: string): Promise<boolean>;
 }
 
 export function Clarifications(props: ClarificationsProps) {
-  const { meeting, at, disabled, saving, onTimestamp, onSubmit } = props;
+  const { meeting, at, disabled, saving, submitError, onTimestamp, onSubmit } = props;
   const [open, setOpen] = useState(false);
 
   return (
@@ -46,6 +47,7 @@ export function Clarifications(props: ClarificationsProps) {
           duration={meeting.duration}
           at={at}
           saving={saving}
+          submitError={submitError}
           onClose={() => setOpen(false)}
           onSubmit={onSubmit}
         />

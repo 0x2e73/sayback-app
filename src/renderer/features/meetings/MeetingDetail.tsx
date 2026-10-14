@@ -64,6 +64,7 @@ export function MeetingDetail(props: MeetingDetailProps) {
             at={playback.at}
             analyzing={actions.analyzing}
             saving={actions.saving}
+            clarifyError={actions.clarifyError}
             onAnalyze={analyze}
             onSettings={props.onSettings}
             onTimestamp={playSource}

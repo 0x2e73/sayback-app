@@ -38,7 +38,16 @@ function renderNotes(meeting: Meeting, analyzing = false) {
     onTimestamp: vi.fn(),
     onClarify: vi.fn(async () => true),
   };
-  render(<NotesView meeting={meeting} at={0} analyzing={analyzing} saving={false} {...props} />);
+  render(
+    <NotesView
+      meeting={meeting}
+      at={0}
+      analyzing={analyzing}
+      saving={false}
+      clarifyError=""
+      {...props}
+    />,
+  );
   return props;
 }
 

@@ -7,13 +7,19 @@ import { ClarificationForm } from './ClarificationForm';
 
 afterEach(cleanup);
 
-function renderForm(onSubmit = vi.fn(async () => true), duration = 3130.4, at = 252.7) {
+function renderForm(
+  onSubmit = vi.fn(async () => true),
+  duration = 3130.4,
+  at = 252.7,
+  submitError = '',
+) {
   const onClose = vi.fn();
   render(
     <ClarificationForm
       duration={duration}
       at={at}
       saving={false}
+      submitError={submitError}
       onClose={onClose}
       onSubmit={onSubmit}
     />,
@@ -89,4 +95,34 @@ it('stays open with the draft when saving fails', async () => {
 it('adds nothing without text', () => {
   renderForm();
   expect(screen.getByRole('button', { name: 'Ajouter' })).toBeDisabled();
+});
+
+it('shows why saving failed under the field and keeps what was typed', () => {
+  renderForm(
+    vi.fn(async () => false),
+    3130.4,
+    252.7,
+    'Impossible d’enregistrer la précision.',
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent('Impossible d’enregistrer la précision.');
+  expect(text()).toHaveValue('');
+});
+
+it('keeps the typed text next to the error of a failed save', async () => {
+  const user = userEvent.setup();
+  const onSubmit = vi.fn(async () => false);
+  renderForm(onSubmit, 3130.4, 252.7, 'Impossible d’enregistrer la précision.');
+  await user.type(text(), 'Le bouton Exporter.');
+  await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+  expect(text()).toHaveValue('Le bouton Exporter.');
+  expect(screen.getByRole('alert')).toBeInTheDocument();
+});
+
+it('prefills no moment past the end of the meeting', () => {
+  renderForm(
+    vi.fn(async () => true),
+    3130.4,
+    4000,
+  );
+  expect(moment()).toHaveValue('52:10');
 });
