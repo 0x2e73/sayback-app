@@ -8,7 +8,7 @@ interface RecordingSourceDialogProps {
 
 export function RecordingSourceDialog({ source }: RecordingSourceDialogProps) {
   return (
-    <Dialog title="Changer la source capturée" onClose={source.closePicker}>
+    <Dialog title="Changer la source capturée" busy={source.switching} onClose={source.closePicker}>
       <div className="recording-source-dialog">
         <p className="caption">La réunion et le son continuent pendant le changement.</p>
         {source.error && <Notice>{source.error}</Notice>}

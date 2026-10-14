@@ -23,12 +23,9 @@ function analysisCostNote(settings: Settings): string {
 
 export function NewMeetingDialog({ api, onClose, onStart }: NewMeetingDialogProps) {
   const form = useNewMeeting(api, onStart);
-  function close() {
-    if (!form.busy) onClose();
-  }
 
   return (
-    <Dialog title="Nouvelle réunion" onClose={close}>
+    <Dialog title="Nouvelle réunion" busy={form.busy} onClose={onClose}>
       <form onSubmit={(event) => void form.submit(event)} className="new-meeting-form">
         {form.error && (
           <div className="permission-notice">
