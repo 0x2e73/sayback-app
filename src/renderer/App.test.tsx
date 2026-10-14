@@ -231,4 +231,13 @@ describe('Meeting workspace', () => {
     await screen.findByRole('heading', { name: 'Gardez le fil de vos réunions.' });
     expect(document.querySelector('.onboarding > .window-band')).not.toBeNull();
   });
+  it('keeps only the navigation in the left pane', async () => {
+    render(<App api={apiFor()} />);
+    const nav = await screen.findByRole('navigation', { name: 'Navigation principale' });
+    const pane = nav.closest('.sidebar')!;
+    for (const text of ['Votre espace personnel', 'Votre mémoire, chez vous.', 'Espace local']) {
+      expect(pane).not.toHaveTextContent(text);
+    }
+    expect(pane.firstElementChild).toHaveClass('window-band');
+  });
 });

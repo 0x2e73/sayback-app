@@ -262,17 +262,6 @@ p {
   padding: 0 12px 16px;
   background: var(--color-sidebar);
 }
-.brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 10px;
-  font-size: var(--text-title);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.brand-mark,
-.local-icon,
 .intro-icon,
 .section-icon,
 .meeting-icon {
@@ -285,31 +274,15 @@ p {
   background: var(--color-surface-raised);
   color: var(--color-accent);
 }
-.brand-light {
-  font-weight: 400;
-}
-.brand-mark img {
-  display: block;
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-.brand-mark {
-  background: transparent;
-}
 .brand-dot,
 .heading-dot {
   color: var(--color-accent);
 }
-.workspace-label,
 .eyebrow {
   color: var(--color-text-subtle);
   font-size: var(--text-caption);
   font-weight: 600;
   letter-spacing: 0;
-}
-.workspace-label {
-  padding: 0 12px;
 }
 .nav-item {
   display: flex;
@@ -332,36 +305,6 @@ p {
   margin-left: auto;
   font-size: var(--text-caption);
 }
-.sidebar-bottom {
-  margin-top: auto;
-}
-.local-card {
-  display: flex;
-  gap: var(--space-3);
-  padding: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-.local-card > div {
-  min-width: 0;
-}
-.local-card strong {
-  display: block;
-  font-size: var(--text-control);
-  line-height: 1.35;
-}
-.local-card p {
-  margin: 6px 0 0;
-  color: var(--color-text-subtle);
-  font-size: var(--text-caption);
-  line-height: 1.45;
-}
-.version {
-  padding: 16px 12px 0;
-  color: var(--color-text-subtle);
-  font-size: var(--text-caption);
-}
-.status-dot,
 .orbit-dot {
   display: inline-block;
   width: 7px;

@@ -306,10 +306,6 @@
     flex-wrap: wrap;
     padding: 14px;
   }
-  .sidebar-bottom,
-  .workspace-label {
-    display: none;
-  }
   .page-content {
     padding: 8px 18px 50px;
   }

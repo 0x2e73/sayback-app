@@ -1,5 +1,4 @@
-import { LibraryBig, LockKeyhole, Settings2 } from 'lucide-react';
-import logo from '../assets/sayback-mark.svg';
+import { LibraryBig, Settings2 } from 'lucide-react';
 
 export type WorkspaceSection = 'library' | 'settings';
 interface SidebarProps {
@@ -9,39 +8,10 @@ interface SidebarProps {
   onNavigate(section: WorkspaceSection): void;
 }
 
-function LocalStorageCard() {
-  return (
-    <div className="sidebar-bottom">
-      <div className="local-card">
-        <span className="local-icon">
-          <LockKeyhole size={17} />
-        </span>
-        <div>
-          <strong>Votre mémoire, chez vous.</strong>
-          <p>Vos réunions sont sauvegardées sur cet ordinateur.</p>
-        </div>
-      </div>
-      <div className="version">
-        <span className="status-dot" />
-        Espace local<span>v0.1</span>
-      </div>
-    </div>
-  );
-}
-
 export function Sidebar({ section, count, locked, onNavigate }: SidebarProps) {
   return (
     <aside className="sidebar">
-      <div className="brand">
-        <span className="brand-mark">
-          <img src={logo} alt="" />
-        </span>
-        <span>
-          Say<span className="brand-light">Back</span>
-          <span className="brand-dot">.</span>
-        </span>
-      </div>
-      <div className="workspace-label">Votre espace personnel</div>
+      <div className="window-band" aria-hidden="true" />
       <nav aria-label="Navigation principale">
         <button
           className={`nav-item ${section === 'library' ? 'active' : ''}`}
@@ -60,7 +30,6 @@ export function Sidebar({ section, count, locked, onNavigate }: SidebarProps) {
           Paramètres
         </button>
       </nav>
-      <LocalStorageCard />
     </aside>
   );
 }
