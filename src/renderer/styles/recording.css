@@ -306,6 +306,9 @@
     flex-wrap: wrap;
     padding: 14px;
   }
+  .sidebar .window-band {
+    flex-basis: 100%;
+  }
   .page-content {
     padding: 8px 18px 50px;
   }

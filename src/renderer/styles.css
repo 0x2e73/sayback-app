@@ -104,13 +104,32 @@ button,
 input,
 select,
 textarea,
-a {
+a,
+label,
+summary,
+video,
+[role='button'],
+[tabindex] {
   -webkit-app-region: no-drag;
 }
 .window-band {
   height: var(--chrome-band);
   flex: none;
   -webkit-app-region: drag;
+}
+/* Drag regions follow geometry, not stacking: hand the band back under overlays. */
+.dialog {
+  -webkit-app-region: no-drag;
+}
+:root:has(dialog[open]) .window-band,
+:root:has(:fullscreen) .window-band {
+  -webkit-app-region: no-drag;
+}
+/* For screens without a shell: behind the content, which stays clickable if it is no-drag. */
+.window-band-fixed {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: -1;
 }
 select option {
   background-color: var(--color-overlay);

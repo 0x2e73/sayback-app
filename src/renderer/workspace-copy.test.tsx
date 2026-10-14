@@ -32,4 +32,11 @@ describe('Workspace without marketing copy', () => {
       expect(screen.queryByText(text)).toBeNull();
     }
   });
+  it('keeps a drag band on the startup screen', () => {
+    const api = apiFor();
+    api.getSettings = () => new Promise(() => {});
+    render(<App api={api} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Ouverture de SayBack');
+    expect(document.querySelector('.startup-screen > .window-band')).not.toBeNull();
+  });
 });

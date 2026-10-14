@@ -24,6 +24,7 @@ root.render(
       <App api={window.sayBack} />
     ) : (
       <div className="desktop-required">
+        <div className="window-band window-band-fixed" aria-hidden="true" />
         <h1>SayBack</h1>
         <p>Ouvrez l’application desktop pour enregistrer vos réunions.</p>
         <code>npm run dev</code>

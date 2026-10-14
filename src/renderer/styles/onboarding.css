@@ -14,13 +14,6 @@
   background: var(--color-bg);
 }
 
-/* Behind the content: a drag region works wherever it sits, and nothing steals the clicks. */
-.onboarding-band {
-  position: fixed;
-  inset: 0 0 auto;
-  z-index: -1;
-}
-
 .onboarding-visual {
   display: flex;
   flex-direction: column;
@@ -121,6 +114,8 @@
 }
 
 .onboarding-copy {
+  /* Only no-drag elements cut through the band, so the text under it needs this. */
+  -webkit-app-region: no-drag;
   width: min(100%, 620px);
   margin: auto 0;
   padding: 50px 0;
@@ -179,6 +174,7 @@
   .onboarding-visual {
     min-height: 170px;
     padding: 24px;
+    padding-top: max(24px, var(--chrome-band));
   }
   .onboarding-art,
   .onboarding-visual > p {

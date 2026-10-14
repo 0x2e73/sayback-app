@@ -20,6 +20,7 @@ interface AppProps {
 function StartupScreen() {
   return (
     <div className="startup-screen" role="status">
+      <div className="window-band window-band-fixed" aria-hidden="true" />
       Ouverture de SayBack…
     </div>
   );
