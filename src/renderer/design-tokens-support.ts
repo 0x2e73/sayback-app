@@ -1,8 +1,12 @@
 // Test-only helpers: they read the stylesheets from disk.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const rendererDir = import.meta.dirname;
+export const sheets = readdirSync(import.meta.dirname, {
+  recursive: true,
+  encoding: 'utf8',
+}).filter((file) => file.endsWith('.css'));
 export const read = (path: string) => readFileSync(join(rendererDir, path), 'utf8');
 
 export function tokenBlock(css: string): string {
@@ -59,3 +63,19 @@ export function contrast(foreground: string, ...grounds: string[]): number {
   const [a, b] = [luminance(text), luminance(ground)];
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
+
+export type Declaration = { property: string; value: string };
+
+export function declarations(css: string): Declaration[] {
+  const body = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return body
+    .split(/[;{}]/)
+    .map((chunk) => /^\s*([a-z-]+)\s*:\s*([\s\S]+?)\s*$/i.exec(chunk))
+    .filter((match): match is RegExpExecArray => match !== null)
+    .map(([, property = '', value = '']) => ({
+      property: property.toLowerCase(),
+      value: value.replace(/\s*!important$/i, '').replace(/\s+/g, ' '),
+    }));
+}
+
+export const withoutTokens = (value: string) => value.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');

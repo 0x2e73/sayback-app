@@ -1,11 +1,17 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { contrast, read, rendererDir, tokenBlock, tokenValue } from './design-tokens-support';
-
-const sheets = readdirSync(rendererDir, { recursive: true, encoding: 'utf8' }).filter((file) =>
-  file.endsWith('.css'),
-);
+import {
+  contrast,
+  declarations,
+  read,
+  rendererDir,
+  sheets,
+  tokenBlock,
+  tokenValue,
+  withoutTokens,
+  type Declaration,
+} from './design-tokens-support';
 
 const colourLiteral = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:white|black)\b/i;
 const colourProperty =
@@ -29,38 +35,19 @@ const structuralWords = new Set([
   'underline',
   'line-through',
 ]);
-const motionProperty = /^(?:transition|animation)(?:-[a-z-]+)?$/;
-const timeLiteral = /(?<![\w-])\d*\.?\d+m?s\b/;
-const easingLiteral = /\b(?:ease(?:-in|-out|-in-out)?|cubic-bezier|steps)\b/;
 const allowed: Record<string, Set<string>> = {
   'font-weight': new Set(['400', '500', '600', 'inherit']),
   'letter-spacing': new Set(['0', '-0.02em', 'normal']),
 };
 
-type Declaration = { property: string; value: string };
-
 function contrastBlock(css: string): string {
   return /^@media \(prefers-contrast: more\)\s*\{[\s\S]*?^\}/m.exec(css)?.[0] ?? '';
-}
-
-function declarations(css: string): Declaration[] {
-  const body = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  return body
-    .split(/[;{}]/)
-    .map((chunk) => /^\s*([a-z-]+)\s*:\s*([\s\S]+?)\s*$/i.exec(chunk))
-    .filter((match): match is RegExpExecArray => match !== null)
-    .map(([, property = '', value = '']) => ({
-      property: property.toLowerCase(),
-      value: value.replace(/\s*!important$/i, '').replace(/\s+/g, ' '),
-    }));
 }
 
 function declaredTokens(css: string): Set<string> {
   const names = [...tokenBlock(css).matchAll(/(--[a-z0-9-]+)\s*:/gi)];
   return new Set(names.flatMap(([, name]) => (name ? [name] : [])));
 }
-
-const withoutTokens = (value: string) => value.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
 
 function usesUnknownToken(value: string, declared: ReadonlySet<string>): boolean {
   return [...value.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)].some(
@@ -108,18 +95,6 @@ function sheetViolations(sheet: string): string[] {
   return cssViolations(body.replace(contrastBlock(css), ''), declared);
 }
 
-function motionViolations(sheet: string): string[] {
-  const css = read(sheet);
-  const body = sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css;
-  return declarations(body)
-    .filter(({ property }) => motionProperty.test(property))
-    .filter(({ value }) => {
-      const rest = withoutTokens(value);
-      return timeLiteral.test(rest) || easingLiteral.test(rest);
-    })
-    .map(({ property, value }) => `${property}: ${value}`);
-}
-
 describe('guard', () => {
   const declared = new Set(['--color-text', '--color-live', '--color-border', '--space-2']);
   const violations = (css: string) => cssViolations(css, declared);
@@ -165,17 +140,6 @@ describe('design tokens', () => {
   it.each(sheets)('%s holds only tokens, no literal', (sheet) => {
     expect(sheetViolations(sheet)).toEqual([]);
   });
-
-  it.each(sheets)('%s takes durations and easing from tokens', (sheet) => {
-    expect(motionViolations(sheet)).toEqual([]);
-  });
-
-  it.each(sheets.filter((sheet) => sheet !== 'styles.css'))(
-    '%s keeps keyframes and reduced motion in styles.css',
-    (sheet) => {
-      expect(read(sheet)).not.toMatch(/@keyframes|prefers-reduced-motion/);
-    },
-  );
 
   it('keeps inline styles out of index.html', () => {
     expect(read('index.html')).not.toMatch(/<style[\s>]/i);
