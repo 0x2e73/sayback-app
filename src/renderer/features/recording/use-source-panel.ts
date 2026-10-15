@@ -15,14 +15,19 @@ export function useSourcePanel() {
     trigger.current?.focus();
   }
 
-  /** Escape folds an open panel first; true when it did. */
-  function escape(): boolean {
-    if (!panel.open) return false;
+  /** Folds it without moving the focus: the list it showed is gone or about to change. */
+  function reset(): void {
+    setPanel({ open: false, instant: true });
+  }
+
+  /** Escape folds a panel that is on screen first; true when it did. */
+  function escape(visible: boolean): boolean {
+    if (!panel.open || !visible) return false;
     collapse();
     return true;
   }
 
-  return { ...panel, trigger, toggle, collapse, escape };
+  return { ...panel, trigger, toggle, collapse, reset, escape };
 }
 
 export type SourcePanel = ReturnType<typeof useSourcePanel>;

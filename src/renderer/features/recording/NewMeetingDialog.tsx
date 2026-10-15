@@ -1,8 +1,9 @@
 import { useRef } from 'react';
 import type { DesktopApi } from '../../../shared/contracts';
-import { Button, Dialog, Notice } from '../../components/ui';
+import { Dialog, Notice } from '../../components/ui';
 import { AnalysisOption } from './AnalysisOption';
 import { MeetingSource } from './MeetingSource';
+import { NewMeetingFooter } from './NewMeetingFooter';
 import { SourceChips } from './SourceChips';
 import { SourceNotices } from './SourceNotices';
 import { useNewMeeting, type StartMeeting } from './use-new-meeting';
@@ -25,22 +26,30 @@ export function NewMeetingDialog({ api, onClose, onStart, onConfigure }: NewMeet
   const titleField = useRef<HTMLInputElement>(null);
   useSubmitShortcut(FORM_ID);
 
+  // A folded list must not come back open with another list, or with the screen.
+  function withoutScreen(): void {
+    panel.reset();
+    form.withoutScreen();
+  }
+  function reload(): void {
+    panel.reset();
+    form.reloadSources();
+  }
+
   return (
     <Dialog
       title="Nouvelle réunion"
       busy={form.busy}
       initialFocus={titleField}
-      onEscape={panel.escape}
+      onEscape={() => panel.escape(form.selection.screen && form.sources.status === 'ready')}
       onClose={onClose}
       footer={
-        <>
-          <Button variant="ghost" disabled={form.busy} onClick={onClose}>
-            Annuler
-          </Button>
-          <Button type="submit" form={FORM_ID} busy={form.busy} disabled={!form.canStart}>
-            Démarrer l’enregistrement
-          </Button>
-        </>
+        <NewMeetingFooter
+          busy={form.busy}
+          canStart={form.canStart}
+          formId={FORM_ID}
+          onCancel={onClose}
+        />
       }
     >
       <form id={FORM_ID} onSubmit={(event) => void form.submit(event)}>
@@ -59,14 +68,17 @@ export function NewMeetingDialog({ api, onClose, onStart, onConfigure }: NewMeet
           <SourceChips
             selection={form.selection}
             microphoneBlocked={form.microphoneBlocked}
-            onToggle={form.toggle}
+            onToggle={(key) => {
+              if (key === 'screen') panel.reset();
+              form.toggle(key);
+            }}
           />
           <SourceNotices
             screenBlocked={form.screenBlocked}
             microphoneBlocked={form.microphoneBlocked}
             noAudio={form.ready && !form.hasAudio}
             onOpenSettings={(kind) => void form.openSettings(kind)}
-            onWithoutScreen={form.withoutScreen}
+            onWithoutScreen={withoutScreen}
           />
           <MeetingSource
             screen={form.selection.screen}
@@ -75,8 +87,8 @@ export function NewMeetingDialog({ api, onClose, onStart, onConfigure }: NewMeet
             sourceId={form.sourceId}
             panel={panel}
             onSource={form.chooseSource}
-            onReload={form.reloadSources}
-            onWithoutScreen={form.withoutScreen}
+            onReload={reload}
+            onWithoutScreen={withoutScreen}
           />
           <AnalysisOption
             settings={form.settings}

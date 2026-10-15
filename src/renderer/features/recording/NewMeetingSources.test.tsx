@@ -199,3 +199,37 @@ it('folds the list on the first Escape and closes on the second', async () => {
   cancel();
   expect(onClose).toHaveBeenCalledOnce();
 });
+
+it('does not swallow Escape once the list it folds is gone', async () => {
+  const { within: inDialog, user, onClose, dialog } = await openDialog();
+  await user.click(await inDialog.findByRole('button', { name: /Changer/ }));
+  await user.click(inDialog.getByRole('button', { name: 'Écran' }));
+  fireEvent(dialog, new Event('cancel', { cancelable: true }));
+  expect(onClose).toHaveBeenCalledOnce();
+});
+
+it('brings the screen back with its list folded', async () => {
+  const { within: inDialog, user } = await openDialog();
+  await user.click(await inDialog.findByRole('button', { name: /Changer/ }));
+  await user.click(inDialog.getByRole('button', { name: 'Écran' }));
+  await user.click(inDialog.getByRole('button', { name: 'Écran' }));
+  expect(await inDialog.findByRole('button', { name: /Changer/ })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  expect(inDialog.queryAllByRole('radio')).toHaveLength(0);
+});
+
+it('folds the list when the user goes on without a screen', async () => {
+  const { within: inDialog, user } = await openDialog({
+    getCapturePermission: (kind) => ok(kind === 'screen' ? 'denied' : 'granted'),
+    getSources: () => ok([browser]),
+  });
+  await user.click(await inDialog.findByRole('button', { name: /Changer/ }));
+  await user.click(inDialog.getByRole('button', { name: 'Continuer sans écran' }));
+  await user.click(inDialog.getByRole('button', { name: 'Écran' }));
+  expect(await inDialog.findByRole('button', { name: /Changer/ })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+});
