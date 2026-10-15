@@ -259,7 +259,9 @@ p {
 }
 
 /* The theme changes at once: no button, badge or row lags behind the native material. */
-:root[data-theme-switching] * {
+:root[data-theme-switching] *,
+:root[data-theme-switching] *::before,
+:root[data-theme-switching] *::after {
   transition: none !important;
 }
 
