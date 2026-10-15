@@ -55,10 +55,13 @@ type SourceRef = Pick<CaptureSource, 'id' | 'primary'>;
 
 const isScreen = (source: SourceRef) => source.id.startsWith('screen:');
 
-/** The remembered screen if it still exists, else the main one, else any screen, else any source. */
+/**
+ * The remembered screen if it still exists, else the main one, else the first screen. Never a
+ * window: with no screen, the answer is empty and the user has to choose.
+ */
 export function defaultScreenId(sources: readonly SourceRef[], rememberedId?: string): string {
   const screens = sources.filter(isScreen);
   const remembered = screens.find((source) => source.id === rememberedId);
   const main = screens.find((source) => source.primary);
-  return (remembered ?? main ?? screens[0] ?? sources[0])?.id ?? '';
+  return (remembered ?? main ?? screens[0])?.id ?? '';
 }

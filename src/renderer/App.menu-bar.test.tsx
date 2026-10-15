@@ -52,7 +52,8 @@ function menuBarApi(): Fixture {
   const unsubscribed = vi.fn();
   const api = apiFor([]);
   api.getSettings = () => ok({ ...settings, hasOpenAiKey: true });
-  api.getSources = () => ok([{ id: 's:1', name: 'Écran', thumbnail: 'data:image/png;base64,a' }]);
+  api.getSources = () =>
+    ok([{ id: 'screen:1:0', name: 'Écran', thumbnail: 'data:image/png;base64,a' }]);
   api.processMeeting = () => ok({ ...finished, status: 'ready' });
   api.announceRecordingState = announce;
   api.onMenuBarNewRecording = (listener) => {

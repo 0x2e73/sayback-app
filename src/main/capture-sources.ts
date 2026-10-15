@@ -14,11 +14,14 @@ export interface OwnWindow {
   getMediaSourceId(): string;
 }
 
+/** `window:<id>:<n>` : the last segment differs between listings of the same window. */
+const windowKey = (sourceId: string) => sourceId.split(':').slice(0, 2).join(':');
+
 export function ownSourceIds(windows: readonly (OwnWindow | null)[]): Set<string> {
   const ids = new Set<string>();
   for (const window of windows) {
     try {
-      if (window && !window.isDestroyed()) ids.add(window.getMediaSourceId());
+      if (window && !window.isDestroyed()) ids.add(windowKey(window.getMediaSourceId()));
     } catch {
       // A window closing right now has nothing to hide.
     }
@@ -26,22 +29,38 @@ export function ownSourceIds(windows: readonly (OwnWindow | null)[]): Set<string
   return ids;
 }
 
-/** Without SayBack's own windows; screens are named in French and the main one is marked. */
+/**
+ * Without SayBack's own windows. The screens come first, the main one as « Écran 1 », so the
+ * default choice is always the first line; the windows keep the order the system gave.
+ */
 export function presentSources(
   raw: readonly RawSource[],
   primaryDisplayId: string,
   hidden: ReadonlySet<string>,
 ): CaptureSource[] {
-  let screens = 0;
-  return raw
-    .filter((source) => !hidden.has(source.id))
-    .map((source) => {
-      const common = { id: source.id, thumbnail: source.thumbnail.toDataURL() };
-      if (!source.id.startsWith('screen:')) return { ...common, name: source.name };
-      screens += 1;
-      const primary = source.display_id === primaryDisplayId;
-      return { ...common, name: `Écran ${screens}`, ...(primary ? { primary } : {}) };
-    });
+  const shown = raw.filter((source) => !hidden.has(windowKey(source.id)));
+  const isScreen = (source: RawSource) => source.id.startsWith('screen:');
+  const isMain = (source: RawSource) => source.display_id === primaryDisplayId;
+  const screens = [
+    ...shown.filter((source) => isScreen(source) && isMain(source)),
+    ...shown.filter((source) => isScreen(source) && !isMain(source)),
+  ];
+  const windows = shown.filter((source) => !isScreen(source));
+  return [
+    ...screens.map((source, index): CaptureSource => {
+      const base = {
+        id: source.id,
+        name: `Écran ${index + 1}`,
+        thumbnail: source.thumbnail.toDataURL(),
+      };
+      return isMain(source) ? { ...base, primary: true } : base;
+    }),
+    ...windows.map((source) => ({
+      id: source.id,
+      name: source.name,
+      thumbnail: source.thumbnail.toDataURL(),
+    })),
+  ];
 }
 
 /** `restricted` (parental controls) blocks like a refusal; `unknown` leaves the user to try. */

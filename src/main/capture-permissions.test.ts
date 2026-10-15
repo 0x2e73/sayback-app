@@ -92,18 +92,19 @@ it('leaves the windows of SayBack, main and island, out of the list', async () =
   expect(sources.map((source) => source.id)).toEqual(['screen:1:0', 'window:13:0']);
 });
 
-it('numbers the screens and marks the main one', async () => {
+it('puts the main screen first, as « Écran 1 »', async () => {
   electron.getSources.mockResolvedValueOnce([
     { id: 'screen:2:0', display_id: '2', name: 'Screen 2', thumbnail: picture },
     { id: 'screen:1:0', display_id: '1', name: 'Screen 1', thumbnail: picture },
   ]);
   const sources = (await registered()('capture:sources')) as {
+    id: string;
     name: string;
     primary?: boolean;
   }[];
-  expect(sources.map(({ name, primary }) => [name, primary])).toEqual([
-    ['Écran 1', undefined],
-    ['Écran 2', true],
+  expect(sources.map(({ id, name, primary }) => [id, name, primary])).toEqual([
+    ['screen:1:0', 'Écran 1', true],
+    ['screen:2:0', 'Écran 2', undefined],
   ]);
 });
 
@@ -188,4 +189,33 @@ it('lets the app window write the notes to the clipboard, never read it', () => 
   expect(check(contents, 'clipboard-sanitized-write')).toBe(true);
   expect(check(contents, 'clipboard-read')).toBe(false);
   expect(check({ id: 2 }, 'clipboard-sanitized-write')).toBe(false);
+});
+
+it('hides a window of SayBack whatever the last segment of its identifier says', async () => {
+  electron.getSources.mockResolvedValueOnce([
+    { id: 'screen:1:0', display_id: '1', name: 'Entire Screen', thumbnail: picture },
+    { id: 'window:11:1', display_id: '', name: 'SayBack', thumbnail: picture },
+    { id: 'window:111:0', display_id: '', name: 'Autre', thumbnail: picture },
+  ]);
+  const call = registered(() => [
+    { getMediaSourceId: () => 'window:11:0', isDestroyed: () => false },
+  ]);
+  const sources = (await call('capture:sources')) as { id: string }[];
+  expect(sources.map((source) => source.id)).toEqual(['screen:1:0', 'window:111:0']);
+});
+
+it('keeps the windows after the screens, in the order of the system', async () => {
+  electron.getSources.mockResolvedValueOnce([
+    { id: 'window:5:0', display_id: '', name: 'B', thumbnail: picture },
+    { id: 'screen:2:0', display_id: '2', name: 'Screen 2', thumbnail: picture },
+    { id: 'window:4:0', display_id: '', name: 'A', thumbnail: picture },
+    { id: 'screen:1:0', display_id: '1', name: 'Screen 1', thumbnail: picture },
+  ]);
+  const sources = (await registered()('capture:sources')) as { id: string }[];
+  expect(sources.map((source) => source.id)).toEqual([
+    'screen:1:0',
+    'screen:2:0',
+    'window:5:0',
+    'window:4:0',
+  ]);
 });

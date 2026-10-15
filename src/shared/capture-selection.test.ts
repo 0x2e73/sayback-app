@@ -91,8 +91,9 @@ describe('defaultScreenId', () => {
     expect(defaultScreenId([second, window], 'window:9:0')).toBe('screen:2:0');
   });
 
-  it('falls back to the first window when there is no screen', () => {
-    expect(defaultScreenId([window])).toBe('window:9:0');
+  it('never picks a window by default: with no screen, the user has to choose', () => {
+    expect(defaultScreenId([window])).toBe('');
+    expect(defaultScreenId([window], 'window:9:0')).toBe('');
   });
 
   it('answers nothing when no source was found', () => {
