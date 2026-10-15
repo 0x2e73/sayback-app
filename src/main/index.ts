@@ -168,10 +168,13 @@ app.on('will-quit', (event) => {
   // The quit waits for the live server to be gone: no process outlives the app.
   if (live && !liveEnded) {
     event.preventDefault();
-    void live.shutdown().finally(() => {
-      liveEnded = true;
-      app.quit();
-    });
+    void live
+      .shutdown()
+      .catch((error: unknown) => console.error('[live] the engine did not stop', error))
+      .then(() => {
+        liveEnded = true;
+        app.quit();
+      });
     return;
   }
   island?.close();
