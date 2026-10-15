@@ -45,8 +45,9 @@ function snapshotLoader(api: LiveApi, land: (snapshot: IslandLiveSnapshot) => vo
     replaced: () => {
       loaded = true;
     },
+    // A load in flight may still land: the one re-ask is kept for when it has failed.
     segmentArrived: () => {
-      if (loaded || askedOnSegment) return;
+      if (loaded || loading || askedOnSegment) return;
       askedOnSegment = true;
       load();
     },

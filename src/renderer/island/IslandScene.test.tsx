@@ -105,6 +105,18 @@ describe('the preview of the recording island', () => {
     expect(preview()).toHaveAttribute('src', 'blob:frame-2');
   });
 
+  it('keeps the last frame through a long fold, the wait counting only while open', async () => {
+    const island = await shown(recordingSnapshot());
+    island.preview(jpeg());
+    await flush();
+    island.expand(false);
+    await act(async () => vi.advanceTimersByTime(FRAME_WAIT * 5));
+    island.expand(true);
+    expect(preview()).toHaveAttribute('src', 'blob:frame-1');
+    await act(async () => vi.advanceTimersByTime(FRAME_WAIT));
+    expect(screen.getByRole('img', { name: 'Aucun aperçu' })).toBeInTheDocument();
+  });
+
   it('never shows a frame received before a switch, even decoded after it', async () => {
     const island = await shown(recordingSnapshot());
     let decoded: () => void = () => {};
@@ -193,6 +205,27 @@ describe('the live text of the recording island', () => {
     await flush();
     expect(island.liveSnapshot).toHaveBeenCalledTimes(2);
     island.segment(said({ id: 'system-1', track: 'system', text: 'Ça me va.', start: 4 }));
+    island.segment(said({ id: 'system-2', track: 'system', text: 'Oui.', start: 5 }));
+    await flush();
+    expect(island.liveSnapshot).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole('region', { name: 'Texte en direct' })).toHaveTextContent(
+      'On valide le budget jeudi.',
+    );
+  });
+
+  it('keeps its one re-ask for after a load in flight has failed', async () => {
+    const island = fakeIsland(recordingSnapshot());
+    let fail: () => void = () => {};
+    island.liveSnapshot
+      .mockReturnValueOnce(new Promise((_, reject) => (fail = () => reject(new Error('gone')))))
+      .mockRejectedValueOnce(new Error('gone'))
+      .mockResolvedValueOnce({ ok: true, value: live([said({})]) });
+    render(<IslandApp api={island.api} now={() => Date.now()} />);
+    await flush();
+    island.segment(said({ id: 'system-1', track: 'system', text: 'Ça me va.', start: 4 }));
+    expect(island.liveSnapshot).toHaveBeenCalledOnce();
+    await act(async () => fail());
+    expect(island.liveSnapshot).toHaveBeenCalledTimes(2);
     island.segment(said({ id: 'system-2', track: 'system', text: 'Oui.', start: 5 }));
     await flush();
     expect(island.liveSnapshot).toHaveBeenCalledTimes(3);

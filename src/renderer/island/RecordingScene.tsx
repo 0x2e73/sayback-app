@@ -9,10 +9,12 @@ interface RecordingSceneProps {
   source: string | undefined;
   live: IslandLiveSnapshot | null;
   paused: boolean;
+  expanded: boolean;
 }
 
 /** The preview on the left, the live text on the right; either takes the room the other leaves. */
-export function RecordingScene({ api, source, live, paused }: RecordingSceneProps) {
+export function RecordingScene(props: RecordingSceneProps) {
+  const { api, source, live, paused, expanded } = props;
   const text = live?.enabled !== false;
   return (
     <div
@@ -20,7 +22,9 @@ export function RecordingScene({ api, source, live, paused }: RecordingSceneProp
       data-preview={source !== undefined || undefined}
       data-text={text || undefined}
     >
-      {source !== undefined && <IslandPreview api={api} source={source} paused={paused} />}
+      {source !== undefined && (
+        <IslandPreview api={api} source={source} paused={paused} expanded={expanded} />
+      )}
       {text && <LiveText live={live} />}
     </div>
   );

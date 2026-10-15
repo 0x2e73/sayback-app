@@ -7,11 +7,12 @@ interface IslandPreviewProps {
   /** The screen or window captured: a new one starts over from the skeleton. */
   source: string;
   paused: boolean;
+  expanded: boolean;
 }
 
 /** About one frame a second, without any fade; dimmed and frozen while paused. */
-export function IslandPreview({ api, source, paused }: IslandPreviewProps) {
-  const frame = usePreviewFrame(api, source, paused);
+export function IslandPreview({ api, source, paused, expanded }: IslandPreviewProps) {
+  const frame = usePreviewFrame(api, source, paused, expanded);
   if (frame.state === 'waiting') {
     return <div className="island-preview skeleton" role="status" aria-label="Aperçu en attente" />;
   }

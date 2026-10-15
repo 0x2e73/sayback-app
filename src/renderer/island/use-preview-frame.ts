@@ -73,17 +73,19 @@ export function usePreviewFrame(
   api: Pick<IslandApi, 'onPreview'>,
   source: string,
   paused: boolean,
+  /** Folded, main sends no frame: the wait does not count. */
+  expanded: boolean,
 ): PreviewFrame {
   const shown = useDecodedFrames(api, source);
   const [expired, setExpired] = useState<Expired | null>(null);
   const url = shown?.source === source ? shown.url : null;
 
-  // Restarted by every frame and every new source; a pause stops the count.
+  // Restarted by every frame, every new source and every opening; a pause or a fold stops it.
   useEffect(() => {
-    if (paused) return;
+    if (paused || !expanded) return;
     const timer = setTimeout(() => setExpired({ source, url }), FRAME_WAIT);
     return () => clearTimeout(timer);
-  }, [source, url, paused]);
+  }, [source, url, paused, expanded]);
 
   const stale = expired?.source === source && expired.url === url;
   if (url && (paused || !stale)) return { state: 'shown', url };
