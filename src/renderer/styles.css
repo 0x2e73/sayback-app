@@ -32,6 +32,20 @@
   --color-thumb: #ffffff;
   --color-media: #000000;
   --color-sidebar: var(--color-bg);
+  /* The island under the notch blends with the camera housing: dark whatever the theme. */
+  --color-island: #000000;
+  --color-island-text: rgb(255 255 255 / 0.95);
+  --color-island-text-muted: rgb(255 255 255 / 0.72);
+  --color-island-text-subtle: rgb(255 255 255 / 0.55);
+  --color-island-surface: rgb(255 255 255 / 0.08);
+  --color-island-surface-raised: rgb(255 255 255 / 0.14);
+  --color-island-border-strong: rgb(255 255 255 / 0.16);
+  --color-island-accent: #8fb6ff;
+  --color-island-live: #ff958c;
+  --color-island-paused: #f5b94a;
+  --color-island-action: #f4f6fa;
+  --color-island-action-hover: #dfe3ec;
+  --color-island-on-action: #0d1017;
 
   --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
   --text-caption: 0.75rem;
@@ -60,6 +74,14 @@
   --header-height: 52px;
   --pane-list-width: clamp(280px, 25vw, 360px);
   --reading-width: 680px;
+  /* Island defaults; the page sets the measured sizes inline. */
+  --island-bar-height: 38px;
+  --island-notch-width: 220px;
+  --island-compact-width: 388px;
+  --island-open-width: 560px;
+  --island-open-height: 240px;
+  --radius-island: 10px;
+  --radius-island-open: 24px;
 
   --shadow-float:
     0 1px 3px rgb(0 0 0 / 0.08), 0 12px 32px rgb(0 0 0 / 0.14), 0 0 0 1px var(--color-border);
@@ -69,6 +91,9 @@
   --duration-base: 200ms;
   --duration-loop: 1s;
   --ease-linear: linear;
+  /* Island shell only: a damped spring for its size, the one exception to the single curve. */
+  --ease-island: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-island: 280ms;
 
   font-family: var(--font-ui);
   color: var(--color-text);
@@ -101,6 +126,19 @@
     --color-sidebar-veil: rgb(15 17 23 / 0.2);
     --color-thumb: var(--color-surface-raised);
     --color-media: #000000;
+    --color-island: #000000;
+    --color-island-text: rgb(255 255 255 / 0.95);
+    --color-island-text-muted: rgb(255 255 255 / 0.72);
+    --color-island-text-subtle: rgb(255 255 255 / 0.55);
+    --color-island-surface: rgb(255 255 255 / 0.08);
+    --color-island-surface-raised: rgb(255 255 255 / 0.14);
+    --color-island-border-strong: rgb(255 255 255 / 0.16);
+    --color-island-accent: #8fb6ff;
+    --color-island-live: #ff958c;
+    --color-island-paused: #f5b94a;
+    --color-island-action: #f4f6fa;
+    --color-island-action-hover: #dfe3ec;
+    --color-island-on-action: #0d1017;
     --shadow-float: 0 12px 40px rgb(0 0 0 / 0.45), 0 0 0 1px var(--color-border);
     --shadow-thumb: none;
   }
@@ -316,7 +354,8 @@ p {
 @media (prefers-reduced-motion: reduce) {
   .row-progress-bar,
   .analysis-line-bar,
-  .level-meter-bar {
+  .level-meter-bar,
+  .island-shell {
     transition: none;
   }
   @keyframes state-enter {

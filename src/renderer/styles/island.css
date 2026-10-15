@@ -1,0 +1,159 @@
+/* The window is transparent and larger than the island: only the shell is drawn. */
+:root,
+body {
+  background: transparent;
+}
+/* Dark whatever the theme: the shared components read the island tokens inside it. */
+.island {
+  --color-text: var(--color-island-text);
+  --color-text-muted: var(--color-island-text-muted);
+  --color-text-subtle: var(--color-island-text-subtle);
+  --color-surface: var(--color-island-surface);
+  --color-surface-raised: var(--color-island-surface-raised);
+  --color-border-strong: var(--color-island-border-strong);
+  --color-accent: var(--color-island-accent);
+  --color-live: var(--color-island-live);
+  --color-paused: var(--color-island-paused);
+  --color-action: var(--color-island-action);
+  --color-action-hover: var(--color-island-action-hover);
+  --color-on-action: var(--color-island-on-action);
+
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  color: var(--color-text);
+  cursor: default;
+  user-select: none;
+}
+
+/* Top corners square against the screen edge; only the shell changes size. */
+.island-shell {
+  position: absolute;
+  inset: 0 0 auto;
+  width: var(--island-compact-width);
+  height: var(--island-bar-height);
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: 0 0 var(--radius-island) var(--radius-island);
+  background: var(--color-island);
+  transition:
+    width var(--duration-island) var(--ease-island),
+    height var(--duration-island) var(--ease-island),
+    border-radius var(--duration-island) var(--ease-island);
+}
+.island[data-expanded] .island-shell {
+  width: var(--island-open-width);
+  height: var(--island-open-height);
+  border-radius: 0 0 var(--radius-island-open) var(--radius-island-open);
+}
+/* Under the menu bar the island floats: every corner is round. */
+.island[data-kind='below-bar'] .island-shell {
+  border-radius: var(--radius-island);
+}
+.island[data-kind='below-bar'][data-expanded] .island-shell {
+  border-radius: var(--radius-island-open);
+}
+
+/* Wings on each side of the notch; the middle column stays empty under the camera housing. */
+.island-compact {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: grid;
+  grid-template-columns: 1fr var(--island-notch-width) 1fr;
+  align-items: center;
+  width: var(--island-compact-width);
+  height: var(--island-bar-height);
+  margin-left: calc(var(--island-compact-width) / -2);
+  padding-inline: var(--space-3);
+}
+.island-wing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.island-wing-end {
+  justify-content: flex-end;
+}
+.island-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-live);
+}
+.island[data-paused] .island-dot {
+  background: var(--color-paused);
+}
+.island-chrono {
+  color: var(--color-text-muted);
+  font-size: var(--text-control);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.island[data-expanded] .island-chrono-compact {
+  visibility: hidden;
+}
+
+/* Laid out at the open size and centred, so the growing shell reveals it without moving it. */
+.island-open {
+  position: absolute;
+  top: var(--island-bar-height);
+  left: 50%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  width: var(--island-open-width);
+  height: calc(var(--island-open-height) - var(--island-bar-height));
+  margin-left: calc(var(--island-open-width) / -2);
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  opacity: 0;
+}
+.island[data-expanded] .island-open {
+  opacity: 1;
+  transition: opacity var(--duration-base) var(--ease-out) var(--duration-fast);
+}
+.island-open-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.island-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-live);
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+.island[data-paused] .island-state {
+  color: var(--color-paused);
+}
+.island-chrono-open {
+  color: var(--color-text);
+  font-size: var(--text-title);
+}
+
+/* Room kept for the preview (left) and the live text (right) of the next steps. */
+.island-stage {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: var(--space-4);
+  min-height: 0;
+}
+.island-preview-slot {
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.island-live-slot {
+  align-self: center;
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--text-body);
+}
+.island-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

@@ -3,6 +3,10 @@ import { declarations, read, sheets, tokenBlock } from './design-tokens-support'
 
 const motionProperty = /^(?:-webkit-)?(?:transition|animation)(?:-[a-z-]+)?$/;
 const allowedVars = /var\(--(?:duration-fast|duration-base|duration-loop|ease-out|ease-linear)\)/g;
+// The island shell alone animates its size, on its own curve (exception in frontend.md).
+const islandSheet = 'styles/island.css';
+const islandVars = /var\(--(?:duration-island|ease-island)\)/g;
+const islandProperties = new Set(['width', 'height', 'border-radius']);
 const timeLiteral = /(?<![\w.-])[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?m?s(?![\w-])/;
 const easingWord = /\b(?:ease|ease-in|ease-out|ease-in-out|linear|steps?|step-start|step-end)\b/;
 const easingFunction = /\b(?:cubic-bezier|linear|steps|spring)\(|\bcalc\(/;
@@ -23,28 +27,37 @@ const declaredMotionTokens = [
   '--duration-loop',
   '--ease-out',
   '--ease-linear',
+  '--duration-island',
+  '--ease-island',
 ];
 
-function declarationProblem({ property, value }: { property: string; value: string }): boolean {
-  const rest = value.toLowerCase().replace(allowedVars, ' ');
+function declarationProblem(
+  { property, value }: { property: string; value: string },
+  island: boolean,
+): boolean {
+  const general = value.toLowerCase().replace(allowedVars, ' ');
+  const rest = island ? general.replace(islandVars, ' ') : general;
   if (timeLiteral.test(rest) || easingWord.test(rest) || easingFunction.test(rest)) return true;
   if (/var\(/.test(rest)) return true;
   const words = rest.split(/[\s,]+/).filter(Boolean);
   if (timingOnly.test(property)) return words.length > 0;
-  if (transitionList.test(property)) return words.some((word) => !animatedProperties.has(word));
+  const animated = (word: string) =>
+    animatedProperties.has(word) || (island && islandProperties.has(word));
+  if (transitionList.test(property)) return words.some((word) => !animated(word));
   return false;
 }
 
-function motionViolations(css: string): string[] {
+function motionViolations(css: string, island = false): string[] {
   return declarations(css)
     .filter(({ property }) => motionProperty.test(property))
-    .filter(declarationProblem)
+    .filter((declaration) => declarationProblem(declaration, island))
     .map(({ property, value }) => `${property}: ${value}`);
 }
 
 function sheetMotion(sheet: string): string[] {
   const css = read(sheet);
-  return motionViolations(sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css);
+  const body = sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css;
+  return motionViolations(body, sheet === islandSheet);
 }
 
 describe('motion guard', () => {
@@ -78,6 +91,31 @@ describe('motion guard', () => {
     'animation: state-enter var(--duration-base) var(--ease-out)',
   ])('lets %s through', (declaration) => {
     expect(motionViolations(`.x { ${declaration}; }`)).toEqual([]);
+  });
+
+  it.each([
+    'transition: width var(--duration-island) var(--ease-island)',
+    'transition: opacity var(--duration-island) var(--ease-out)',
+    'transition: border-radius var(--duration-fast) var(--ease-out)',
+  ])('keeps the island exception out of the other sheets: %s', (declaration) => {
+    expect(motionViolations(`.x { ${declaration}; }`)).not.toEqual([]);
+  });
+
+  it('lets the island shell animate its size on its own curve', () => {
+    const css = `.island-shell {
+      transition:
+        width var(--duration-island) var(--ease-island),
+        height var(--duration-island) var(--ease-island),
+        border-radius var(--duration-island) var(--ease-island);
+    }`;
+    expect(motionViolations(css, true)).toEqual([]);
+    expect(
+      motionViolations('.x { transition: top var(--duration-island) var(--ease-island); }', true),
+    ).not.toEqual([]);
+  });
+
+  it('finds the island sheet', () => {
+    expect(sheets).toContain(islandSheet);
   });
 
   it('lets the grouped colour transition through', () => {
