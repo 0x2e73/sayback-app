@@ -147,6 +147,21 @@ describe('the meeting row menu', () => {
     expect(electron.popup.mock.calls[0]?.[0]).toMatchObject({ window: main, x: 40, y: 120 });
   });
 
+  it('doubles the ampersands of folder names so they are shown', async () => {
+    const folders = [
+      { id: acme, name: 'R&D' },
+      { id: projet, name: 'A&&B' },
+    ];
+    void invoke(from(main), { ...request, folders });
+    await vi.waitFor(() => expect(electron.popup).toHaveBeenCalled());
+    expect(moveSubmenu().map((item) => item.label)).toEqual([
+      'R&&D',
+      'A&&&&B',
+      undefined,
+      'Aucun dossier',
+    ]);
+  });
+
   it('offers only « Aucun dossier » when there is no folder', async () => {
     void invoke(from(main), { ...request, folders: [], folderId: null });
     await vi.waitFor(() => expect(electron.popup).toHaveBeenCalled());

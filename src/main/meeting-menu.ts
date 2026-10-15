@@ -8,9 +8,14 @@ const MENU_PER_SECOND = 5;
 
 type Choose = (choice: MeetingMenuChoice) => void;
 
+// A lone `&` marks a mnemonic in a native label and would vanish: it is doubled to be shown.
+export function menuLabel(name: string): string {
+  return name.replace(/&/g, '&&');
+}
+
 function moveItems(request: MeetingMenuRequest, choose: Choose): MenuItemConstructorOptions[] {
   const folders = request.folders.map((folder): MenuItemConstructorOptions => ({
-    label: folder.name,
+    label: menuLabel(folder.name),
     type: 'checkbox',
     checked: folder.id === request.folderId,
     click: () => choose({ kind: 'move', folderId: folder.id }),
