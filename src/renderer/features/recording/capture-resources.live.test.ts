@@ -26,7 +26,11 @@ beforeEach(() => {
   vi.stubGlobal(
     'AudioContext',
     class {
-      resume = async () => undefined;
+      // A new context starts suspended; the capture only opens once `resume()` runs it.
+      state: AudioContextState = 'suspended';
+      resume = async () => {
+        this.state = 'running';
+      };
       close = async () => undefined;
       createMediaStreamDestination = () => ({ stream: new FakeStream('mix') });
       createMediaStreamSource = () => node;
