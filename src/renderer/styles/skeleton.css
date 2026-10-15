@@ -1,0 +1,16 @@
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+.skeleton-line {
+  height: 10px;
+}
+.skeleton-short {
+  width: 60%;
+  background: var(--color-surface);
+}
+
+.skeleton-block {
+  min-height: var(--space-4);
+}

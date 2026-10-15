@@ -1,96 +1,113 @@
-import { Circle } from 'lucide-react';
-import type { DesktopApi, Settings } from '../../../shared/contracts';
-import { analysisDestination } from '../../../shared/analysis-settings';
-import { Button, Dialog, Notice } from '../../components/ui';
-import { CaptureSources } from './CaptureSources';
+import { useEffect, useRef, type RefObject } from 'react';
+import type { DesktopApi } from '../../../shared/contracts';
+import { Dialog, Notice } from '../../components/ui';
+import { AnalysisOption } from './AnalysisOption';
+import { MeetingSource } from './MeetingSource';
+import { NewMeetingFooter } from './NewMeetingFooter';
+import { SourceChips } from './SourceChips';
+import { SourceNotices } from './SourceNotices';
 import { useNewMeeting, type StartMeeting } from './use-new-meeting';
+import { useSourcePanel } from './use-source-panel';
+import { useSubmitShortcut } from './use-submit-shortcut';
 
 interface NewMeetingDialogProps {
   api: DesktopApi;
   onClose(): void;
   onStart: StartMeeting;
+  /** « Configurer » : closes the dialog and opens the settings. */
+  onConfigure(): void;
 }
 
-function analysisCostNote(settings: Settings): string {
-  if (settings.transcriptionProvider === 'openai') {
-    return ' OpenAI facture la transcription avec identification des voix, ainsi que les notes.';
-  }
-  if (settings.transcriptionProvider === 'local') {
-    return ' La transcription locale ne génère pas de coût API.';
-  }
-  return ' Gemini peut facturer la transcription et les notes.';
+const FORM_ID = 'new-meeting';
+
+// The form is disabled until the habits are read, and a disabled field cannot take the focus.
+function useFocusWhenReady(ready: boolean, field: RefObject<HTMLInputElement | null>): void {
+  useEffect(() => {
+    const active = document.activeElement;
+    const lost = !active || active === document.body || active.tagName === 'DIALOG';
+    if (ready && lost) field.current?.focus();
+  }, [ready, field]);
 }
 
-export function NewMeetingDialog({ api, onClose, onStart }: NewMeetingDialogProps) {
+export function NewMeetingDialog({ api, onClose, onStart, onConfigure }: NewMeetingDialogProps) {
   const form = useNewMeeting(api, onStart);
+  const panel = useSourcePanel();
+  const titleField = useRef<HTMLInputElement>(null);
+  useSubmitShortcut(FORM_ID);
+  useFocusWhenReady(form.ready, titleField);
+
+  // A folded list must not come back open with another list, or with the screen.
+  function withoutScreen(): void {
+    panel.reset();
+    form.withoutScreen();
+  }
+  function reload(): void {
+    panel.reset();
+    form.reloadSources();
+  }
 
   return (
-    <Dialog title="Nouvelle réunion" busy={form.busy} onClose={onClose}>
-      <form onSubmit={(event) => void form.submit(event)} className="new-meeting-form">
-        {form.error && (
-          <div className="permission-notice">
-            <Notice>{form.error}</Notice>
-            {form.error.includes('Réglages Système') && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void form.openPrivacySettings()}
-              >
-                Ouvrir les réglages de confidentialité
-              </Button>
-            )}
-          </div>
-        )}
-        <p className="muted">
-          Un titre, vos sources, et vous pouvez vous concentrer sur la conversation.
-        </p>
-        <label className="field">
-          Titre de la réunion
-          <input
-            autoFocus
-            required
-            maxLength={160}
-            value={form.title}
-            placeholder="Ex. Revue produit du vendredi"
-            onChange={(event) => form.setTitle(event.target.value)}
-          />
-        </label>
-        <CaptureSources
-          selection={form.selection}
-          sources={form.sources}
-          sourceId={form.sourceId}
-          onSelection={form.setSelection}
-          onSource={form.setSourceId}
+    <Dialog
+      title="Nouvelle réunion"
+      busy={form.busy}
+      initialFocus={titleField}
+      onEscape={() => panel.escape(form.selection.screen && form.sources.status === 'ready')}
+      onClose={onClose}
+      footer={
+        <NewMeetingFooter
+          busy={form.busy}
+          canStart={form.canStart}
+          formId={FORM_ID}
+          onCancel={onClose}
         />
-        {form.hasAnalysis && form.settings ? (
-          <label className="auto-analysis-option">
+      }
+    >
+      <form id={FORM_ID} onSubmit={(event) => void form.submit(event)}>
+        <fieldset className="new-meeting-form" disabled={form.busy || !form.ready}>
+          {form.error && <Notice>{form.error}</Notice>}
+          <label className="field">
+            Titre
             <input
-              type="checkbox"
-              checked={form.autoAnalyze}
-              onChange={(event) => form.setAutoAnalyze(event.target.checked)}
+              ref={titleField}
+              maxLength={160}
+              value={form.title}
+              onChange={(event) => form.setTitle(event.target.value)}
+              onFocus={(event) => event.target.select()}
             />
-            <span>
-              <strong>Transcrire et créer le compte rendu après l’arrêt</strong>
-              <small>
-                {analysisDestination(form.settings)}
-                {analysisCostNote(form.settings)}
-              </small>
-            </span>
           </label>
-        ) : (
-          <p className="caption">
-            Configurez la transcription et le compte rendu dans les paramètres pour lancer l’analyse
-            après la réunion. L’enregistrement reste local.
-          </p>
-        )}
-        <p className="caption">
-          Pendant la réunion, seuls les fichiers sont enregistrés sur cet ordinateur. Jusqu’à 2
-          heures par session.
-        </p>
-        <Button type="submit" busy={form.busy} disabled={!form.canStart}>
-          <Circle size={15} fill="currentColor" />
-          Commencer l’enregistrement
-        </Button>
+          <SourceChips
+            selection={form.selection}
+            microphoneBlocked={form.microphoneBlocked}
+            onToggle={(key) => {
+              if (key === 'screen') panel.reset();
+              form.toggle(key);
+            }}
+          />
+          <SourceNotices
+            screenBlocked={form.screenBlocked}
+            microphoneBlocked={form.microphoneBlocked}
+            noAudio={form.ready && !form.hasAudio}
+            onOpenSettings={(kind) => void form.openSettings(kind)}
+            onWithoutScreen={withoutScreen}
+          />
+          <MeetingSource
+            screen={form.selection.screen}
+            sources={form.sources}
+            source={form.source}
+            sourceId={form.sourceId}
+            panel={panel}
+            onSource={form.chooseSource}
+            onReload={reload}
+            onWithoutScreen={withoutScreen}
+          />
+          <AnalysisOption
+            settings={form.settings}
+            configured={form.analysisReady}
+            checked={form.autoAnalyze}
+            onChange={form.chooseAnalysis}
+            onConfigure={onConfigure}
+          />
+        </fieldset>
       </form>
     </Dialog>
   );

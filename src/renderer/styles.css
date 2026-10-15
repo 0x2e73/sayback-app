@@ -63,6 +63,11 @@
   --space-5: 24px;
   --space-6: 32px;
   --control-xs: 24px;
+  --control-sm: 32px;
+  --source-tile-min: 140px;
+  --source-row-height: 40px;
+  --source-thumb-width: 48px;
+  --source-list-max: 240px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -281,7 +286,7 @@ p {
 .meeting-row,
 .transcript-turn,
 .timestamp-link,
-.capture-source-row,
+.source-option,
 .model-select-trigger,
 .model-select-list button,
 .field input,
@@ -289,7 +294,8 @@ p {
 .field textarea,
 .field-control,
 .search input,
-.onboarding-progress span {
+.onboarding-progress span,
+.switch-track {
   transition:
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
@@ -317,7 +323,20 @@ p {
     color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
-.button:active:not(:disabled, [aria-disabled='true']) {
+.switch-thumb {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.chip[data-size='md'] {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.button:active:not(:disabled, [aria-disabled='true']),
+.chip[data-size='md']:active:not(:disabled) {
   transform: scale(0.97);
 }
 .button[aria-busy='true'] .button-label {
@@ -371,8 +390,13 @@ p {
   .spin {
     animation: none;
   }
-  .button:active:not(:disabled, [aria-disabled='true']) {
+  .button:active:not(:disabled, [aria-disabled='true']),
+  .chip[data-size='md']:active:not(:disabled) {
     transform: none;
+  }
+  .switch-thumb,
+  .source-chevron {
+    transition: none;
   }
   .button[aria-busy='true'] .button-label {
     opacity: 0.4;

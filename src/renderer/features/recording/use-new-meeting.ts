@@ -1,14 +1,16 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { defaultMeetingTitle } from '../../../shared/capture-selection';
 import { errorMessage } from '../../../shared/format';
-import { useEffect, useState, type FormEvent } from 'react';
 import {
   unwrap,
-  type CaptureSource,
+  type CapturePermissionKind,
   type DesktopApi,
   type Settings,
 } from '../../../shared/contracts';
 import { analysisConfigured } from '../../../shared/analysis-settings';
-
 import type { CaptureOptions } from './capture-session';
+import { openPrivacySettings } from './open-privacy-settings';
+import { useMeetingSelection } from './use-meeting-selection';
 
 export type CaptureSelection = Omit<CaptureOptions, 'onFailure' | 'onEnded'>;
 export type StartMeeting = (
@@ -18,85 +20,90 @@ export type StartMeeting = (
 ) => Promise<void>;
 
 export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
-  const [title, setTitle] = useState('');
-  const [sources, setSources] = useState<CaptureSource[]>([]);
-  const [sourceId, setSourceId] = useState('');
-  const [selection, setSelection] = useState<CaptureSelection>({
-    screen: true,
-    microphone: true,
-    systemAudio: true,
-  });
+  const choice = useMeetingSelection(api);
+  const [defaultTitle] = useState(() => defaultMeetingTitle(new Date()));
+  const [typedTitle, setTypedTitle] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [autoAnalyze, setAutoAnalyze] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // A state update is too late to stop a second submit fired in the same tick.
+  const submitting = useRef(false);
 
   useEffect(() => {
-    void api
-      .getSources()
-      .then(unwrap)
-      .then((items) => {
-        setSources(items);
-        setSourceId(items[0]?.id ?? '');
-      })
-      .catch((failure: unknown) => setError(errorMessage(failure)));
-  }, [api]);
-
-  useEffect(() => {
+    let current = true;
     void api
       .getSettings()
       .then(unwrap)
-      .then(setSettings)
-      .catch((failure: unknown) => setError(errorMessage(failure)));
+      .then((read) => {
+        if (current) setSettings(read);
+      })
+      .catch((failure: unknown) => {
+        if (current) setError(errorMessage(failure));
+      });
+    return () => {
+      current = false;
+    };
   }, [api]);
 
-  async function submit(event: FormEvent) {
+  const { selection } = choice;
+  const analysisReady = Boolean(settings && analysisConfigured(settings));
+  const title = typedTitle ?? defaultTitle;
+
+  async function submit(event: FormEvent): Promise<void> {
     event.preventDefault();
+    if (submitting.current || !canStart) return;
+    submitting.current = true;
     setError('');
     setBusy(true);
     try {
-      if (selection.screen) unwrap(await api.selectSource(sourceId, selection.systemAudio));
-      await onStart(
-        title,
-        {
-          ...selection,
-          systemAudio: selection.screen && selection.systemAudio,
-          source: selection.screen ? sources.find((source) => source.id === sourceId) : undefined,
-        },
-        autoAnalyze && Boolean(settings && analysisConfigured(settings)),
-      );
+      if (selection.screen) unwrap(await api.selectSource(choice.sourceId, selection.systemAudio));
+      const source = selection.screen ? choice.source : undefined;
+      await onStart(titleToStart(), { ...selection, source }, choice.autoAnalyze && analysisReady);
+      choice.remember({
+        ...choice.toggles,
+        autoAnalyze: choice.autoAnalyze,
+        screenId: rememberedScreen(),
+      });
     } catch (failure) {
       setError(errorMessage(failure));
       setBusy(false);
+      submitting.current = false;
     }
   }
 
-  async function openPrivacySettings() {
+  // Left as it was offered, the title names the moment the recording starts, not the opening.
+  function titleToStart(): string {
+    return typedTitle?.trim() || defaultMeetingTitle(new Date());
+  }
+
+  // A window gets a new identifier each time: only a screen is worth remembering.
+  function rememberedScreen(): string | undefined {
+    if (selection.screen && choice.sourceId.startsWith('screen:')) return choice.sourceId;
+    return choice.habits.screenId;
+  }
+
+  async function openSettings(kind: CapturePermissionKind): Promise<void> {
     try {
-      unwrap(await api.openScreenRecordingSettings());
+      await openPrivacySettings(api, kind);
     } catch (failure) {
       setError(errorMessage(failure));
     }
+    choice.refreshPermission(kind);
   }
 
-  const hasAudio = selection.microphone || (selection.screen && selection.systemAudio);
-  const hasSource = !selection.screen || Boolean(sourceId);
+  const hasSource = !selection.screen || Boolean(choice.sourceId);
+  const canStart = choice.ready && choice.hasAudio && hasSource;
   return {
+    ...choice,
     title,
-    setTitle,
-    sources,
-    sourceId,
-    setSourceId,
-    selection,
-    setSelection,
+    setTitle: setTypedTitle,
     settings,
-    hasAnalysis: Boolean(settings && analysisConfigured(settings)),
-    autoAnalyze,
-    setAutoAnalyze,
+    analysisReady,
+    autoAnalyze: choice.autoAnalyze && analysisReady,
     busy,
     error,
-    openPrivacySettings,
+    canStart,
+    openSettings,
     submit,
-    canStart: Boolean(title.trim()) && hasAudio && hasSource,
   };
 }

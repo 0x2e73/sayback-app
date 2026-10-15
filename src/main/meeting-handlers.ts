@@ -65,6 +65,21 @@ export function registerFolderHandlers(handle: RegisterHandler, services: Deskto
   );
 }
 
+// Opening a system pane twice a second is a stuck button, not a person.
+const PRIVACY_PER_SECOND = 3;
+
+function handlePrivacyPane(handle: RegisterHandler, channel: string, pane: string): void {
+  handle(
+    channel,
+    async () => {
+      if (process.platform !== 'darwin') throw new Error('Action disponible uniquement sur macOS.');
+      await shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${pane}`);
+    },
+    ['main'],
+    PRIVACY_PER_SECOND,
+  );
+}
+
 export function registerSettingsHandlers(
   handle: RegisterHandler,
   services: DesktopServices,
@@ -83,12 +98,8 @@ export function registerSettingsHandlers(
   handle('settings:clear-key', (provider) =>
     credentials.clear(settingsSchema.shape.notesProvider.exclude(['ollama']).parse(provider)),
   );
-  handle('privacy:open-screen-settings', async () => {
-    if (process.platform !== 'darwin') throw new Error('Action disponible uniquement sur macOS.');
-    await shell.openExternal(
-      'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture',
-    );
-  });
+  handlePrivacyPane(handle, 'privacy:open-screen-settings', 'Privacy_ScreenCapture');
+  handlePrivacyPane(handle, 'privacy:open-microphone-settings', 'Privacy_Microphone');
   handle('setup:check', () => services.localSetup.check());
   handle('setup:open-guide', (guide) =>
     shell.openExternal(setupGuides[setupGuideSchema.parse(guide)]),

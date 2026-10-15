@@ -1,10 +1,11 @@
-import type { ButtonHTMLAttributes, MouseEvent } from 'react';
+import type { ButtonHTMLAttributes, MouseEvent, Ref } from 'react';
 import { LoaderCircle } from 'lucide-react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   busy?: boolean;
   shape?: 'pill' | 'round';
+  ref?: Ref<HTMLButtonElement>;
 }
 
 export function Button(props: ButtonProps) {

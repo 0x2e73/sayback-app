@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import type { DesktopApi, Meeting } from '../shared/contracts';
 import { App } from './App';
+import { newMeetingDialog, startFromDialog } from './new-meeting-harness';
 import { apiFor, meetingFixture, ok, settings } from './test-api';
 
 const capture = vi.hoisted(() => ({ start: vi.fn() }));
@@ -40,9 +41,7 @@ function configuredApi(): DesktopApi {
 
 async function startRecording(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'Démarrer l’enregistrement' }));
-  await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
-  await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
-  await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+  await startFromDialog(user, 'Revue du vendredi');
 }
 
 beforeEach(() => {
@@ -93,11 +92,9 @@ describe('Recording from the list pane', () => {
     const user = userEvent.setup();
     render(<App api={api} />);
     await user.click(await screen.findByRole('button', { name: 'Démarrer l’enregistrement' }));
-    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
-    await user.click(
-      await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ }),
-    );
-    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    const dialog = await newMeetingDialog();
+    await user.click(within(dialog).getByRole('switch', { name: /Lancer l’analyse à l’arrêt/ }));
+    await startFromDialog(user, 'Revue du vendredi');
     await user.click(await screen.findByRole('button', { name: 'Terminer la réunion' }));
     expect(await screen.findByRole('option', { name: /Revue du vendredi/ })).toBeInTheDocument();
     expect(api.processMeeting).not.toHaveBeenCalled();

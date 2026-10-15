@@ -1,5 +1,5 @@
 import type { Folder, Meeting } from '../../../shared/contracts';
-import { EmptyState } from '../../components/ui';
+import { EmptyState, Skeleton } from '../../components/ui';
 import type { DateGroup } from './date-groups';
 import { emptyList, type FolderScope } from './list-filter';
 import { MeetingList } from './MeetingList';
@@ -27,8 +27,8 @@ function ListSkeleton() {
       <div className="list-skeleton" aria-hidden="true">
         {Array.from({ length: 5 }, (_, index) => (
           <div key={index} className="skeleton-row">
-            <span className="skeleton-line" />
-            <span className="skeleton-line skeleton-line-short" />
+            <Skeleton />
+            <Skeleton short />
           </div>
         ))}
       </div>

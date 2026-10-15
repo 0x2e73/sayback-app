@@ -21,6 +21,18 @@ export const clarificationSchema = z.object({
   at: timeSchema,
   text: z.string().trim().min(1).max(2_000),
 });
+export const capturePrefsSchema = z.object({
+  microphone: z.boolean(),
+  systemAudio: z.boolean(),
+  screen: z.boolean(),
+  autoAnalyze: z.boolean(),
+  screenId: z
+    .string()
+    .max(60)
+    .regex(/^screen:\d+:\d+$/)
+    .optional(),
+});
+export const captureKindSchema = z.enum(['screen', 'microphone']);
 export const appearanceSchema = z.enum(['system', 'light', 'dark']);
 export const setupGuideSchema = z.enum(['whisper', 'ollama']);
 export const settingsSchema = z.object({

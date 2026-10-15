@@ -1,3 +1,4 @@
+import { SearchField } from '../../components/ui';
 import { useMemo } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { groupByDate } from './date-groups';
@@ -6,7 +7,6 @@ import { ListBody } from './ListBody';
 import { ListFooter } from './ListFooter';
 import { ALL_MEETINGS, type FolderScope } from './list-filter';
 import type { UpdateLineProps } from '../updates/UpdateLine';
-import { SearchField } from './SearchField';
 import { useCurrentDate } from './use-current-date';
 import type { FolderActions } from './use-folders';
 
@@ -42,7 +42,15 @@ export function ListPane(props: ListPaneProps) {
   return (
     <aside className="list-pane" aria-label="Liste des réunions">
       <div className="window-band list-pane-header">
-        <SearchField query={query} disabled={locked} onQuery={props.onQuery} />
+        <SearchField
+          label="Rechercher une réunion"
+          placeholder="Rechercher…"
+          query={query}
+          disabled={locked}
+          compact
+          findShortcut
+          onQuery={props.onQuery}
+        />
       </div>
       <FolderFilter
         folders={folders}

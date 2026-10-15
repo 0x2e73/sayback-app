@@ -3,12 +3,13 @@ import type { BrowserWindow } from 'electron';
 import type { RegisterHandler } from './ipc';
 
 const electron = vi.hoisted(() => ({
-  getMediaAccessStatus: vi.fn(() => 'denied'),
+  getMediaAccessStatus: vi.fn<(kind: string) => string>(() => 'denied'),
   getSources: vi.fn(async () => [
     {
       id: 'screen:1:0',
-      name: 'Écran principal',
-      thumbnail: { toDataURL: () => 'data:image/png;base64,test' },
+      display_id: '1',
+      name: 'Entire Screen',
+      thumbnail: { toDataURL: (): string => 'data:image/png;base64,test' },
     },
   ]),
   setPermissionRequestHandler: vi.fn(),
@@ -19,6 +20,7 @@ const electron = vi.hoisted(() => ({
 vi.mock('electron', () => ({
   app: { isPackaged: false },
   desktopCapturer: { getSources: electron.getSources },
+  screen: { getPrimaryDisplay: () => ({ id: 1 }) },
   systemPreferences: { getMediaAccessStatus: electron.getMediaAccessStatus },
   session: {
     defaultSession: {
@@ -50,10 +52,110 @@ it('lists capture sources even when the cached macOS status says denied', async 
   expect(sources).toEqual([
     {
       id: 'screen:1:0',
-      name: 'Écran principal',
+      name: 'Écran 1',
       thumbnail: 'data:image/png;base64,test',
+      primary: true,
     },
   ]);
+});
+
+const picture = { toDataURL: (): string => 'data:image/png;base64,test' };
+
+function registered(ownWindows?: Parameters<typeof registerCapture>[2]) {
+  const handlers = new Map<string, (...args: unknown[]) => unknown>();
+  const handle: RegisterHandler = (channel, action) => {
+    handlers.set(channel, action);
+  };
+  registerCapture(handle, () => null, ownWindows);
+  return (channel: string, ...args: unknown[]) => handlers.get(channel)?.(...args);
+}
+
+it('leaves the windows of SayBack, main and island, out of the list', async () => {
+  electron.getSources.mockResolvedValueOnce([
+    { id: 'screen:1:0', display_id: '1', name: 'Entire Screen', thumbnail: picture },
+    { id: 'window:11:0', display_id: '', name: 'SayBack', thumbnail: picture },
+    { id: 'window:12:0', display_id: '', name: 'Island', thumbnail: picture },
+    { id: 'window:13:0', display_id: '', name: 'Zoom', thumbnail: picture },
+  ]);
+  const call = registered(() => [
+    { getMediaSourceId: () => 'window:11:0', isDestroyed: () => false },
+    { getMediaSourceId: () => 'window:12:0', isDestroyed: () => false },
+    null,
+    {
+      getMediaSourceId: () => {
+        throw new Error('destroyed');
+      },
+      isDestroyed: () => true,
+    },
+  ]);
+  const sources = (await call('capture:sources')) as { id: string }[];
+  expect(sources.map((source) => source.id)).toEqual(['screen:1:0', 'window:13:0']);
+});
+
+it('puts the main screen first, as « Écran 1 »', async () => {
+  electron.getSources.mockResolvedValueOnce([
+    { id: 'screen:2:0', display_id: '2', name: 'Screen 2', thumbnail: picture },
+    { id: 'screen:1:0', display_id: '1', name: 'Screen 1', thumbnail: picture },
+  ]);
+  const sources = (await registered()('capture:sources')) as {
+    id: string;
+    name: string;
+    primary?: boolean;
+  }[];
+  expect(sources.map(({ id, name, primary }) => [id, name, primary])).toEqual([
+    ['screen:1:0', 'Écran 1', true],
+    ['screen:2:0', 'Écran 2', undefined],
+  ]);
+});
+
+it('keeps a window under the name the system gives it', async () => {
+  electron.getSources.mockResolvedValueOnce([
+    { id: 'screen:1:0', display_id: '1', name: 'Entire Screen', thumbnail: picture },
+    { id: 'window:13:0', display_id: '', name: 'Zoom', thumbnail: picture },
+  ]);
+  const sources = (await registered()('capture:sources')) as { name: string }[];
+  expect(sources.map((source) => source.name)).toEqual(['Écran 1', 'Zoom']);
+});
+
+it.each([
+  ['granted', 'granted'],
+  ['denied', 'denied'],
+  ['restricted', 'denied'],
+  ['not-determined', 'not-determined'],
+  ['unknown', 'not-determined'],
+])('reports the %s status of macOS as %s', (status, expected) => {
+  electron.getMediaAccessStatus.mockReturnValueOnce(status);
+  const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
+  try {
+    expect(registered()('capture:permission', 'screen')).toBe(expected);
+    expect(electron.getMediaAccessStatus).toHaveBeenLastCalledWith('screen');
+  } finally {
+    platform.mockRestore();
+  }
+});
+
+it('asks macOS about the microphone too', () => {
+  electron.getMediaAccessStatus.mockReturnValueOnce('granted');
+  const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
+  try {
+    expect(registered()('capture:permission', 'microphone')).toBe('granted');
+    expect(electron.getMediaAccessStatus).toHaveBeenLastCalledWith('microphone');
+  } finally {
+    platform.mockRestore();
+  }
+});
+
+it('does not gate a platform that has no such right', () => {
+  const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('linux');
+  try {
+    expect(registered()('capture:permission', 'screen')).toBe('granted');
+  } finally {
+    platform.mockRestore();
+  }
+});
+
+it.each(['camera', '', null, 4])('refuses to read the right named %j', (kind) => {
+  expect(() => registered()('capture:permission', kind)).toThrow();
 });
 
 it('allows fullscreen only for the app window', () => {
@@ -87,4 +189,33 @@ it('lets the app window write the notes to the clipboard, never read it', () => 
   expect(check(contents, 'clipboard-sanitized-write')).toBe(true);
   expect(check(contents, 'clipboard-read')).toBe(false);
   expect(check({ id: 2 }, 'clipboard-sanitized-write')).toBe(false);
+});
+
+it('hides a window of SayBack whatever the last segment of its identifier says', async () => {
+  electron.getSources.mockResolvedValueOnce([
+    { id: 'screen:1:0', display_id: '1', name: 'Entire Screen', thumbnail: picture },
+    { id: 'window:11:1', display_id: '', name: 'SayBack', thumbnail: picture },
+    { id: 'window:111:0', display_id: '', name: 'Autre', thumbnail: picture },
+  ]);
+  const call = registered(() => [
+    { getMediaSourceId: () => 'window:11:0', isDestroyed: () => false },
+  ]);
+  const sources = (await call('capture:sources')) as { id: string }[];
+  expect(sources.map((source) => source.id)).toEqual(['screen:1:0', 'window:111:0']);
+});
+
+it('keeps the windows after the screens, in the order of the system', async () => {
+  electron.getSources.mockResolvedValueOnce([
+    { id: 'window:5:0', display_id: '', name: 'B', thumbnail: picture },
+    { id: 'screen:2:0', display_id: '2', name: 'Screen 2', thumbnail: picture },
+    { id: 'window:4:0', display_id: '', name: 'A', thumbnail: picture },
+    { id: 'screen:1:0', display_id: '1', name: 'Screen 1', thumbnail: picture },
+  ]);
+  const sources = (await registered()('capture:sources')) as { id: string }[];
+  expect(sources.map((source) => source.id)).toEqual([
+    'screen:1:0',
+    'screen:2:0',
+    'window:5:0',
+    'window:4:0',
+  ]);
 });

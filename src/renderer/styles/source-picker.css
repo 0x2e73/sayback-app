@@ -1,0 +1,181 @@
+/* The new meeting form and what it offers to capture. */
+.new-meeting-form {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.source-chips {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.source-chips legend,
+.source-group legend {
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+.source-chips legend {
+  margin-bottom: var(--space-2);
+}
+.source-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.source-summary,
+.source-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+}
+.source-summary {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.source-line {
+  margin: 0;
+}
+.source-summary-text {
+  display: grid;
+  flex: 1;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.source-summary-text strong,
+.source-name {
+  overflow: hidden;
+  font-size: var(--text-control);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source-summary .skeleton-block {
+  flex: none;
+  width: var(--source-thumb-width);
+  aspect-ratio: 16 / 10;
+}
+.source-chevron {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.button[aria-expanded='true'] .source-chevron {
+  transform: rotate(180deg);
+}
+.analysis-missing {
+  margin: 0;
+}
+
+/* The list of screens and windows. */
+.source-panel:not([data-instant]) {
+  animation: state-enter var(--duration-base) var(--ease-out);
+}
+.source-picker {
+  display: grid;
+  gap: var(--space-4);
+}
+.source-group {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.source-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--source-tile-min), 1fr));
+  gap: var(--space-2);
+}
+.source-rows {
+  display: grid;
+  gap: var(--space-1);
+  max-height: var(--source-list-max);
+  overflow-y: auto;
+}
+.source-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.source-option[data-layout='row'] {
+  min-height: var(--source-row-height);
+  padding: var(--space-1) var(--space-2);
+}
+.source-option[data-layout='tile'] {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-color: var(--color-border);
+}
+.source-option:hover {
+  background: var(--color-surface);
+}
+.source-option:has(.source-input:checked) {
+  border-color: var(--color-accent-soft);
+  background: var(--color-accent-tint);
+}
+.source-option:has(.source-input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.source-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.source-thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--source-thumb-width);
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
+}
+.source-option[data-layout='tile'] .source-thumb {
+  width: 100%;
+}
+.source-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.source-name {
+  flex: 1;
+  min-width: 0;
+}
+.source-check {
+  flex: none;
+  color: var(--color-accent);
+  opacity: 0;
+}
+.source-option[data-layout='tile'] .source-check {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+}
+.source-option:has(.source-input:checked) .source-check {
+  opacity: 1;
+}

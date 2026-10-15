@@ -3,11 +3,15 @@ import { z } from 'zod';
 import type { Result } from '../shared/contracts';
 import type { WindowRole, WindowRoles } from './window-roles';
 
-/** `invoke` channel; only the main window may call it unless other roles are named. */
+/**
+ * `invoke` channel; only the main window may call it unless other roles are named. With
+ * `perSecond`, calls beyond that rate get an error answer instead of running.
+ */
 export type RegisterHandler = (
   channel: string,
   action: (...args: unknown[]) => unknown,
   roles?: readonly WindowRole[],
+  perSecond?: number,
 ) => void;
 
 /**
@@ -57,9 +61,12 @@ export function createIpcRegistrar(
   now: () => number = () => performance.now(),
 ): IpcRegistrar {
   return {
-    handle(channel, action, roles = MAIN_ONLY) {
+    handle(channel, action, roles = MAIN_ONLY, perSecond) {
+      const withinRate = perSecond === undefined ? () => true : rateLimiter(perSecond, now);
       ipcMain.handle(channel, async (event, ...args): Promise<Result<unknown>> => {
         if (!windowRoles.allows(event, roles)) return { ok: false, error: 'Accès refusé.' };
+        if (!withinRate())
+          return { ok: false, error: 'Trop de demandes. Réessayez dans un instant.' };
         try {
           return { ok: true, value: await action(...args) };
         } catch (error) {

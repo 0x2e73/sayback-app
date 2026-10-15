@@ -8,3 +8,6 @@ export { EmptyState } from './EmptyState';
 export { ErrorBoundary } from './ErrorBoundary';
 export { Segmented, tabId, type RadioOption, type SegmentedOption } from './Segmented';
 export { LevelMeter, type LevelFeed } from './LevelMeter';
+export { Switch } from './Switch';
+export { Skeleton } from './Skeleton';
+export { SearchField } from './SearchField';

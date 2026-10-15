@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
+import { newMeetingDialog } from './new-meeting-harness';
 import { apiFor, ok, settings } from './test-api';
 
 afterEach(cleanup);
@@ -146,43 +147,34 @@ describe('Meeting workspace', () => {
     await user.click(screen.getByRole('option', { name: 'gpt-4o' }));
     expect(dropdown).toHaveTextContent('gpt-4o');
   });
-  it('shows a denied screen permission prominently in the new meeting dialog', async () => {
+  it('shows a denied screen permission in the new meeting dialog and opens the settings', async () => {
     const api = apiFor();
     const openSettings = vi.fn(() => ok(undefined));
     api.openScreenRecordingSettings = openSettings;
-    api.getSources = async () => ({
-      ok: false,
-      error: 'Accès à l’écran refusé. Autorisez SayBack dans Réglages Système.',
-    });
+    api.getCapturePermission = (kind) => ok(kind === 'screen' ? 'denied' : 'granted');
+    api.getSources = () => ok([]);
     const user = userEvent.setup();
     render(<App api={api} />);
     await user.click(await screen.findByRole('button', { name: 'Démarrer l’enregistrement' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Accès à l’écran refusé');
-    expect(alert.compareDocumentPosition(screen.getByLabelText('Titre de la réunion'))).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
+    const dialog = await newMeetingDialog();
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'SayBack n’a pas l’autorisation d’enregistrer l’écran.',
     );
-    await user.click(
-      screen.getByRole('button', { name: 'Ouvrir les réglages de confidentialité' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Ouvrir les réglages macOS' }));
     expect(openSettings).toHaveBeenCalledOnce();
   });
   it('explains and enables automatic analysis when a personal key is configured', async () => {
     const api = apiFor();
     api.getSettings = () => ok({ ...settings, hasOpenAiKey: true });
     api.getSources = () =>
-      ok([{ id: 'screen:1:0', name: 'Écran principal', thumbnail: 'data:image/png;base64,a' }]);
+      ok([{ id: 'screen:1:0', name: 'Écran 1', thumbnail: 'data:image/png;base64,a' }]);
     const user = userEvent.setup();
     render(<App api={api} />);
     await user.click(await screen.findByRole('button', { name: 'Démarrer l’enregistrement' }));
-    expect(
-      await screen.findByRole('checkbox', {
-        name: /Transcrire et créer le compte rendu après l’arrêt/,
-      }),
-    ).toBeChecked();
-    expect(
-      screen.getByText(/OpenAI facture la transcription avec identification des voix/),
-    ).toBeInTheDocument();
+    const dialog = await newMeetingDialog();
+    const analysis = within(dialog).getByRole('switch', { name: 'Lancer l’analyse à l’arrêt' });
+    expect(analysis).toBeChecked();
+    expect(analysis).toHaveAccessibleDescription(/OpenAI pour l’audio/);
   });
   it('has no top bar, footer or marketing line around the workspace', async () => {
     render(<App api={apiFor()} />);

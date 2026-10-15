@@ -1,37 +1,30 @@
-import { Button, Dialog, Notice } from '../../components/ui';
-import { SourceGroup } from './CaptureSources';
+import { Button, Dialog, Notice, Skeleton } from '../../components/ui';
+import { SourcePicker } from './SourcePicker';
 import type { useRecordingSource } from './use-recording-source';
 
 interface RecordingSourceDialogProps {
   source: ReturnType<typeof useRecordingSource>;
 }
 
+function SourcesLoading() {
+  return (
+    <div className="recording-source-loading" role="status">
+      <span className="sr-only">Recherche des écrans et fenêtres…</span>
+      <Skeleton variant="block" />
+      <Skeleton />
+      <Skeleton short />
+    </div>
+  );
+}
+
 export function RecordingSourceDialog({ source }: RecordingSourceDialogProps) {
   return (
-    <Dialog title="Changer la source capturée" busy={source.switching} onClose={source.closePicker}>
-      <div className="recording-source-dialog">
-        <p className="caption">La réunion et le son continuent pendant le changement.</p>
-        {source.error && <Notice>{source.error}</Notice>}
-        {source.loading ? (
-          <p role="status">Recherche des écrans et fenêtres…</p>
-        ) : (
-          <>
-            <SourceGroup
-              kind="screen"
-              sources={source.sources.filter((item) => item.id.startsWith('screen:'))}
-              sourceId={source.selectedId}
-              onSource={source.setSelectedId}
-            />
-            <SourceGroup
-              kind="window"
-              sources={source.sources.filter((item) => !item.id.startsWith('screen:'))}
-              sourceId={source.selectedId}
-              onSource={source.setSelectedId}
-            />
-            {!source.sources.length && <p>Aucune source disponible.</p>}
-          </>
-        )}
-        <div className="recording-source-actions">
+    <Dialog
+      title="Changer la source capturée"
+      busy={source.switching}
+      onClose={source.closePicker}
+      footer={
+        <>
           <Button variant="ghost" disabled={source.switching} onClick={source.closePicker}>
             Annuler
           </Button>
@@ -42,7 +35,21 @@ export function RecordingSourceDialog({ source }: RecordingSourceDialogProps) {
           >
             Utiliser cette source
           </Button>
-        </div>
+        </>
+      }
+    >
+      <div className="recording-source-dialog">
+        <p className="caption">La réunion et le son continuent pendant le changement.</p>
+        {source.error && <Notice>{source.error}</Notice>}
+        {source.loading && <SourcesLoading />}
+        {!source.loading && source.sources.length > 0 && (
+          <SourcePicker
+            sources={source.sources}
+            selectedId={source.selectedId}
+            onSelect={source.setSelectedId}
+          />
+        )}
+        {!source.loading && !source.sources.length && <p>Aucune source disponible.</p>}
       </div>
     </Dialog>
   );

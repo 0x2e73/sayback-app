@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { platformOf } from '../../platform';
+import { platformOf } from '../platform';
 
 export interface ShortcutKey {
   key: string;
@@ -22,8 +22,10 @@ export function isFindShortcut(event: ShortcutKey, platform: 'mac' | 'other'): b
 export function useFindShortcut(
   field: RefObject<HTMLInputElement | null>,
   platform = platformOf(navigator.platform),
+  enabled = true,
 ): void {
   useEffect(() => {
+    if (!enabled) return;
     function onKeyDown(event: KeyboardEvent): void {
       const input = field.current;
       if (!input || !isFindShortcut(event, platform)) return;
@@ -33,5 +35,5 @@ export function useFindShortcut(
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [field, platform]);
+  }, [field, platform, enabled]);
 }

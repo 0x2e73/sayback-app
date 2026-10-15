@@ -58,6 +58,20 @@ export interface CaptureSource {
   id: string;
   name: string;
   thumbnail: string;
+  /** Set on the screen that holds the menu bar. */
+  primary?: boolean;
+}
+/** What the system says about a capture right: only `denied` stops the user. */
+export type CapturePermission = 'granted' | 'denied' | 'not-determined';
+export type CapturePermissionKind = 'screen' | 'microphone';
+/** The choices of the last recording, offered again at the next one. */
+export interface CapturePrefs {
+  microphone: boolean;
+  systemAudio: boolean;
+  screen: boolean;
+  autoAnalyze: boolean;
+  /** A screen only: a window gets a new identifier each time it opens. */
+  screenId?: string;
 }
 export type MediaKind = 'video' | 'audio' | 'frame';
 export interface MediaUpload {
@@ -89,6 +103,10 @@ export interface DesktopApi {
   saveSettings(input: SettingsInput): Promise<Result<Settings>>;
   clearApiKey(provider: KeyProvider): Promise<Result<Settings>>;
   openScreenRecordingSettings(): Promise<Result<void>>;
+  openMicrophoneSettings(): Promise<Result<void>>;
+  getCapturePermission(kind: CapturePermissionKind): Promise<Result<CapturePermission>>;
+  getCapturePrefs(): Promise<Result<CapturePrefs>>;
+  setCapturePrefs(prefs: CapturePrefs): Promise<Result<void>>;
   getSources(): Promise<Result<CaptureSource[]>>;
   selectSource(id: string, systemAudio: boolean): Promise<Result<void>>;
   openDataFolder(): Promise<Result<void>>;
