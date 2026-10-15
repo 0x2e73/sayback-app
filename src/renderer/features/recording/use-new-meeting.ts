@@ -37,7 +37,9 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
       .then((read) => {
         if (current) setSettings(read);
       })
-      .catch((failure: unknown) => setError(errorMessage(failure)));
+      .catch((failure: unknown) => {
+        if (current) setError(errorMessage(failure));
+      });
     return () => {
       current = false;
     };
@@ -56,11 +58,7 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
     try {
       if (selection.screen) unwrap(await api.selectSource(choice.sourceId, selection.systemAudio));
       const source = selection.screen ? choice.source : undefined;
-      await onStart(
-        title.trim() || defaultTitle,
-        { ...selection, source },
-        choice.autoAnalyze && analysisReady,
-      );
+      await onStart(titleToStart(), { ...selection, source }, choice.autoAnalyze && analysisReady);
       choice.remember({
         ...choice.toggles,
         autoAnalyze: choice.autoAnalyze,
@@ -71,6 +69,11 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
       setBusy(false);
       submitting.current = false;
     }
+  }
+
+  // Left as it was offered, the title names the moment the recording starts, not the opening.
+  function titleToStart(): string {
+    return typedTitle?.trim() || defaultMeetingTitle(new Date());
   }
 
   // A window gets a new identifier each time: only a screen is worth remembering.
