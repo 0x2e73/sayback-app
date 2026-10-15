@@ -18,7 +18,8 @@ import {
   registerSettingsHandlers,
 } from './meeting-handlers';
 import { registerCapture } from './capture-permissions';
-import { createCapturePrefsStore, registerCapturePrefs } from './capture-prefs';
+import { createCapturePrefsStore } from '../backend/infrastructure/capture-prefs-store';
+import { registerCapturePrefs } from './capture-prefs';
 import { registerWindowHandlers } from './full-screen';
 import { createWindow } from './window';
 import { createMenuBarActions } from './menu-bar-actions';
