@@ -3,8 +3,29 @@ import { isOutOfView } from './follow-rules';
 
 export const ACTIVE_TURN = '[aria-current="time"]';
 
-export function scrollToActive(list: HTMLElement | null): void {
-  list?.querySelector(ACTIVE_TURN)?.scrollIntoView({ block: 'nearest' });
+export function turnElement(root: ParentNode | null, turnId: string | null): Element | null {
+  if (!root || turnId === null) return null;
+  return root.querySelector(`[data-turn="${CSS.escape(turnId)}"]`);
+}
+
+/** The turn being read: the one playing, else in a silence the last one that has started. */
+export function readingTurn(root: Element): Element | null {
+  const playing = root.querySelector(ACTIVE_TURN);
+  if (playing) return playing;
+  const list = root.hasAttribute('data-reading') ? root : root.querySelector('[data-reading]');
+  return turnElement(list, list?.getAttribute('data-reading') ?? null);
+}
+
+/**
+ * A jump the reader asked for lands in the middle. Turns out of view are only estimated
+ * (content-visibility): once laid out the target may have moved, so look again next frame.
+ */
+export function jumpTo(element: Element | null | undefined): void {
+  if (!element) return;
+  element.scrollIntoView({ block: 'center' });
+  requestAnimationFrame(() => {
+    if (element.isConnected) element.scrollIntoView({ block: 'center' });
+  });
 }
 
 // A held pointer or a selection inside the transcript: moving the text would break the copy.
@@ -15,10 +36,10 @@ function isReading(list: HTMLElement, pressed: boolean): boolean {
   return list.contains(selection.anchorNode);
 }
 
-/** Keeps the turn playing in view, instantly, unless the reader left the follow or is selecting. */
-export function useFollowActive(
+/** Keeps the turn read in view, instantly, unless the reader left the follow or is selecting. */
+export function useFollowReading(
   list: RefObject<HTMLDivElement | null>,
-  active: number,
+  turnId: string | null,
   following: boolean,
 ): void {
   const pressed = useRef(false);
@@ -43,13 +64,13 @@ export function useFollowActive(
 
   useLayoutEffect(() => {
     const element = list.current;
-    if (!element || !following || active < 0 || isReading(element, pressed.current)) return;
-    scrollToActive(element);
-  }, [list, active, following]);
+    if (!element || !following || turnId === null || isReading(element, pressed.current)) return;
+    turnElement(element, turnId)?.scrollIntoView({ block: 'nearest' });
+  }, [list, turnId, following]);
 }
 
-function activeOutOfView(scroller: HTMLElement, list: HTMLElement): boolean {
-  const turn = list.querySelector(ACTIVE_TURN);
+function readingOutOfView(scroller: HTMLElement, list: HTMLElement, turnId: string): boolean {
+  const turn = turnElement(list, turnId);
   if (!turn) return false;
   const style = getComputedStyle(scroller);
   const insets = {
@@ -59,21 +80,38 @@ function activeOutOfView(scroller: HTMLElement, list: HTMLElement): boolean {
   return isOutOfView(turn.getBoundingClientRect(), scroller.getBoundingClientRect(), insets);
 }
 
-/** Whether the turn playing is out of view; the scroll event only measures, it never stops the follow. */
-export function useActiveOutOfView(
+/** Whether the turn read is out of view; the scroll event only measures, it never stops the follow. */
+export function useReadingOutOfView(
   scrollerRef: RefObject<HTMLElement | null>,
   list: RefObject<HTMLDivElement | null>,
-  active: number,
+  turnId: string | null,
 ): boolean {
   const [outOfView, setOutOfView] = useState(false);
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     const element = list.current;
-    if (!scroller || !element) return;
-    const measure = () => setOutOfView(activeOutOfView(scroller, element));
+    if (!scroller || !element || turnId === null) return;
+    const measure = () => setOutOfView(readingOutOfView(scroller, element, turnId));
     measure();
     scroller.addEventListener('scroll', measure, { passive: true });
     return () => scroller.removeEventListener('scroll', measure);
-  }, [scrollerRef, list, active]);
-  return outOfView;
+  }, [scrollerRef, list, turnId]);
+  return turnId !== null && outOfView;
+}
+
+/** Whether a selection is held inside the list: it counts as a release for the pill. */
+export function useSelectionIn(list: RefObject<HTMLDivElement | null>): boolean {
+  const [selecting, setSelecting] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const selection = document.getSelection();
+      const anchor = selection?.anchorNode;
+      setSelecting(
+        Boolean(selection && !selection.isCollapsed && anchor && list.current?.contains(anchor)),
+      );
+    };
+    document.addEventListener('selectionchange', check);
+    return () => document.removeEventListener('selectionchange', check);
+  }, [list]);
+  return selecting;
 }

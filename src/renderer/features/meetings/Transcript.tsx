@@ -1,14 +1,27 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import type { Meeting } from '../../../shared/contracts';
 import { usePlaybackSelector, type PlaybackClock } from './playback-clock';
-import { activeTurnIndex, partStarts, passageTurn, transcriptRows } from './transcript-rows';
+import {
+  activeTurnIndex,
+  followedTurnIndex,
+  partStarts,
+  passageTurn,
+  runningMaxEnd,
+  transcriptRows,
+} from './transcript-rows';
 import { TranscriptList } from './TranscriptList';
 import { TranscriptPills } from './TranscriptPills';
 import { TranscriptSearchBar } from './TranscriptSearchBar';
 import { TranscriptEmpty, TranscriptWaiting } from './TranscriptStates';
 import type { TranscriptView } from './use-detail-view';
 import { useStableTurns } from './use-stable-turns';
-import { scrollToActive, useActiveOutOfView, useFollowActive } from './use-transcript-follow';
+import {
+  jumpTo,
+  turnElement,
+  useFollowReading,
+  useReadingOutOfView,
+  useSelectionIn,
+} from './use-transcript-follow';
 import { useTranscriptSearch } from './use-transcript-search';
 
 interface TranscriptProps {
@@ -19,24 +32,26 @@ interface TranscriptProps {
   onAnalyze(): void;
 }
 
-/** Moves to the current search result when it changes, not when the tab opens on it. */
+/**
+ * Moves to the current search result when the reader asks for one (a settled query, a step),
+ * never when a poll shifts it or when the tab opens on it.
+ */
 function useCurrentMatchInView(
   list: RefObject<HTMLDivElement | null>,
-  key: string | null,
+  reveal: string,
   onRelease: () => void,
 ): void {
-  const mounted = useRef(false);
+  // Holding the previous value, not a "mounted" flag, keeps a double-run effect harmless.
+  const previous = useRef(reveal);
   useLayoutEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    const mark = key === null ? null : list.current?.querySelector('mark[aria-current="true"]');
+    if (previous.current === reveal) return;
+    previous.current = reveal;
+    const mark = list.current?.querySelector('mark[aria-current="true"]');
     if (!mark) return;
-    mark.scrollIntoView({ block: 'nearest' });
+    jumpTo(mark);
     // Going to a result is a move of the reader: the playback must not pull the view back.
     onRelease();
-  }, [list, key, onRelease]);
+  }, [list, reveal, onRelease]);
 }
 
 function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) {
@@ -44,6 +59,7 @@ function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) 
   const turns = useStableTurns(meeting.transcript);
   const starts = useMemo(() => partStarts(meeting.audioChunks), [meeting.audioChunks]);
   const rows = useMemo(() => transcriptRows(turns, starts), [turns, starts]);
+  const ends = useMemo(() => runningMaxEnd(turns), [turns]);
   const passage = useMemo(
     () => ({
       index: view.passage ? passageTurn(turns, view.passage) : -1,
@@ -51,17 +67,20 @@ function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) 
     }),
     [turns, view.passage],
   );
-  const found = useTranscriptSearch(turns, view.search, view.onSearch);
-  const playing = useCallback((at: number) => activeTurnIndex(turns, at), [turns]);
-  // Re-renders when the active turn changes, not at every tick of the clock.
+  const found = useTranscriptSearch(turns, view);
+  const playing = useCallback((at: number) => activeTurnIndex(turns, at, ends), [turns, ends]);
+  const followed = useCallback((at: number) => followedTurnIndex(turns, at, ends), [turns, ends]);
+  // Each re-renders when its turn changes, not at every tick of the clock.
   const active = usePlaybackSelector(clock, playing);
-  useCurrentMatchInView(list, found.currentKey, view.onRelease);
-  useFollowActive(list, active, view.following);
-  const outOfView = useActiveOutOfView(view.scrollerRef, list, active);
+  const reading = turns[usePlaybackSelector(clock, followed)]?.id ?? null;
+  const selecting = useSelectionIn(list);
+  useCurrentMatchInView(list, found.reveal, view.onRelease);
+  useFollowReading(list, reading, view.following);
+  const outOfView = useReadingOutOfView(view.scrollerRef, list, reading);
 
   function resume(): void {
     view.onFollow();
-    scrollToActive(list.current);
+    jumpTo(turnElement(list.current, reading));
   }
 
   return (
@@ -71,13 +90,14 @@ function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) 
         ref={list}
         rows={rows}
         active={active}
+        reading={reading}
         found={found}
         onSeek={view.onSeek}
         passage={passage}
       />
       {analyzing && <p className="caption">La transcription arrive au fur et à mesure.</p>}
       <TranscriptPills
-        showFollow={!view.following && outOfView}
+        showFollow={(!view.following || selecting) && outOfView}
         onFollow={resume}
         showBack={view.passage !== null}
         onBack={view.onBackToNotes}

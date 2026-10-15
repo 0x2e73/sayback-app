@@ -3,8 +3,11 @@ import type { Segment } from '../../../shared/contracts';
 import { speakerTurns } from './speaker-turns';
 import {
   activeTurnIndex,
+  followedTurnIndex,
+  lastStartedIndex,
   partStarts,
   passageTurn,
+  runningMaxEnd,
   stableTurns,
   transcriptRows,
   type TranscriptRow,
@@ -166,6 +169,39 @@ describe('activeTurnIndex', () => {
     ).toBe(1);
   });
 
+  it('walks back to a longer turn hidden by a short one that already ended', () => {
+    expect(
+      activeTurnIndex(
+        [
+          { start: 0, end: 10 },
+          { start: 2, end: 4 },
+        ],
+        5,
+      ),
+    ).toBe(0);
+    expect(
+      activeTurnIndex(
+        [
+          { start: 4, end: 9 },
+          { start: 4, end: 4 },
+        ],
+        4,
+      ),
+    ).toBe(0);
+  });
+
+  it('gives no turn in a silence between two turns, whatever came before', () => {
+    const spans = [
+      { start: 0, end: 10 },
+      { start: 2, end: 4 },
+      { start: 12, end: 14 },
+    ];
+    expect(activeTurnIndex(spans, 11)).toBe(-1);
+    expect(lastStartedIndex(spans, 11)).toBe(1);
+    expect(followedTurnIndex(spans, 11, runningMaxEnd(spans))).toBe(1);
+    expect(followedTurnIndex(spans, 5, runningMaxEnd(spans))).toBe(0);
+  });
+
   it('finds the turn playing among 1 000 by binary search', () => {
     const many = Array.from({ length: 1000 }, (_turn, index) => ({
       start: index * 5,
@@ -190,7 +226,12 @@ describe('passageTurn', () => {
     ['a segment merged into a longer turn', { sourceId: '0-1', at: 3 }, 0],
     ['a segment opening its own turn', { sourceId: '0-2', at: 5 }, 1],
     ['a clarification, by its time', { sourceId: 'clarification:c1', at: 6 }, 1],
-    ['a time no turn holds', { sourceId: 'clarification:c2', at: 90 }, -1],
+    [
+      'a time after the last turn, the last one started',
+      { sourceId: 'clarification:c2', at: 90 },
+      1,
+    ],
+    ['a time before the first turn, none', { sourceId: 'clarification:c3', at: 0.5 }, -1],
   ])('finds %s', (_case, passage, index) => {
     expect(passageTurn(turns, passage)).toBe(index);
   });

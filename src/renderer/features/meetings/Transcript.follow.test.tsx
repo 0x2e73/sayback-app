@@ -99,7 +99,7 @@ it('offers « Revenir au direct » when the turn playing is out of view, and goe
   );
   await userEvent.click(screen.getByRole('button', { name: 'Revenir au direct' }));
   expect(handlers.onFollow).toHaveBeenCalledOnce();
-  expect(scrolled).toHaveBeenLastCalledWith(turnOf('Salut.'), { block: 'nearest' });
+  expect(scrolled).toHaveBeenLastCalledWith(turnOf('Salut.'), { block: 'center' });
 });
 
 it('rechecks the pill when the reader scrolls back to the turn', () => {

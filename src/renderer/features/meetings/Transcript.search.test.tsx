@@ -79,7 +79,7 @@ it('scrolls the current match into view', async () => {
   render(<TranscriptHarness meeting={meeting} />);
   await user.type(field(), 'budget');
   await user.keyboard('{Enter}');
-  expect(scrolled).toHaveBeenLastCalledWith(currentMark(), { block: 'nearest' });
+  expect(scrolled).toHaveBeenLastCalledWith(currentMark(), { block: 'center' });
 });
 
 it('clears the search with Escape and gives the focus back', async () => {
@@ -128,6 +128,28 @@ it('keeps the current match when a poll brings text before and after it', async 
   );
   expect(screen.getByText('3 sur 4')).toBeInTheDocument();
   expect(currentMark()?.closest('p')).toHaveTextContent('Le budget quatre.');
+});
+
+it('moves to the nearest match after a vanished one, without scrolling', async () => {
+  const user = userEvent.setup();
+  const three = [
+    segment('0-0', 1, 'Budget un.'),
+    segment('0-1', 4, 'Budget deux.', 'B'),
+    segment('0-2', 7, 'Budget trois.'),
+  ];
+  const { rerender } = render(<TranscriptHarness meeting={meetingWith(three)} />);
+  await user.type(field(), 'budget');
+  await user.keyboard('{Enter}');
+  expect(screen.getByText('2 sur 3')).toBeInTheDocument();
+  scrolled.mockClear();
+  rerender(
+    <TranscriptHarness
+      meeting={meetingWith([three[0]!, segment('0-1', 4, 'Autre chose.', 'B'), three[2]!])}
+    />,
+  );
+  expect(screen.getByText('2 sur 2')).toBeInTheDocument();
+  expect(currentMark()?.closest('p')).toHaveTextContent('Budget trois.');
+  expect(scrolled).not.toHaveBeenCalled();
 });
 
 it('keeps the first match current when the reader did not move and text arrives before it', async () => {

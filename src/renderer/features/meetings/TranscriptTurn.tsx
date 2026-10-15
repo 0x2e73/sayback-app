@@ -48,6 +48,7 @@ function TranscriptTurnView(props: TranscriptTurnProps) {
   return (
     <article
       className={turnClass(turn)}
+      data-turn={turn.id}
       aria-current={active ? 'time' : undefined}
       data-passage={passageKey > 0 ? '' : undefined}
     >

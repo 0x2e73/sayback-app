@@ -93,10 +93,18 @@ describe('keptMatch', () => {
   const matches = searchTranscript(turns, 'budget').matches;
 
   it('keeps the current match across a poll, or falls back to the first', () => {
-    expect(keptMatch([], 'x')).toBe(-1);
-    expect(keptMatch(matches, null)).toBe(0);
-    expect(keptMatch(matches, '0-1:17')).toBe(2);
-    expect(keptMatch(matches, 'gone:1')).toBe(0);
+    expect(keptMatch([], 'x', turns)).toBe(-1);
+    expect(keptMatch(matches, null, turns)).toBe(0);
+    expect(keptMatch(matches, '0-1:17', turns)).toBe(2);
+    expect(keptMatch(matches, 'gone:1', turns)).toBe(0);
+  });
+
+  it.each([
+    ['in the same turn, before the next match', '0-0:5', 1],
+    ['in a turn without match any more', '0-2:0', 2],
+    ['after the last match', '0-1:30', 2],
+  ])('moves to the nearest match at or after a vanished one: %s', (_case, key, index) => {
+    expect(keptMatch(matches, key, turns)).toBe(index);
   });
 
   it('keys a match by its turn and start', () => {

@@ -8,33 +8,39 @@ import {
   stepMatch,
   type SearchResult,
 } from './transcript-search';
+import type { TranscriptView } from './use-detail-view';
 
 export interface FoundMatches {
   query: string;
   result: SearchResult;
   current: number;
   currentKey: string | null;
+  /** Changes when the reader moves to a result (a settled query, a step), never on a poll. */
+  reveal: string;
   label: string;
   setQuery(value: string): void;
   step(direction: 1 | -1): void;
 }
 
-export function useTranscriptSearch(
-  turns: readonly Turn[],
-  query: string,
-  onQuery: (value: string) => void,
-): FoundMatches {
+type SearchState = Pick<TranscriptView, 'search' | 'onSearch' | 'match' | 'onMatch'>;
+
+export function useTranscriptSearch(turns: readonly Turn[], state: SearchState): FoundMatches {
+  const { search: query, match: chosen } = state;
   // Typing stays responsive on a long transcript: the highlights follow a beat behind.
   const deferred = useDeferredValue(query);
   const result = useMemo(() => searchTranscript(turns, deferred), [turns, deferred]);
-  const [chosen, setChosen] = useState<string | null>(null);
-  // The match last shown: text arriving before it during an analysis must not move it.
+  const [steps, setSteps] = useState(0);
+  // What was last shown: text arriving before it during an analysis must not move it.
   const shown = useRef<string | null>(null);
-  const current = keptMatch(result.matches, chosen ?? shown.current);
+  const seenQuery = useRef(deferred);
+  // A query that has just settled starts again from its first match.
+  const kept = deferred === seenQuery.current ? shown.current : null;
+  const current = keptMatch(result.matches, chosen ?? kept, turns);
   const match = result.matches[current];
   const currentKey = match ? matchKey(match) : null;
-  // After every commit: a keystroke resets the ref while the key may stay the same.
+  // After every commit: the key may stay the same while the query changed.
   useEffect(() => {
+    seenQuery.current = deferred;
     shown.current = currentKey;
   });
 
@@ -43,15 +49,14 @@ export function useTranscriptSearch(
     result,
     current,
     currentKey,
+    reveal: `${deferred}\u0000${steps}`,
     label: result.needle ? counterLabel(current, result.matches.length, result.capped) : '',
-    setQuery(value) {
-      shown.current = null;
-      setChosen(null);
-      onQuery(value);
-    },
+    setQuery: state.onSearch,
     step(direction) {
       const next = result.matches[stepMatch(current, result.matches.length, direction)];
-      if (next) setChosen(matchKey(next));
+      if (!next) return;
+      state.onMatch(matchKey(next));
+      setSteps((count) => count + 1);
     },
   };
 }

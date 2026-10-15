@@ -25,6 +25,13 @@ function Probe({ view }: { view: TranscriptView }) {
     <div>
       <p>{view.following ? 'Suit la lecture' : 'Lecture libre'}</p>
       <p>{view.passage ? `Passage ${view.passage.sourceId}` : 'Aucun passage'}</p>
+      <p>{view.match ? `Résultat ${view.match}` : 'Aucun résultat choisi'}</p>
+      <button type="button" onClick={() => view.onMatch('0-1:17')}>
+        Choisir le résultat
+      </button>
+      <button type="button" onClick={() => view.onSearch('budget')}>
+        Chercher budget
+      </button>
       <article aria-current="time">Le budget.</article>
       <button type="button" onClick={view.onBackToNotes}>
         Retour aux notes
@@ -100,4 +107,16 @@ it('counts gestures only while the transcript shows', async () => {
   fireEvent.wheel(scroller());
   await userEvent.click(screen.getByRole('tab', { name: 'Transcription' }));
   expect(screen.getByText('Suit la lecture')).toBeInTheDocument();
+});
+
+it('keeps the chosen search result across a change of tab, and forgets it with a new search', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  await user.click(screen.getByRole('tab', { name: 'Transcription' }));
+  await user.click(screen.getByRole('button', { name: 'Choisir le résultat' }));
+  await user.click(screen.getByRole('tab', { name: 'Notes' }));
+  await user.click(screen.getByRole('tab', { name: 'Transcription' }));
+  expect(screen.getByText('Résultat 0-1:17')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Chercher budget' }));
+  expect(screen.getByText('Aucun résultat choisi')).toBeInTheDocument();
 });

@@ -50,11 +50,21 @@ it('marks the turn at the time of a clarification', () => {
   expect(marked()).toEqual([turnOf('Salut.')]);
 });
 
-it('marks nothing when no turn holds the moment, and still offers the way back', () => {
+it('marks the last turn started when the moment falls after it', () => {
   render(
     <TranscriptHarness
       meeting={meeting}
       passage={{ sourceId: 'clarification:c2', at: 90, key: 1 }}
+    />,
+  );
+  expect(marked()).toEqual([turnOf('Salut.')]);
+});
+
+it('marks nothing when no turn has started yet, and still offers the way back', () => {
+  render(
+    <TranscriptHarness
+      meeting={meeting}
+      passage={{ sourceId: 'clarification:c2', at: 0.5, key: 1 }}
     />,
   );
   expect(marked()).toEqual([]);

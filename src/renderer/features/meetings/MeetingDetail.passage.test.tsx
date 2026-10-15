@@ -92,7 +92,7 @@ it('opens the passage of a note in an extract that is not loaded, then goes back
   expect(audio()).toHaveAttribute('src', 'meeting-media://local/m1/audio/1');
   expect(turnOf('Le budget.')).toHaveAttribute('aria-current', 'time');
   expect(turnOf('Le budget.')).toHaveAttribute('data-passage');
-  expect(scrolled).toHaveBeenLastCalledWith(turnOf('Le budget.'), { block: 'nearest' });
+  expect(scrolled).toHaveBeenLastCalledWith(turnOf('Le budget.'), { block: 'center' });
   fireEvent.loadedMetadata(audio());
   expect(audio().currentTime).toBe(1);
   expect(play).toHaveBeenCalled();
@@ -101,7 +101,7 @@ it('opens the passage of a note in an extract that is not loaded, then goes back
   expect(scroller.scrollTop).toBe(300);
 });
 
-it('opens a clarification time no turn holds, plays it and marks nothing', async () => {
+it('opens a clarification made after the last turn, plays it and marks that turn', async () => {
   const user = userEvent.setup();
   render(detail(analysed));
   await user.click(screen.getByRole('button', { name: 'Écouter à 1:30' }));
@@ -109,9 +109,7 @@ it('opens a clarification time no turn holds, plays it and marks nothing', async
     'aria-selected',
     'true',
   );
-  expect(
-    screen.getAllByRole('article').filter((turn) => turn.hasAttribute('data-passage')),
-  ).toEqual([]);
+  expect(turnOf('Le budget.')).toHaveAttribute('data-passage');
   expect(screen.getByRole('button', { name: 'Retour aux notes' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Mettre en pause' })).toBeInTheDocument();
 });

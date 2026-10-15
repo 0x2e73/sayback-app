@@ -11,6 +11,8 @@ const NO_MATCHES: readonly TextRange[] = [];
 interface TranscriptListProps {
   rows: readonly TranscriptRow[];
   active: number;
+  /** The turn being read: the one playing, else the last started. */
+  reading: string | null;
   found: FoundMatches;
   onSeek(at: number): void;
   passage: { index: number; key: number };
@@ -34,9 +36,17 @@ function currentIn(found: FoundMatches, turnId: string, ranges: readonly TextRan
   return ranges.findIndex((range) => range.start === current.start);
 }
 
-export function TranscriptList({ rows, active, found, onSeek, passage, ref }: TranscriptListProps) {
+export function TranscriptList({
+  rows,
+  active,
+  reading,
+  found,
+  onSeek,
+  passage,
+  ref,
+}: TranscriptListProps) {
   return (
-    <div className="transcript-turns" ref={ref}>
+    <div className="transcript-turns" ref={ref} data-reading={reading ?? undefined}>
       {rows.map((row) => {
         if (row.kind === 'part') return <PartSeparator key={row.key} row={row} />;
         const matches = found.result.byTurn.get(row.turn.id) ?? NO_MATCHES;

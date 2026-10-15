@@ -85,8 +85,19 @@ export function partStarts(chunks: readonly AudioChunk[]): Map<number, number> {
   return new Map(chunks.map((chunk) => [chunk.index, chunk.start]));
 }
 
-/** Turns are sorted by start (extracts in order, segments in order within each). */
-export function activeTurnIndex(turns: readonly Pick<Turn, 'start' | 'end'>[], at: number): number {
+type Span = Pick<Turn, 'start' | 'end'>;
+
+/** For each turn, the latest end among it and the turns before it: where a walk back can stop. */
+export function runningMaxEnd(turns: readonly Span[]): number[] {
+  let latest = Number.NEGATIVE_INFINITY;
+  return turns.map((turn) => {
+    latest = Math.max(latest, turn.end);
+    return latest;
+  });
+}
+
+/** The last turn starting at or before `at`, −1 before the first. Turns are sorted by start. */
+export function lastStartedIndex(turns: readonly Span[], at: number): number {
   let low = 0;
   let high = turns.length - 1;
   let found = -1;
@@ -100,17 +111,39 @@ export function activeTurnIndex(turns: readonly Pick<Turn, 'start' | 'end'>[], a
       high = middle - 1;
     }
   }
-  const turn = turns[found];
-  return turn !== undefined && at < turn.end ? found : -1;
+  return found;
 }
 
-/** The turn a note points to: the one holding its segment, else the one playing at its time. */
+/**
+ * The latest turn holding `at`, −1 in a silence. A turn that already ended may hide an earlier,
+ * longer one still going: walk back, stopping where `maxEnds` says nothing before can hold `at`.
+ * `maxEnds` is `runningMaxEnd(turns)`, computed once per list by the caller.
+ */
+export function activeTurnIndex(
+  turns: readonly Span[],
+  at: number,
+  maxEnds: readonly number[] = runningMaxEnd(turns),
+): number {
+  for (let index = lastStartedIndex(turns, at); index >= 0; index -= 1) {
+    if ((maxEnds[index] ?? Number.NEGATIVE_INFINITY) <= at) return -1;
+    if (at < (turns[index]?.end ?? 0)) return index;
+  }
+  return -1;
+}
+
+/** The turn to follow: the one playing, else in a silence the last one that has started. */
+export function followedTurnIndex(turns: readonly Span[], at: number, maxEnds: readonly number[]) {
+  const active = activeTurnIndex(turns, at, maxEnds);
+  return active >= 0 ? active : lastStartedIndex(turns, at);
+}
+
+/** The turn a note points to: the one holding its segment, else the last started at its time. */
 export function passageTurn(
   turns: readonly Turn[],
   passage: { sourceId: string; at: number },
 ): number {
   const holder = turns.findIndex((turn) => turn.segmentIds.includes(passage.sourceId));
-  return holder >= 0 ? holder : activeTurnIndex(turns, passage.at);
+  return holder >= 0 ? holder : lastStartedIndex(turns, passage.at);
 }
 
 function sameTurn(a: Turn, b: Turn): boolean {

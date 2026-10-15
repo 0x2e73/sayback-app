@@ -69,12 +69,36 @@ export function matchKey(match: TranscriptMatch): string {
   return `${match.turnId}:${match.start}`;
 }
 
-/** After a poll the same passage stays current; one that vanished gives way to the first. */
-export function keptMatch(matches: readonly TranscriptMatch[], key: string | null): number {
+function nearestAtOrAfter(
+  matches: readonly TranscriptMatch[],
+  key: string,
+  turns: readonly Pick<Turn, 'id'>[],
+): number {
+  const cut = key.lastIndexOf(':');
+  const order = new Map(turns.map((turn, index) => [turn.id, index]));
+  const turn = order.get(key.slice(0, cut));
+  if (turn === undefined) return 0;
+  const start = Number(key.slice(cut + 1));
+  const index = matches.findIndex((match) => {
+    const at = order.get(match.turnId) ?? Number.POSITIVE_INFINITY;
+    return at > turn || (at === turn && match.start >= start);
+  });
+  return index >= 0 ? index : matches.length - 1;
+}
+
+/**
+ * After a poll the same passage stays current; one that vanished gives way to the nearest
+ * match at or after its old position (the last one when none follows).
+ */
+export function keptMatch(
+  matches: readonly TranscriptMatch[],
+  key: string | null,
+  turns: readonly Pick<Turn, 'id'>[],
+): number {
   if (!matches.length) return -1;
   if (key === null) return 0;
   const index = matches.findIndex((match) => matchKey(match) === key);
-  return index >= 0 ? index : 0;
+  return index >= 0 ? index : nearestAtOrAfter(matches, key, turns);
 }
 
 export function counterLabel(current: number, count: number, capped: boolean): string {

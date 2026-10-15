@@ -46,10 +46,16 @@ export interface HarnessProps {
 
 export function TranscriptHarness(props: HarnessProps) {
   const [search, setSearch] = useState('');
+  const [match, setMatch] = useState<string | null>(null);
   const [clock] = useState(() => props.clock ?? createPlaybackClock());
   const view: TranscriptView = {
     search,
-    onSearch: setSearch,
+    onSearch: (value) => {
+      setSearch(value);
+      setMatch(null);
+    },
+    match,
+    onMatch: setMatch,
     following: props.following ?? true,
     onFollow: handlers.onFollow,
     onRelease: handlers.onRelease,
