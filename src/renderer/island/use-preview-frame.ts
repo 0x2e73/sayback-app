@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IslandApi } from '../../shared/contracts';
 
-/** Past this without a frame, the preview says there is none instead of loading. */
-export const FIRST_FRAME_WAIT = 3_000;
+/** Past this without a frame, the preview says there is none, unless the recording is paused. */
+export const FRAME_WAIT = 3_000;
 
 export type PreviewFrame =
   { state: 'waiting' } | { state: 'none' } | { state: 'shown'; url: string };
@@ -13,56 +13,79 @@ interface Shown {
   url: string;
 }
 
+/** The frame whose wait ran out, or none yet for that source. */
+interface Expired {
+  source: string;
+  url: string | null;
+}
+
 function jpegUrl(jpeg: Uint8Array): string {
   return URL.createObjectURL(new Blob([new Uint8Array(jpeg)], { type: 'image/jpeg' }));
 }
 
 /**
  * The preview of the capture, about once a second. A frame is decoded before it replaces the
- * one shown, then the old `blob:` URL is revoked; a frame of another source is never shown.
+ * one shown, whose `blob:` URL is then revoked; a frame of another source is never shown.
  */
-export function usePreviewFrame(api: Pick<IslandApi, 'onPreview'>, source: string): PreviewFrame {
+function useDecodedFrames(api: Pick<IslandApi, 'onPreview'>, source: string): Shown | null {
   const [shown, setShown] = useState<Shown | null>(null);
-  const [expired, setExpired] = useState<string | null>(null);
   const currentSource = useRef(source);
+  const shownUrl = useRef<string | null>(null);
 
   useEffect(() => {
     currentSource.current = source;
-    const timer = setTimeout(() => setExpired(source), FIRST_FRAME_WAIT);
-    return () => clearTimeout(timer);
   }, [source]);
 
   useEffect(() => {
     let alive = true;
-    let sent = 0;
+    let received = 0;
     let latest = 0;
     const stop = api.onPreview((jpeg) => {
-      const order = ++sent;
-      const url = jpegUrl(jpeg);
+      const order = ++received;
+      const frame: Shown = { source: currentSource.current, url: jpegUrl(jpeg) };
       const image = new Image();
-      image.src = url;
+      image.src = frame.url;
       image.decode().then(
         () => {
-          if (!alive || order < latest) return URL.revokeObjectURL(url);
+          if (!alive || order < latest) return URL.revokeObjectURL(frame.url);
           latest = order;
-          setShown({ source: currentSource.current, url });
+          const previous = shownUrl.current;
+          shownUrl.current = frame.url;
+          setShown(frame);
+          if (previous) URL.revokeObjectURL(previous);
         },
-        () => URL.revokeObjectURL(url),
+        () => URL.revokeObjectURL(frame.url),
       );
     });
     return () => {
       alive = false;
       stop();
+      if (shownUrl.current) URL.revokeObjectURL(shownUrl.current);
+      shownUrl.current = null;
     };
   }, [api]);
 
-  // Revoked once the next frame is drawn, or when the preview goes.
-  const url = shown?.url;
-  useEffect(() => {
-    if (!url) return;
-    return () => URL.revokeObjectURL(url);
-  }, [url]);
+  return shown;
+}
 
-  if (shown?.source === source) return { state: 'shown', url: shown.url };
-  return expired === source ? { state: 'none' } : { state: 'waiting' };
+/** Paused, the last frame stays as it is; without any, the icon. */
+export function usePreviewFrame(
+  api: Pick<IslandApi, 'onPreview'>,
+  source: string,
+  paused: boolean,
+): PreviewFrame {
+  const shown = useDecodedFrames(api, source);
+  const [expired, setExpired] = useState<Expired | null>(null);
+  const url = shown?.source === source ? shown.url : null;
+
+  // Restarted by every frame and every new source; a pause stops the count.
+  useEffect(() => {
+    if (paused) return;
+    const timer = setTimeout(() => setExpired({ source, url }), FRAME_WAIT);
+    return () => clearTimeout(timer);
+  }, [source, url, paused]);
+
+  const stale = expired?.source === source && expired.url === url;
+  if (url && (paused || !stale)) return { state: 'shown', url };
+  return paused || stale ? { state: 'none' } : { state: 'waiting' };
 }

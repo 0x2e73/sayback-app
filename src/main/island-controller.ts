@@ -105,8 +105,9 @@ class IslandController implements Island {
     this.send('island:level', level);
   }
 
+  // Folded, the island shows no preview: the frames stay in the main process.
   preview(jpeg: Uint8Array): void {
-    if (this.mode === 'recording') this.send('island:preview', jpeg);
+    if (this.mode === 'recording' && this.expanded) this.send('island:preview', jpeg);
   }
 
   async screensChanged(): Promise<void> {

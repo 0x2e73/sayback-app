@@ -61,7 +61,7 @@ export function IslandRecording(props: IslandRecordingProps) {
           <PickerSwap
             open={picker.open}
             instant={picker.instant}
-            base={<RecordingScene api={api} source={source} live={live} />}
+            base={<RecordingScene api={api} source={source} live={live} paused={paused} />}
             picker={
               <ScreenPicker
                 api={api}

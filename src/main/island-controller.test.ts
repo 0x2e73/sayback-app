@@ -215,13 +215,16 @@ describe('the screens of the recording island', () => {
     expect(current().sent.at(-1)?.[0]).toBe('island:state');
   });
 
-  it('sends a preview frame to a recording island only', async () => {
+  it('sends a preview frame to an open recording island only', async () => {
     const ready = await openedReady();
     ready.island.preview(new Uint8Array([1]));
     expect(ready.opened().sent.some(([channel]) => channel === 'island:preview')).toBe(false);
-    const { island, opened, start } = fixture();
+    const { island, hover, opened, start } = fixture();
     await start();
     const frame = new Uint8Array([255, 216]);
+    island.preview(frame);
+    expect(opened().sent.some(([channel]) => channel === 'island:preview')).toBe(false);
+    hover.change(true);
     island.preview(frame);
     expect(opened().sent.at(-1)).toEqual(['island:preview', frame]);
   });

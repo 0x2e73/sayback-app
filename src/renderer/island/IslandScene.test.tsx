@@ -6,7 +6,7 @@ import type { IslandLiveSnapshot, LiveSegment } from '../../shared/live';
 import { fakeIsland, recordingSnapshot, shown } from './island-fixture';
 import { IslandApp } from './IslandApp';
 import { stubImageUrls } from './island-media.test-support';
-import { FIRST_FRAME_WAIT } from './use-preview-frame';
+import { FRAME_WAIT } from './use-preview-frame';
 
 const jpeg = () => new Uint8Array([255, 216, 255]);
 const preview = () => screen.queryByRole('img', { name: 'Aperçu de l’écran capturé' });
@@ -66,7 +66,7 @@ describe('the preview of the recording island', () => {
 
   it('says there is no preview when no frame comes', async () => {
     await shown(recordingSnapshot());
-    await act(async () => vi.advanceTimersByTime(FIRST_FRAME_WAIT));
+    await act(async () => vi.advanceTimersByTime(FRAME_WAIT));
     expect(screen.getByRole('img', { name: 'Aucun aperçu' })).toBeInTheDocument();
   });
 
@@ -82,13 +82,47 @@ describe('the preview of the recording island', () => {
     expect(preview()).toHaveAttribute('src', 'blob:frame-2');
   });
 
-  it('keeps the frame while paused', async () => {
+  it('keeps the frame while paused, however long', async () => {
     const island = await shown(recordingSnapshot());
     island.preview(jpeg());
     await flush();
     island.push(recordingSnapshot({ paused: true }));
+    await act(async () => vi.advanceTimersByTime(FRAME_WAIT * 3));
     expect(preview()).toHaveAttribute('src', 'blob:frame-1');
     expect(screen.getByRole('main')).toHaveAttribute('data-paused', 'true');
+  });
+
+  it('says there is no preview when the frames stop coming during the recording', async () => {
+    const island = await shown(recordingSnapshot());
+    island.preview(jpeg());
+    await flush();
+    await act(async () => vi.advanceTimersByTime(FRAME_WAIT - 1));
+    expect(preview()).toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('img', { name: 'Aucun aperçu' })).toBeInTheDocument();
+    island.preview(jpeg());
+    await flush();
+    expect(preview()).toHaveAttribute('src', 'blob:frame-2');
+  });
+
+  it('never shows a frame received before a switch, even decoded after it', async () => {
+    const island = await shown(recordingSnapshot());
+    let decoded: () => void = () => {};
+    media.decode.mockReturnValueOnce(
+      new Promise<undefined>((resolve) => (decoded = () => resolve(undefined))),
+    );
+    island.preview(jpeg());
+    island.push(recordingSnapshot({ sourceId: 'screen:2:0' }));
+    await act(async () => decoded());
+    expect(preview()).not.toBeInTheDocument();
+  });
+
+  it('lets the frame go when the preview goes', async () => {
+    const island = await shown(recordingSnapshot());
+    island.preview(jpeg());
+    await flush();
+    cleanup();
+    expect(media.revoke).toHaveBeenCalledWith('blob:frame-1');
   });
 
   it('has no preview for a recording of the sound alone', async () => {

@@ -8,10 +8,11 @@ interface RecordingSceneProps {
   /** Absent for a recording of the sound alone: no preview column. */
   source: string | undefined;
   live: IslandLiveSnapshot | null;
+  paused: boolean;
 }
 
 /** The preview on the left, the live text on the right; either takes the room the other leaves. */
-export function RecordingScene({ api, source, live }: RecordingSceneProps) {
+export function RecordingScene({ api, source, live, paused }: RecordingSceneProps) {
   const text = live?.enabled !== false;
   return (
     <div
@@ -19,7 +20,7 @@ export function RecordingScene({ api, source, live }: RecordingSceneProps) {
       data-preview={source !== undefined || undefined}
       data-text={text || undefined}
     >
-      {source !== undefined && <IslandPreview api={api} source={source} />}
+      {source !== undefined && <IslandPreview api={api} source={source} paused={paused} />}
       {text && <LiveText live={live} />}
     </div>
   );
