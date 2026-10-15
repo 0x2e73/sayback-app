@@ -33,9 +33,10 @@ export function useTranscriptSearch(
   const current = keptMatch(result.matches, chosen ?? shown.current);
   const match = result.matches[current];
   const currentKey = match ? matchKey(match) : null;
+  // After every commit: a keystroke resets the ref while the key may stay the same.
   useEffect(() => {
     shown.current = currentKey;
-  }, [currentKey]);
+  });
 
   return {
     query,

@@ -1,77 +1,60 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { Search } from 'lucide-react';
-import type { Meeting, MeetingStatus } from '../../../shared/contracts';
-import { usePlaybackTime, type PlaybackClock } from './playback-clock';
-import { speakerTurns, type Turn } from './speaker-turns';
-import { TranscriptTurn } from './TranscriptTurn';
+import { useCallback, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
+import type { Meeting } from '../../../shared/contracts';
+import { usePlaybackSelector, type PlaybackClock } from './playback-clock';
+import { activeTurnIndex, partStarts, transcriptRows } from './transcript-rows';
+import { TranscriptList } from './TranscriptList';
+import { TranscriptSearchBar } from './TranscriptSearchBar';
+import { TranscriptEmpty, TranscriptWaiting } from './TranscriptStates';
+import type { TranscriptView } from './use-detail-view';
+import { useStableTurns } from './use-stable-turns';
+import { useTranscriptSearch } from './use-transcript-search';
 
-/** The search is owned by the tab container, so it survives a change of tab. */
-export interface TranscriptSearch {
-  search: string;
-  onSearch(value: string): void;
-}
-
-interface TranscriptProps extends TranscriptSearch {
+interface TranscriptProps {
   meeting: Meeting;
+  analyzing: boolean;
   clock: PlaybackClock;
-  onSeek(at: number): void;
+  view: TranscriptView;
+  onAnalyze(): void;
 }
 
-function matching(turns: Turn[], search: string): Turn[] {
-  const wanted = search.trim().toLowerCase();
-  if (!wanted) return turns;
-  return turns.filter((turn) => turn.text.toLowerCase().includes(wanted));
+/** Moves to the current search result when it changes, not when the tab opens on it. */
+function useCurrentMatchInView(list: RefObject<HTMLDivElement | null>, key: string | null): void {
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    if (key === null) return;
+    list.current?.querySelector('mark[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [list, key]);
 }
 
-function TranscriptEmpty({ status }: { status: MeetingStatus }) {
-  return (
-    <p className="muted">
-      {status === 'processing'
-        ? 'La transcription arrive au fur et à mesure de l’analyse.'
-        : 'La transcription commence avec la génération du compte rendu, depuis l’onglet Notes.'}
-    </p>
-  );
-}
-
-export function Transcript({ meeting, clock, onSeek, search, onSearch }: TranscriptProps) {
-  const at = usePlaybackTime(clock);
-  const playing = useRef<HTMLButtonElement>(null);
-  const turns = useMemo(() => speakerTurns(meeting.transcript), [meeting.transcript]);
-  const shown = useMemo(() => matching(turns, search), [turns, search]);
-  const current = turns.find((turn) => at >= turn.start && at < turn.end)?.id;
-
-  // Suit la lecture sans contrarier un défilement manuel : ne bouge que si le
-  // passage en cours est hors de vue.
-  useEffect(() => {
-    playing.current?.scrollIntoView({ block: 'nearest' });
-  }, [current]);
-
-  if (!meeting.transcript.length) return <TranscriptEmpty status={meeting.status} />;
+function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) {
+  const list = useRef<HTMLDivElement>(null);
+  const turns = useStableTurns(meeting.transcript);
+  const starts = useMemo(() => partStarts(meeting.audioChunks), [meeting.audioChunks]);
+  const rows = useMemo(() => transcriptRows(turns, starts), [turns, starts]);
+  const found = useTranscriptSearch(turns, view.search, view.onSearch);
+  const playing = useCallback((at: number) => activeTurnIndex(turns, at), [turns]);
+  // Re-renders when the active turn changes, not at every tick of the clock.
+  const active = usePlaybackSelector(clock, playing);
+  useCurrentMatchInView(list, found.currentKey);
 
   return (
     <div className="transcript">
-      <label className="search">
-        <Search size={16} />
-        <input
-          type="search"
-          value={search}
-          placeholder="Chercher dans la transcription…"
-          aria-label="Chercher dans la transcription"
-          onChange={(event) => onSearch(event.target.value)}
-        />
-      </label>
-      <div className="transcript-turns">
-        {shown.map((turn) => (
-          <TranscriptTurn
-            key={turn.id}
-            turn={turn}
-            active={turn.id === current}
-            onSeek={onSeek}
-            ref={turn.id === current ? playing : undefined}
-          />
-        ))}
-        {!shown.length && <p className="muted">Aucun passage ne contient ce texte.</p>}
-      </div>
+      <TranscriptSearchBar found={found} />
+      <TranscriptList ref={list} rows={rows} active={active} found={found} onSeek={view.onSeek} />
+      {analyzing && <p className="caption">La transcription arrive au fur et à mesure.</p>}
     </div>
   );
+}
+
+export function Transcript(props: TranscriptProps) {
+  const { meeting, analyzing, onAnalyze } = props;
+  if (meeting.transcript.length > 0) return <TranscriptReader {...props} />;
+  if (analyzing) return <TranscriptWaiting />;
+  // A failed analysis speaks through the amber band above the tabs.
+  if (meeting.status === 'error') return null;
+  return <TranscriptEmpty canAnalyze={meeting.audioChunks.length > 0} onAnalyze={onAnalyze} />;
 }

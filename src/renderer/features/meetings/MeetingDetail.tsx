@@ -74,10 +74,10 @@ export function MeetingDetail(props: MeetingDetailProps) {
         transcript={
           <Transcript
             meeting={meeting}
+            analyzing={actions.analyzing}
             clock={playback.clock}
-            onSeek={view.transcript.onSeek}
-            search={view.transcript.search}
-            onSearch={view.transcript.onSearch}
+            view={view.transcript}
+            onAnalyze={analyze}
           />
         }
       />

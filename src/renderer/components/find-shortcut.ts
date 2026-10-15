@@ -19,21 +19,27 @@ export function isFindShortcut(event: ShortcutKey, platform: 'mac' | 'other'): b
   return event.ctrlKey && !event.metaKey;
 }
 
+export interface FindShortcutOptions {
+  enabled?: boolean;
+  /** Claims Cmd+F before the other listeners: the transcript search, while it is shown. */
+  first?: boolean;
+}
+
 export function useFindShortcut(
   field: RefObject<HTMLInputElement | null>,
   platform = platformOf(navigator.platform),
-  enabled = true,
+  { enabled = true, first = false }: FindShortcutOptions = {},
 ): void {
   useEffect(() => {
     if (!enabled) return;
     function onKeyDown(event: KeyboardEvent): void {
       const input = field.current;
-      if (!input || !isFindShortcut(event, platform)) return;
+      if (!input || event.defaultPrevented || !isFindShortcut(event, platform)) return;
       event.preventDefault();
       input.focus();
       input.select();
     }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [field, platform, enabled]);
+    window.addEventListener('keydown', onKeyDown, { capture: first });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: first });
+  }, [field, platform, enabled, first]);
 }

@@ -88,7 +88,7 @@ it('opens on the notes, with the transcript one arrow away', async () => {
   screen.getByRole('tab', { name: 'Notes' }).focus();
   await user.keyboard('{ArrowRight}');
   const panel = screen.getByRole('tabpanel', { name: 'Transcription' });
-  expect(within(panel).getByRole('button', { name: /Le budget/ })).toBeInTheDocument();
+  expect(within(panel).getByText('Le budget.')).toBeInTheDocument();
   expect(screen.queryByRole('tabpanel', { name: 'Notes' })).toBeNull();
 });
 
