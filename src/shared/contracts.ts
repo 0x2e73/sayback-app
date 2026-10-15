@@ -1,9 +1,10 @@
 import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
 import type { RecordingRequest, RecordingState } from './recording-state';
-import type { IslandRequest, IslandSnapshot } from './island';
+import type { IslandRequest, IslandSnapshot, IslandThumbnail } from './island';
 import type { RecordingStartOutcome, RecordingStartRequest } from './recording-start';
 import type { IslandLiveSnapshot, LiveSegment, LiveTrack } from './live';
+import type { ScreenSwitchRequest } from './screen-switch';
 import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
 export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
@@ -146,6 +147,14 @@ export interface DesktopApi {
    * track, pauses excluded; nothing is stored.
    */
   sendPcm(track: LiveTrack, samples: Int16Array, offset: number): void;
+  /** A downscaled JPEG frame of the capture, about once a second, for the island's preview. */
+  sendPreview(jpeg: Uint8Array): void;
+  /**
+   * A screen chosen in the recording island, with a primed activation: switch the capture and
+   * answer with `answerScreenSwitch`. Returns the unsubscribe function.
+   */
+  onScreenSwitchRequest(listener: (request: ScreenSwitchRequest) => void): () => void;
+  answerScreenSwitch(id: string, ok: boolean): Promise<Result<void>>;
   /** Pause, resume or stop asked from the menu bar or the island. Returns the unsubscribe function. */
   onRecordingRequest(listener: (request: RecordingRequest) => void): () => void;
   /**
@@ -178,11 +187,16 @@ export interface DesktopApi {
 export interface IslandApi {
   /** Shows the island and returns what it must draw. */
   ready(): Promise<Result<IslandSnapshot>>;
+  /** A screen switch during a recording answers once tried: an error when it failed. */
   request(request: IslandRequest): Promise<Result<void>>;
+  /** The picker's thumbnails, read at its opening. */
+  screenThumbnails(): Promise<Result<IslandThumbnail[]>>;
   /** Each listener returns the function that stops listening. */
   onState(listener: (snapshot: IslandSnapshot) => void): () => void;
   onExpanded(listener: (expanded: boolean) => void): () => void;
   onLevel(listener: (level: number) => void): () => void;
+  /** A preview frame of the capture, JPEG bytes, about once a second during a recording. */
+  onPreview(listener: (jpeg: Uint8Array) => void): () => void;
   /** The end of a `start`: busy is over; on failure, the error to show. */
   onStartResult(listener: (outcome: RecordingStartOutcome) => void): () => void;
   /** The live text now; asked once the listeners below are set, and after any reload. */

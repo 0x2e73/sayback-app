@@ -26,6 +26,8 @@ const fakeSession = () => ({
   analyser: { frequencyBinCount: 4, getByteFrequencyData: () => {} },
   stop: vi.fn(async () => finished),
   onPauseChange: () => () => {},
+  onSourceChange: () => () => {},
+  sourceVersion: 0,
 });
 
 const request: RecordingStartRequest = {

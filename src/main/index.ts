@@ -19,7 +19,7 @@ import {
   registerMeetingHandlers,
   registerSettingsHandlers,
 } from './meeting-handlers';
-import { listScreens, registerCapture } from './capture-permissions';
+import { listScreens, listScreenThumbnails, registerCapture } from './capture-permissions';
 import { capturePermission } from './capture-sources';
 import { createCapturePrefsStore } from '../backend/infrastructure/capture-prefs-store';
 import { registerCapturePrefs } from './capture-prefs';
@@ -34,6 +34,7 @@ import type { Island } from './island-controller';
 import { registerIslandHandlers } from './island-handlers';
 import { createElectronIsland } from './island-window';
 import { createStartRelay, registerStartRelay } from './start-relay';
+import { createScreenSwitchRelay, registerScreenSwitchRelay } from './screen-switch-relay';
 import { composeLive } from './live-composition';
 import { registerLiveHandlers } from './live-handlers';
 import { createIslandLiveRelay, registerIslandLive } from './island-live';
@@ -172,6 +173,8 @@ void app.whenReady().then(() => {
     openHiddenWindow: () => openWindow(false),
   });
   registerStartRelay(registrar, startRelay);
+  const screenSwitch = createScreenSwitchRelay({ getWindow: liveWindow });
+  registerScreenSwitchRelay(registrar, screenSwitch);
   // A single icon for the whole run: `activate` and page reloads never come through here.
   menuBar = createElectronMenuBar(menuBarActions, () => island?.toggle());
   revealApp = menuBarActions.open;
@@ -200,8 +203,9 @@ void app.whenReady().then(() => {
       });
     },
     request: menuBarActions.request,
+    switchScreen: (screenId) => screenSwitch.switchScreen(screenId),
   });
-  if (island) registerIslandHandlers(registrar, island);
+  if (island) registerIslandHandlers(registrar, island, listScreenThumbnails);
   live = startLive(registrar, desktop, root);
   openWindow();
 });

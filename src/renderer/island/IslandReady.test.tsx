@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { opened, readySnapshot, recording, shape, shown } from './island-fixture';
+import { opened, readySnapshot, recording, shape, shown, twoScreens } from './island-fixture';
 
 const chip = (name: string) => screen.getByRole('button', { name });
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
@@ -37,13 +37,11 @@ describe('ready island', () => {
     expect(screen.getByRole('button', { name: 'Ouvrir SayBack' })).toBeInTheDocument();
   });
 
-  it('offers « Changer » from two screens only', async () => {
-    const island = await opened(readySnapshot({ screenCount: 1 }));
-    expect(screen.queryByRole('button', { name: 'Changer' })).not.toBeInTheDocument();
-    island.push(readySnapshot({ screen: { id: 'screen:2:0', name: 'Écran 2' }, screenCount: 2 }));
-    press('Changer');
-    expect(island.request).toHaveBeenLastCalledWith('cycle-screen');
-    expect(screen.getByText('Écran 2')).toBeInTheDocument();
+  it('offers « Changer d’écran » from two screens only', async () => {
+    const island = await opened(readySnapshot({ screens: [twoScreens[0]!] }));
+    expect(screen.queryByRole('button', { name: 'Changer d’écran' })).not.toBeInTheDocument();
+    island.push(readySnapshot());
+    expect(screen.getByRole('button', { name: 'Changer d’écran' })).toBeEnabled();
   });
 
   it('closes on × and hands over to the dialog on « Ouvrir SayBack »', async () => {
@@ -123,14 +121,12 @@ describe('ready island errors', () => {
   });
 
   it('shows a missing screen from the opening and retries', async () => {
-    const island = await opened(
-      readySnapshot({ screen: null, screenCount: 0, error: 'no-screen' }),
-    );
+    const island = await opened(readySnapshot({ screen: null, screens: [], error: 'no-screen' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Aucun écran détecté.');
     expect(screen.getByRole('button', { name: 'Démarrer' })).toBeDisabled();
     press('Réessayer');
-    expect(island.request).toHaveBeenLastCalledWith('cycle-screen');
-    island.push(readySnapshot({ screenCount: 1 }));
+    expect(island.request).toHaveBeenLastCalledWith('refresh-screens');
+    island.push(readySnapshot({ screens: [twoScreens[0]!] }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByText('Écran 1')).toBeInTheDocument();
   });
@@ -179,7 +175,7 @@ describe('ready island errors', () => {
   });
 
   it('names a refused screen rather than a missing one', async () => {
-    await opened(readySnapshot({ screen: null, screenCount: 0, error: 'screen-denied' }));
+    await opened(readySnapshot({ screen: null, screens: [], error: 'screen-denied' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Autorisation d’écran refusée.');
   });
 
@@ -209,7 +205,7 @@ describe('ready island transitions', () => {
     press('Démarrer');
     island.result({ ok: true });
     expect(screen.getByRole('button', { name: 'Démarrer' })).toHaveAttribute('aria-busy', 'true');
-    island.push({ mode: 'recording', recording: recording(), expanded: true, shape });
+    island.push({ mode: 'recording', screens: [], recording: recording(), expanded: true, shape });
     expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
     expect(screen.getByRole('timer')).toHaveTextContent('00:12');
     expect(screen.queryByRole('button', { name: 'Démarrer' })).not.toBeInTheDocument();
@@ -218,7 +214,7 @@ describe('ready island transitions', () => {
   it('removes the ready content once the cross-fade is over, ended or not', async () => {
     const island = await opened(readySnapshot());
     press('Démarrer');
-    island.push({ mode: 'recording', recording: recording(), expanded: true, shape });
+    island.push({ mode: 'recording', screens: [], recording: recording(), expanded: true, shape });
     expect(screen.getByText('Réunion du 15 octobre, 11 h 00')).toBeInTheDocument();
     await act(async () => vi.advanceTimersByTime(400));
     expect(screen.queryByText('Réunion du 15 octobre, 11 h 00')).not.toBeInTheDocument();
@@ -227,7 +223,7 @@ describe('ready island transitions', () => {
 
   it('removes the ready content when its fade is cancelled', async () => {
     const island = await opened(readySnapshot());
-    island.push({ mode: 'recording', recording: recording(), expanded: true, shape });
+    island.push({ mode: 'recording', screens: [], recording: recording(), expanded: true, shape });
     const panel = screen
       .getByText('Réunion du 15 octobre, 11 h 00')
       .closest('[aria-hidden="true"]');

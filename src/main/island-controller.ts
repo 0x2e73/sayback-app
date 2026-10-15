@@ -1,11 +1,12 @@
 import type { IslandRequest, IslandSnapshot } from '../shared/island';
-import type { IslandStart } from '../shared/recording-start';
 import { debounce, type Debounced } from './debounce';
 import type { IslandLayout } from './island-geometry';
 import { hoverFor, type HoverState, type IslandHover } from './island-hover';
 import type { Island, IslandPorts, IslandWindowPort } from './island-ports';
 import { createIslandPointer, type IslandPointer } from './island-pointer';
 import { ReadySession } from './island-ready';
+import { RecordingScreens } from './island-recording';
+import { createIslandRequests, type IslandRequests } from './island-requests';
 import { islandSnapshot } from './island-snapshot';
 import { foldAway, sendTo, watchSurface } from './island-surface';
 import type { RecordingSnapshot } from './recording-state-hub';
@@ -20,7 +21,6 @@ export const ISLAND_SETTLE = 200;
 export const BLUR_TOGGLE_GUARD = 400;
 
 type Mode = 'ready' | 'recording';
-type IslandCommand = Exclude<IslandRequest, IslandStart>;
 
 const report = (what: string) => (error: unknown) => console.error(`[island] ${what}`, error);
 
@@ -33,6 +33,7 @@ class IslandController implements Island {
   private layout: IslandLayout | null = null;
   private hover: IslandHover | null = null;
   private session: ReadySession | null = null;
+  private screens: RecordingScreens | null = null;
   /** The mode of the window shown or being opened; null without any. */
   private mode: Mode | null = null;
   private expanded = false;
@@ -45,25 +46,23 @@ class IslandController implements Island {
   private blurredAt = -Infinity;
   private readonly lifecycle: Debounced;
   private readonly pointer: IslandPointer;
-  private readonly commands: Record<IslandCommand, () => void>;
+  private readonly requests: IslandRequests;
+  private readonly recordingPorts: IslandPorts['ready'] & Pick<IslandPorts, 'switchScreen'>;
 
   constructor(private readonly ports: IslandPorts) {
     this.lifecycle = debounce(() => this.settle(), ISLAND_SETTLE);
     this.pointer = createIslandPointer(() => this.window());
-    this.commands = {
-      pause: () => ports.request('pause'),
-      resume: () => ports.request('resume'),
-      stop: () => ports.request('stop'),
-      open: () => this.openFromIsland(),
-      expand: () => {
-        if (this.mode === 'recording') this.hover?.expand();
+    this.recordingPorts = { ...ports.ready, switchScreen: ports.switchScreen };
+    this.requests = createIslandRequests(
+      {
+        mode: () => this.mode,
+        session: () => this.session,
+        screens: () => this.screens,
+        expand: () => this.hover?.expand(),
+        dismiss: () => this.dismiss(),
       },
-      close: () => this.closeReady(),
-      'open-privacy-settings': () => this.whenReady(() => ports.openPrivacySettings()),
-      'cycle-screen': () => {
-        this.session?.cycleScreen().catch(report('listing the screens failed'));
-      },
-    };
+      ports,
+    );
     ports.hub.subscribe((snapshot) => this.follow(snapshot));
   }
 
@@ -84,9 +83,8 @@ class IslandController implements Island {
     return current;
   }
 
-  request(request: IslandRequest): void {
-    if (typeof request === 'string') return this.commands[request]();
-    this.session?.start(request).catch(report('the start failed'));
+  request(request: IslandRequest): Promise<void> | void {
+    return this.requests.handle(request);
   }
 
   toggle(): void {
@@ -107,14 +105,18 @@ class IslandController implements Island {
     this.send('island:level', level);
   }
 
+  preview(jpeg: Uint8Array): void {
+    if (this.mode === 'recording') this.send('island:preview', jpeg);
+  }
+
   async screensChanged(): Promise<void> {
     if (this.opening) {
       this.stale = true;
       return;
     }
     if (!this.window()) return;
-    const session = this.session;
-    const [next] = await Promise.all([this.ports.layout(), session?.refreshScreens()]);
+    const lists = [this.session?.refreshScreens(), this.screens?.refresh()];
+    const [next] = await Promise.all([this.ports.layout(), ...lists]);
     const target = this.window();
     if (!next || !target) return;
     this.layout = next;
@@ -124,11 +126,6 @@ class IslandController implements Island {
 
   close(): void {
     this.detach()?.destroy();
-  }
-
-  // The × and Escape wait for a busy start: closing would hide its outcome.
-  private closeReady(): void {
-    if (this.mode === 'ready' && !this.session?.isBusy()) this.dismiss();
   }
 
   private blurred(): void {
@@ -150,8 +147,10 @@ class IslandController implements Island {
     this.pointer.reset();
     this.hover?.stop();
     this.session?.dispose();
+    this.screens?.dispose();
     this.hover = null;
     this.session = null;
+    this.screens = null;
     this.current = null;
     this.layout = null;
     this.mode = null;
@@ -159,16 +158,6 @@ class IslandController implements Island {
     this.expandWhenShown = false;
     this.opening = false;
     return leaving;
-  }
-
-  private whenReady(action: () => void): void {
-    if (this.mode === 'ready') action();
-  }
-
-  private openFromIsland(): void {
-    if (this.mode !== 'ready') return this.ports.openApp();
-    this.ports.openDialog();
-    this.dismiss();
   }
 
   private follow({ state }: RecordingSnapshot): void {
@@ -181,6 +170,7 @@ class IslandController implements Island {
   // The same window carries on, folded into wings at once and no longer taking the keyboard.
   private becomeRecording(): void {
     if (!this.window()) return this.close();
+    this.screens = new RecordingScreens(this.recordingPorts, this.session?.state().screens);
     this.session?.dispose();
     this.session = null;
     this.mode = 'recording';
@@ -242,6 +232,11 @@ class IslandController implements Island {
   private show(mode: Mode, layout: IslandLayout, session: ReadySession | null): void {
     this.layout = layout;
     this.session = session;
+    if (mode === 'recording') {
+      this.screens = RecordingScreens.open(this.recordingPorts, () =>
+        this.send('island:state', this.snapshot()),
+      );
+    }
     this.expanded = mode === 'ready';
     this.current = this.ports.openWindow(layout);
     this.watch(this.current);
@@ -269,7 +264,7 @@ class IslandController implements Island {
     watchSurface(target, {
       crashed: ifCurrent(() => this.close()),
       blurred: ifCurrent(() => this.blurred()),
-      escape: ifCurrent(() => this.closeReady()),
+      escape: ifCurrent(() => this.requests.escape()),
     });
   }
 
@@ -288,7 +283,8 @@ class IslandController implements Island {
     if (!this.layout) return null;
     const ready = this.mode === 'ready' ? (this.session?.state() ?? null) : null;
     const { shape } = this.layout;
-    return islandSnapshot({ hub: this.ports.hub, shape, expanded: this.expanded, ready });
+    const screens = this.screens?.list() ?? [];
+    return islandSnapshot({ hub: this.ports.hub, shape, expanded: this.expanded, ready, screens });
   }
 
   private send(channel: string, payload: unknown): void {

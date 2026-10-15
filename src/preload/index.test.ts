@@ -155,3 +155,35 @@ it('sends a live audio block of a known track and a bounded size, and nothing el
   ]);
   expect(electron.send.mock.calls[0]?.[1].samples).toBe(block);
 });
+
+it('sends a preview frame of bounded JPEG bytes, and nothing else', () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  electron.send.mockClear();
+  const frame = new Uint8Array([255, 216, 255]);
+  api.sendPreview(frame);
+  api.sendPreview(new Uint8Array(0));
+  api.sendPreview(new Uint8Array(256 * 1024 + 1));
+  api.sendPreview([255, 216] as unknown as Uint8Array);
+  expect(electron.send.mock.calls).toEqual([['live:preview', frame]]);
+});
+
+it('relays a screen switch from the island, and answers it', async () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  const seen: unknown[] = [];
+  const stop = api.onScreenSwitchRequest((request) => seen.push(request));
+  const relay = electron.listeners.get('recording:switch-screen');
+  const request = { id: 'a', screenId: 'screen:2:0' };
+  for (const sent of [request, null, { id: 'b' }, { id: 3, screenId: 'screen:2:0' }]) {
+    relay?.({}, sent);
+  }
+  expect(seen).toEqual([request]);
+  stop();
+  expect(electron.listeners.has('recording:switch-screen')).toBe(false);
+  await api.answerScreenSwitch('a', false);
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('recording:switch-result', {
+    id: 'a',
+    ok: false,
+  });
+});

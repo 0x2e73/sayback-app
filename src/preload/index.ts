@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { DesktopApi, UpdateStatus } from '../shared/contracts';
 import type { RecordingRequest } from '../shared/recording-state';
 import type { RecordingStartRequest } from '../shared/recording-start';
+import type { ScreenSwitchRequest } from '../shared/screen-switch';
 
 // The sandboxed preload cannot load zod: payloads are checked by hand.
 function isRecordingRequest(value: unknown): value is RecordingRequest {
@@ -23,6 +24,13 @@ function isStartRequest(value: unknown): value is RecordingStartRequest {
     [microphone, systemAudio, screen].every((toggle) => typeof toggle === 'boolean')
   );
 }
+
+function isSwitchRequest(value: unknown): value is ScreenSwitchRequest {
+  return isObject(value) && typeof value.id === 'string' && typeof value.screenId === 'string';
+}
+
+// Mirrors `MAX_PREVIEW_BYTES`, checked again in the main process.
+const MAX_PREVIEW_BYTES = 256 * 1024;
 
 // Mirrors `livePcmSchema`, checked again in the main process.
 const MAX_PCM_SAMPLES = 16_000;
@@ -98,6 +106,21 @@ const api: DesktopApi = {
       ipcRenderer.send('live:pcm', { track, samples, offset });
     }
   },
+  sendPreview: (jpeg) => {
+    if (jpeg instanceof Uint8Array && jpeg.length >= 1 && jpeg.length <= MAX_PREVIEW_BYTES) {
+      ipcRenderer.send('live:preview', jpeg);
+    }
+  },
+  onScreenSwitchRequest: (listener) => {
+    const relay = (_event: IpcRendererEvent, request: unknown) => {
+      if (isSwitchRequest(request)) listener(request);
+    };
+    ipcRenderer.on('recording:switch-screen', relay);
+    return () => {
+      ipcRenderer.removeListener('recording:switch-screen', relay);
+    };
+  },
+  answerScreenSwitch: (id, ok) => ipcRenderer.invoke('recording:switch-result', { id, ok }),
   onRecordingRequest: (listener) => {
     const relay = (_event: IpcRendererEvent, request: unknown) => {
       if (isRecordingRequest(request)) listener(request);

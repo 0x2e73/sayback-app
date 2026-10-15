@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLICK_GUARD } from './island-controller';
-import { fixture, layout, running } from './island-controller.fixture';
+import { fixture, layout, opened as openedReady, running } from './island-controller.fixture';
 import { reachOf, type IslandLayout } from './island-geometry';
 import { RECORDING_HOVER } from './island-hover';
 
@@ -38,6 +38,10 @@ describe('createIsland', () => {
       expanded: false,
       shape: layout.shape,
       mode: 'recording',
+      screens: [
+        { id: 'screen:1:0', name: 'Écran 1' },
+        { id: 'screen:2:0', name: 'Écran 2' },
+      ],
     });
     expect(opened().window.showInactive).toHaveBeenCalledOnce();
     expect(opened().window.setBounds).toHaveBeenCalledWith(layout.window);
@@ -54,6 +58,10 @@ describe('createIsland', () => {
         expanded: false,
         shape: layout.shape,
         mode: 'recording',
+        screens: [
+          { id: 'screen:1:0', name: 'Écran 1' },
+          { id: 'screen:2:0', name: 'Écran 2' },
+        ],
       },
     ]);
   });
@@ -184,5 +192,37 @@ describe('createIsland', () => {
     const { island, ports } = fixture();
     await island.screensChanged();
     expect(ports.layout).not.toHaveBeenCalled();
+  });
+});
+
+describe('the screens of the recording island', () => {
+  it('relays a picked screen to the main page and rejects when the switch failed', async () => {
+    const { island, ports, start } = fixture();
+    await start();
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    expect(ports.switchScreen).toHaveBeenCalledWith('screen:2:0');
+    ports.switchScreen.mockResolvedValueOnce(false);
+    await expect(island.request({ type: 'select-screen', screenId: 'screen:1:0' })).rejects.toThrow(
+      'Changement impossible.',
+    );
+  });
+
+  it('keeps the tiles of the ready island when its start becomes the recording', async () => {
+    const { hub, island, ports, opened: current } = await openedReady();
+    hub.publish(running);
+    expect(ports.ready.screens).toHaveBeenCalledOnce();
+    expect(island.ready()).toMatchObject({ mode: 'recording', screens: [{}, {}] });
+    expect(current().sent.at(-1)?.[0]).toBe('island:state');
+  });
+
+  it('sends a preview frame to a recording island only', async () => {
+    const ready = await openedReady();
+    ready.island.preview(new Uint8Array([1]));
+    expect(ready.opened().sent.some(([channel]) => channel === 'island:preview')).toBe(false);
+    const { island, opened, start } = fixture();
+    await start();
+    const frame = new Uint8Array([255, 216]);
+    island.preview(frame);
+    expect(opened().sent.at(-1)).toEqual(['island:preview', frame]);
   });
 });

@@ -10,15 +10,18 @@ export const recordingStateSchema = z.discriminatedUnion('recording', [
     elapsed: z.number().finite().min(0).max(MAX_ELAPSED),
     paused: z.boolean(),
     stopping: z.boolean(),
+    sourceId: z.string().min(1).max(200).optional(),
   }),
 ]);
 
 /**
  * What the page tells the main process about the recording: seconds recorded at that instant,
- * paused, or closing (stop asked, files being finished).
+ * paused, or closing (stop asked, files being finished), and the screen or window captured,
+ * absent for a recording of the sound alone.
  */
 export type RecordingState =
-  { recording: false } | { recording: true; elapsed: number; paused: boolean; stopping: boolean };
+  | { recording: false }
+  | { recording: true; elapsed: number; paused: boolean; stopping: boolean; sourceId?: string };
 
 /** Asked by the main process (menu bar, island) to the page that owns the capture. */
 export const recordingRequestSchema = z.enum(['pause', 'resume', 'stop']);

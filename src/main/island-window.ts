@@ -83,6 +83,7 @@ interface ElectronIslandDeps {
   openDialog(): void;
   openPrivacySettings(): void;
   request(request: RecordingRequest): void;
+  switchScreen(screenId: string): Promise<boolean>;
 }
 
 // The island exists on macOS only: elsewhere the menu bar icon is enough.
@@ -100,6 +101,7 @@ export function createElectronIsland(deps: ElectronIslandDeps): Island | null {
     openDialog: deps.openDialog,
     openPrivacySettings: deps.openPrivacySettings,
     request: deps.request,
+    switchScreen: deps.switchScreen,
   });
   // Plugging a screen fires several events: the probe runs once they settle.
   const screensChanged = debounce(() => {

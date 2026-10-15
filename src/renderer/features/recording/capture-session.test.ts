@@ -98,8 +98,14 @@ it('switches the recorded display while keeping the meeting and audio capture ac
   vi.stubGlobal('navigator', { mediaDevices: { getDisplayMedia: vi.fn(async () => second) } });
   const source: CaptureSource = { id: 'screen:2:0', name: 'Deuxième écran', thumbnail: '' };
 
+  const sourceChanged = vi.fn();
+  capture.onSourceChange(sourceChanged);
+  expect(capture.sourceVersion).toBe(0);
+
   await capture.switchSource(api, source);
 
+  expect(sourceChanged).toHaveBeenCalledOnce();
+  expect(capture.sourceVersion).toBe(1);
   expect(api.selectSource).toHaveBeenCalledWith(source.id, false);
   expect(captureResources.replaceDisplay).toHaveBeenCalledWith(second);
   expect(capture.displayStream).toBe(second);

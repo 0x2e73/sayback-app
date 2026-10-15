@@ -1,5 +1,6 @@
 import type { CaptureSource, DesktopApi, Meeting } from '../../../shared/contracts';
 import { unwrap } from '../../../shared/contracts';
+import { CaptureFrames } from './capture-frames';
 import { MAX_RECORDING_SECONDS } from './recording-limit';
 import { RecordingWriter } from './recording-writer';
 import { stopRecorder } from './stop-recorder';
@@ -19,17 +20,17 @@ export class CaptureSession {
   private pausedAt = 0;
   private pausedDuration = 0;
   private readonly pauseListeners = new Set<() => void>();
+  private readonly sourceListeners = new Set<() => void>();
+  private readonly frames: CaptureFrames;
   private audioIndex = 0;
   private videoIndex = 0;
-  private frameIndex = 0;
   private rotation = Promise.resolve();
   private rotationTimer?: ReturnType<typeof setInterval>;
-  private frameTimer?: ReturnType<typeof setInterval>;
   private limitTimer?: ReturnType<typeof setTimeout>;
   private stopPromise?: Promise<Meeting>;
   private switching?: Promise<void>;
-  private preview?: HTMLVideoElement;
   private currentSource?: CaptureSource;
+  private sourceChanges = 0;
   readonly analyser: AnalyserNode;
 
   private constructor(
@@ -41,6 +42,13 @@ export class CaptureSession {
     this.writer = new RecordingWriter(api, meeting.id, options.onFailure);
     this.analyser = resources.analyser;
     this.currentSource = options.source;
+    this.frames = new CaptureFrames({
+      paused: () => this.paused,
+      stopped: () => this.stopPromise !== undefined,
+      elapsed: () => this.elapsed,
+      store: (index, at, jpeg) => this.writer.append('frame', index, at, 0, jpeg),
+      preview: (jpeg) => api.sendPreview(jpeg),
+    });
   }
 
   static async start(
@@ -100,6 +108,10 @@ export class CaptureSession {
   get source(): CaptureSource | undefined {
     return this.currentSource;
   }
+  /** Moves on at each switch of the shared screen or window, wherever it was asked. */
+  get sourceVersion(): number {
+    return this.sourceChanges;
+  }
   get elapsed(): number {
     return ((this.pausedAt || performance.now()) - this.started - this.pausedDuration) / 1000;
   }
@@ -137,16 +149,9 @@ export class CaptureSession {
         if (!this.stopPromise) this.options.onEnded();
       };
     });
-    this.preview = document.createElement('video');
-    this.preview.srcObject = display;
-    this.preview.muted = true;
-    void this.preview
-      .play()
-      .then(() => this.snapshot())
-      .catch(() => undefined);
-    this.frameTimer = setInterval(() => this.snapshot(), 30_000);
+    this.frames.follow(display);
   }
-  async switchSource(api: DesktopApi, source: CaptureSource): Promise<void> {
+  async switchSource(api: Pick<DesktopApi, 'selectSource'>, source: CaptureSource): Promise<void> {
     if (this.stopPromise) throw new Error('La réunion est en cours de clôture.');
     if (this.switching) return this.switching;
     const operation = this.replaceSource(api, source);
@@ -157,7 +162,10 @@ export class CaptureSession {
       this.switching = undefined;
     }
   }
-  private async replaceSource(api: DesktopApi, source: CaptureSource): Promise<void> {
+  private async replaceSource(
+    api: Pick<DesktopApi, 'selectSource'>,
+    source: CaptureSource,
+  ): Promise<void> {
     unwrap(await api.selectSource(source.id, this.options.systemAudio));
     const next = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: 10, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -169,13 +177,13 @@ export class CaptureSession {
       const previous = this.resources.display;
       await stopRecorder(this.videoRecorder);
       if (this.stopPromise) return;
-      clearInterval(this.frameTimer);
+      this.frames.release();
       if (previous) previous.getVideoTracks().forEach((track) => (track.onended = null));
       await this.resources.replaceDisplay(next);
-      this.preview?.pause();
-      if (this.preview) this.preview.srcObject = null;
       this.startVideo(next);
       this.currentSource = source;
+      this.sourceChanges += 1;
+      this.sourceListeners.forEach((listener) => listener());
     } catch (error) {
       this.restartVideoAfterFailedSwitch();
       throw error;
@@ -191,19 +199,6 @@ export class CaptureSession {
   private restartVideoAfterFailedSwitch() {
     if (this.videoRecorder?.state !== 'inactive' || this.stopPromise) return;
     if (this.resources.display) this.startVideo(this.resources.display);
-  }
-  private snapshot() {
-    if (this.paused || this.stopPromise || !this.preview?.videoWidth || this.frameIndex >= 240)
-      return;
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.min(this.preview.videoWidth, 1280);
-    canvas.height = Math.round((canvas.width * this.preview.videoHeight) / this.preview.videoWidth);
-    canvas.getContext('2d')?.drawImage(this.preview, 0, 0, canvas.width, canvas.height);
-    const at = this.elapsed;
-    const index = this.frameIndex++;
-    const data = canvas.toDataURL('image/jpeg', 0.65).split(',')[1]!;
-    const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
-    this.writer.append('frame', index, at, 0, new Blob([bytes], { type: 'image/jpeg' }));
   }
   togglePause() {
     if (this.stopPromise) return;
@@ -226,10 +221,15 @@ export class CaptureSession {
     this.pauseListeners.add(listener);
     return () => this.pauseListeners.delete(listener);
   }
+  /** Called after each switch of source. Returns the unsubscribe function. */
+  onSourceChange(listener: () => void): () => void {
+    this.sourceListeners.add(listener);
+    return () => this.sourceListeners.delete(listener);
+  }
   stop(): Promise<Meeting> {
     if (this.stopPromise) return this.stopPromise;
     clearInterval(this.rotationTimer);
-    clearInterval(this.frameTimer);
+    this.frames.release();
     clearTimeout(this.limitTimer);
     if (!this.pausedAt) this.pausedAt = performance.now();
     this.stopPromise = (async () => {
@@ -239,8 +239,6 @@ export class CaptureSession {
         await Promise.all([stopRecorder(this.audioRecorder), stopRecorder(this.videoRecorder)]);
         return await this.writer.finish(this.elapsed);
       } finally {
-        this.preview?.pause();
-        if (this.preview) this.preview.srcObject = null;
         await this.resources.dispose();
       }
     })();

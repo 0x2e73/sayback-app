@@ -20,6 +20,8 @@ function fakeCapture(changes: Partial<Record<'paused' | 'elapsed', number | bool
     audioSources: { microphone: true, systemAudio: false },
     togglePause: vi.fn(),
     onPauseChange: () => () => {},
+    onSourceChange: () => () => {},
+    sourceVersion: 0,
     ...changes,
   } as unknown as CaptureSession;
 }

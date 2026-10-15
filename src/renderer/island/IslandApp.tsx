@@ -78,8 +78,9 @@ function IslandShell({ api, view, now, onRequest }: IslandShellProps) {
         )}
         {recordingMode && (
           <IslandRecording
-            feed={api}
+            api={api}
             recording={recording}
+            screens={snapshot.screens}
             receivedAt={view.receivedAt}
             expanded={view.expanded}
             now={now}

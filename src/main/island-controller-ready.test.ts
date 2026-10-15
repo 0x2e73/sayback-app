@@ -30,7 +30,10 @@ describe('the ready island', () => {
         title: 'Réunion du 15 octobre, 11 h 00',
         remembered: { microphone: true, systemAudio: true, screen: true },
         screen: { id: 'screen:1:0', name: 'Écran 1' },
-        screenCount: 2,
+        screens: [
+          { id: 'screen:1:0', name: 'Écran 1' },
+          { id: 'screen:2:0', name: 'Écran 2' },
+        ],
         error: null,
       },
     });
@@ -102,18 +105,36 @@ describe('the ready island', () => {
     expect(ports.openPrivacySettings).toHaveBeenCalledOnce();
   });
 
-  it('moves to the next screen and back to the first, listing them again', async () => {
+  it('takes the screen picked in its picker, listing the screens again', async () => {
     const { island, ports, opened: current } = await opened();
-    island.request('cycle-screen');
-    await vi.advanceTimersByTimeAsync(0);
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
     expect(readyOf(lastState(current().sent)).screen).toEqual({
       id: 'screen:2:0',
       name: 'Écran 2',
     });
-    island.request('cycle-screen');
-    await vi.advanceTimersByTimeAsync(0);
-    expect(readyOf(lastState(current().sent)).screen?.id).toBe('screen:1:0');
-    expect(ports.ready.screens).toHaveBeenCalledTimes(3);
+    expect(ports.ready.screens).toHaveBeenCalledTimes(2);
+    expect(ports.switchScreen).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the main screen when the picked one is gone', async () => {
+    const { island, ports, opened: current } = await opened();
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    ports.ready.screens.mockResolvedValueOnce([screens[0]!]);
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    expect(readyOf(lastState(current().sent))).toMatchObject({
+      screen: { id: 'screen:1:0' },
+      screens: [{ id: 'screen:1:0', name: 'Écran 1' }],
+    });
+  });
+
+  it('closes on Escape only once its picker is closed', async () => {
+    const { island, opened: current } = await opened();
+    island.request('picker-opened');
+    current().key('Escape');
+    expect(island.window()).not.toBeNull();
+    island.request('picker-closed');
+    current().key('Escape');
+    expect(island.window()).toBeNull();
   });
 });
 
@@ -215,6 +236,6 @@ describe('the icon during a recording', () => {
     island.toggle();
     expect(hover.expand).toHaveBeenCalledOnce();
     expect(ports.openWindow).toHaveBeenCalledOnce();
-    expect(ports.ready.screens).not.toHaveBeenCalled();
+    expect(ports.ready.prefs).not.toHaveBeenCalled();
   });
 });

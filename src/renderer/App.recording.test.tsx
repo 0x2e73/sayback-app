@@ -27,6 +27,8 @@ class FakeSession {
   stop = vi.fn(async () => finished);
   togglePause = vi.fn();
   onPauseChange = () => () => false;
+  onSourceChange = () => () => false;
+  sourceVersion = 0;
 }
 
 let session: FakeSession;

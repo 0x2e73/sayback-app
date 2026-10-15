@@ -33,36 +33,36 @@ describe('the screen line of the ready island', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(readyOf(setup.island.ready())).toMatchObject({
       screen: null,
-      screenCount: 0,
+      screens: [],
       error: 'screen-denied',
     });
     expect(setup.hover.held()).toBe(true);
   });
 
-  it('holds open on a screen missing after « Changer », and lets go once one is back', async () => {
+  it('holds open on a screen missing after a pick, and lets go once « Réessayer » finds one', async () => {
     const { island, ports, hover, opened: current } = await opened();
     ports.ready.screens.mockResolvedValueOnce([]);
-    island.request('cycle-screen');
-    await vi.advanceTimersByTimeAsync(0);
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
     expect(readyOf(lastState(current().sent)).error).toBe('no-screen');
     expect(hover.held()).toBe(true);
-    island.request('cycle-screen');
+    island.request('refresh-screens');
     await vi.advanceTimersByTimeAsync(0);
-    expect(readyOf(lastState(current().sent))).toMatchObject({ error: null, screenCount: 2 });
+    expect(readyOf(lastState(current().sent))).toMatchObject({
+      error: null,
+      screen: { id: 'screen:1:0' },
+    });
+    expect(readyOf(lastState(current().sent)).screens).toHaveLength(2);
     expect(hover.held()).toBe(false);
   });
 
   it('keeps its screen when the screens change, and falls back when it goes', async () => {
     const { island, ports, opened: current } = await opened();
-    island.request('cycle-screen');
-    await vi.advanceTimersByTimeAsync(0);
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
     const third = { id: 'screen:3:0', name: 'Écran 3' };
     ports.ready.screens.mockResolvedValueOnce([...screens, third]);
     await island.screensChanged();
-    expect(readyOf(lastState(current().sent))).toMatchObject({
-      screen: { id: 'screen:2:0' },
-      screenCount: 3,
-    });
+    expect(readyOf(lastState(current().sent))).toMatchObject({ screen: { id: 'screen:2:0' } });
+    expect(readyOf(lastState(current().sent)).screens).toHaveLength(3);
     ports.ready.screens.mockResolvedValueOnce([screens[0]!, third]);
     await island.screensChanged();
     expect(readyOf(lastState(current().sent)).screen?.id).toBe('screen:1:0');

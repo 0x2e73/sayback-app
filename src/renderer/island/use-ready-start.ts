@@ -87,9 +87,10 @@ export function useReadyStart(
     );
   }
 
-  /** « Changer » and « Réessayer » are a new attempt: main reports what it finds. */
+  /** A picked screen and « Réessayer » are a new attempt: main reports what it finds. */
   function request(wanted: IslandRequest): void {
-    if (wanted === 'cycle-screen') setFailure(null);
+    if (wanted === 'refresh-screens') setFailure(null);
+    if (typeof wanted === 'object' && wanted.type === 'select-screen') setFailure(null);
     onRequest(wanted);
   }
 
@@ -104,3 +105,5 @@ export function useReadyStart(
     request,
   };
 }
+
+export type ReadyStart = ReturnType<typeof useReadyStart>;

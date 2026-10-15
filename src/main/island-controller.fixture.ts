@@ -121,6 +121,7 @@ export function fixture(nextLayout: IslandLayout | null = layout) {
     openDialog: vi.fn(),
     openPrivacySettings: vi.fn(),
     request: vi.fn(),
+    switchScreen: vi.fn<(screenId: string) => Promise<boolean>>(async () => true),
   };
   const island = createIsland(ports);
   const settle = () => vi.advanceTimersByTimeAsync(ISLAND_SETTLE);

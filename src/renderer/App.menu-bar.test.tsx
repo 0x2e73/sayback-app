@@ -33,6 +33,8 @@ class FakeSession {
     this.pauseListeners.add(listener);
     return () => this.pauseListeners.delete(listener);
   }
+  onSourceChange = () => () => false;
+  sourceVersion = 0;
 }
 
 interface Fixture {

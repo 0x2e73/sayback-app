@@ -57,30 +57,77 @@ describe('registerIslandHandlers', () => {
       request: vi.fn(),
       toggle: vi.fn(),
       level: vi.fn(),
+      preview: vi.fn(),
       screensChanged: vi.fn(),
       close: vi.fn(),
     };
-    registerIslandHandlers(registrar, island);
-    return { roles, actions, island };
+    const thumbnails = vi.fn(async () => [{ id: 'screen:1:0', jpeg: new Uint8Array([255, 216]) }]);
+    registerIslandHandlers(registrar, island, thumbnails);
+    return { roles, actions, island, thumbnails };
   }
 
-  it('gives the island its two channels and the main page the level only', () => {
+  it('gives the island its channels and the main page the level and the preview only', () => {
     const { roles } = registered();
     expect(Object.fromEntries(roles)).toEqual({
       'island:ready': ['island'],
       'island:request': ['island'],
+      'island:screen-thumbnails': ['island'],
       'live:level': ['main'],
+      'live:preview': ['main'],
     });
   });
 
-  it.each(['pause', 'resume', 'stop', 'open', 'close', 'open-privacy-settings', 'cycle-screen'])(
-    'passes the %s request on',
-    (request) => {
-      const { actions, island } = registered();
-      actions.get('island:request')?.(request);
-      expect(island.request).toHaveBeenCalledWith(request);
-    },
-  );
+  it.each([
+    'pause',
+    'resume',
+    'stop',
+    'open',
+    'close',
+    'open-privacy-settings',
+    'refresh-screens',
+    'picker-opened',
+    'picker-closed',
+  ])('passes the %s request on', (request) => {
+    const { actions, island } = registered();
+    actions.get('island:request')?.(request);
+    expect(island.request).toHaveBeenCalledWith(request);
+  });
+
+  it('passes a picked screen on, and refuses a window or a stray field', () => {
+    const { actions, island } = registered();
+    const pick = { type: 'select-screen', screenId: 'screen:2:0' };
+    actions.get('island:request')?.(pick);
+    expect(island.request).toHaveBeenCalledWith(pick);
+    expect(() =>
+      actions.get('island:request')?.({ type: 'select-screen', screenId: 'window:4:0' }),
+    ).toThrow();
+    expect(() => actions.get('island:request')?.({ ...pick, title: 'x' })).toThrow();
+    expect(() => actions.get('island:request')?.('cycle-screen')).toThrow();
+    expect(island.request).toHaveBeenCalledOnce();
+  });
+
+  it('reads the thumbnails when the island asks', async () => {
+    const { actions, thumbnails } = registered();
+    await expect(actions.get('island:screen-thumbnails')?.()).resolves.toHaveLength(1);
+    expect(thumbnails).toHaveBeenCalledOnce();
+  });
+
+  it('passes a preview frame to the island, and drops anything else', () => {
+    const { actions, island } = registered();
+    const frame = new Uint8Array([255, 216, 255]);
+    actions.get('live:preview')?.(frame);
+    expect(island.preview).toHaveBeenCalledWith(frame);
+    for (const bad of [new Uint8Array(0), new Uint8Array(256 * 1024 + 1), [255], 'jpeg']) {
+      expect(() => actions.get('live:preview')?.(bad)).toThrow();
+    }
+    expect(island.preview).toHaveBeenCalledOnce();
+  });
+
+  it('ignores a preview frame while there is no island', () => {
+    const { actions, island } = registered(false);
+    actions.get('live:preview')?.(new Uint8Array([255]));
+    expect(island.preview).not.toHaveBeenCalled();
+  });
 
   it('passes a valid start on, its title trimmed', () => {
     const { actions, island } = registered();
@@ -153,11 +200,12 @@ describe('island requests through the role registrar', () => {
       request: vi.fn(),
       toggle: vi.fn(),
       level: vi.fn(),
+      preview: vi.fn(),
       screensChanged: vi.fn(),
       close: vi.fn(),
     };
     const roles = createWindowRoles({ main: () => main, island: () => islandWindow });
-    registerIslandHandlers(createIpcRegistrar(roles), island);
+    registerIslandHandlers(createIpcRegistrar(roles), island, async () => []);
     const invoke = (window: ReturnType<typeof windowOf>, input: unknown) =>
       electron.handlers.get('island:request')?.(from(window), input);
     return { island, invoke };

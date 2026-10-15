@@ -50,6 +50,8 @@ export interface IslandPorts {
   openPrivacySettings(): void;
   /** Sent to the main page, which owns the capture. */
   request(request: RecordingRequest): void;
+  /** A screen chosen during a recording, switched by the main page; false when it failed. */
+  switchScreen(screenId: string): Promise<boolean>;
 }
 
 export interface Island {
@@ -57,10 +59,13 @@ export interface Island {
   window(): IslandWindowPort | null;
   /** The page has loaded: shows the window and returns what to draw. */
   ready(): IslandSnapshot;
-  request(request: IslandRequest): void;
+  /** Settles once a screen switch has been tried; rejects when it failed. */
+  request(request: IslandRequest): Promise<void> | void;
   /** The menu bar icon: opens or closes the ready island; during a recording, opens its island. */
   toggle(): void;
   level(level: number): void;
+  /** A preview frame of the capture, JPEG bytes, for the recording island. */
+  preview(jpeg: Uint8Array): void;
   screensChanged(): Promise<void>;
   close(): void;
 }

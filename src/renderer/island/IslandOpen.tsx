@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { Pause, Play, Square } from 'lucide-react';
 import type { IslandRequest } from '../../shared/island';
 import { Button } from '../components/ui';
@@ -9,6 +9,10 @@ interface IslandOpenProps {
   chrono: string;
   paused: boolean;
   stopping: boolean;
+  /** The preview and the live text, or the screen picker in their place. */
+  scene: ReactNode;
+  /** « Changer d'écran », left of the actions. */
+  switchControl: ReactNode;
   onRequest(request: IslandRequest): void;
 }
 
@@ -19,7 +23,8 @@ function stateLabel(paused: boolean, stopping: boolean): string {
 }
 
 // Laid out at its final size, revealed by the growing shell: never measured, never moved.
-export function IslandOpen({ expanded, chrono, paused, stopping, onRequest }: IslandOpenProps) {
+export function IslandOpen(props: IslandOpenProps) {
+  const { expanded, chrono, paused, stopping, onRequest } = props;
   const stop = useCallback(() => onRequest('stop'), [onRequest]);
   // A stray click on a panel that appears under the cursor must not end the meeting.
   const confirmation = useConfirmation(stop, expanded);
@@ -34,24 +39,24 @@ export function IslandOpen({ expanded, chrono, paused, stopping, onRequest }: Is
           {chrono}
         </span>
       </header>
-      <div className="island-stage">
-        <div className="island-preview-slot" />
-        <p className="island-live-slot">Le texte en direct arrive bientôt.</p>
-      </div>
-      <div className="island-actions">
-        <Button
-          variant="secondary"
-          shape="pill"
-          disabled={stopping}
-          onClick={() => onRequest(paused ? 'resume' : 'pause')}
-        >
-          {paused ? <Play size={14} /> : <Pause size={14} />}
-          {paused ? 'Reprendre' : 'Pause'}
-        </Button>
-        <Button shape="pill" busy={stopping} onClick={confirmation.press}>
-          <Square size={12} fill="currentColor" />
-          {confirmation.armed ? 'Confirmer l’arrêt' : 'Terminer'}
-        </Button>
+      {props.scene}
+      <div className="island-actions island-open-actions">
+        {props.switchControl}
+        <span className="island-actions-end">
+          <Button
+            variant="secondary"
+            shape="pill"
+            disabled={stopping}
+            onClick={() => onRequest(paused ? 'resume' : 'pause')}
+          >
+            {paused ? <Play size={14} /> : <Pause size={14} />}
+            {paused ? 'Reprendre' : 'Pause'}
+          </Button>
+          <Button shape="pill" busy={stopping} onClick={confirmation.press}>
+            <Square size={12} fill="currentColor" />
+            {confirmation.armed ? 'Confirmer l’arrêt' : 'Terminer'}
+          </Button>
+        </span>
       </div>
     </div>
   );

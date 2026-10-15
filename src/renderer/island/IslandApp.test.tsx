@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe('IslandApp', () => {
   it('counts the chrono on from the announced time', async () => {
-    await shown({ recording: recording(), expanded: true, shape, mode: 'recording' });
+    await shown({ recording: recording(), expanded: true, shape, mode: 'recording', screens: [] });
     expect(screen.getByRole('timer')).toHaveTextContent('00:12');
     await act(async () => vi.advanceTimersByTime(2_000));
     expect(screen.getByRole('timer')).toHaveTextContent('00:14');
@@ -25,12 +25,14 @@ describe('IslandApp', () => {
       expanded: true,
       shape,
       mode: 'recording',
+      screens: [],
     });
     island.push({
       recording: recording({ elapsed: 20, paused: true }),
       expanded: true,
       shape,
       mode: 'recording',
+      screens: [],
     });
     await act(async () => vi.advanceTimersByTime(5_000));
     expect(screen.getByRole('timer')).toHaveTextContent('00:20');
@@ -43,11 +45,11 @@ describe('IslandApp', () => {
       expanded: false,
       shape,
       mode: 'recording',
+      screens: [],
     });
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
     island.expand(true);
     expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
-    expect(screen.getByText('Le texte en direct arrive bientôt.')).toBeInTheDocument();
   });
 
   it('asks the main process to pause, resume and stop', async () => {
@@ -58,6 +60,7 @@ describe('IslandApp', () => {
       expanded: true,
       shape,
       mode: 'recording',
+      screens: [],
     });
     await user.click(screen.getByRole('button', { name: 'Pause' }));
     expect(island.request).toHaveBeenLastCalledWith('pause');
@@ -66,6 +69,7 @@ describe('IslandApp', () => {
       expanded: true,
       shape,
       mode: 'recording',
+      screens: [],
     });
     await user.click(screen.getByRole('button', { name: 'Reprendre' }));
     expect(island.request).toHaveBeenLastCalledWith('resume');
@@ -81,6 +85,7 @@ describe('IslandApp', () => {
       expanded: false,
       shape,
       mode: 'recording',
+      screens: [],
     });
     fireEvent.click(screen.getByRole('main', { name: 'SayBack' }));
     expect(island.request).toHaveBeenCalledExactlyOnceWith('expand');
@@ -95,6 +100,7 @@ describe('IslandApp', () => {
       expanded: true,
       shape,
       mode: 'recording',
+      screens: [],
     });
     fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
     expect(screen.getByRole('button', { name: 'Confirmer l’arrêt' })).toBeInTheDocument();
@@ -110,6 +116,7 @@ describe('IslandApp', () => {
       expanded: true,
       shape,
       mode: 'recording',
+      screens: [],
     });
     fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
     island.expand(false);
@@ -125,6 +132,7 @@ describe('IslandApp', () => {
       expanded: true,
       shape,
       mode: 'recording',
+      screens: [],
     });
     expect(screen.getByText('Arrêt en cours…')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled();
@@ -138,6 +146,7 @@ describe('IslandApp', () => {
       expanded: false,
       shape,
       mode: 'recording',
+      screens: [],
     });
     const bars = [...screen.getByTestId('level-meter').children] as HTMLElement[];
     expect(bars).toHaveLength(4);
@@ -151,8 +160,15 @@ describe('IslandApp', () => {
       expanded: false,
       shape,
       mode: 'recording',
+      screens: [],
     });
-    island.push({ recording: { recording: false }, expanded: false, shape, mode: 'recording' });
+    island.push({
+      recording: { recording: false },
+      expanded: false,
+      shape,
+      mode: 'recording',
+      screens: [],
+    });
     expect(screen.queryByRole('main')).not.toBeInTheDocument();
   });
 });
