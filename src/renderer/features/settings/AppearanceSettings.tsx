@@ -1,6 +1,6 @@
-import { SunMoon } from 'lucide-react';
 import type { Appearance } from '../../../shared/contracts';
 import { Segmented, type RadioOption } from '../../components/ui';
+import { SettingRow } from './SettingsLayout';
 
 const options: readonly RadioOption<Appearance>[] = [
   { value: 'system', label: 'Système' },
@@ -15,20 +15,17 @@ interface AppearanceSettingsProps {
 
 export function AppearanceSettings({ value, onChange }: AppearanceSettingsProps) {
   return (
-    <section className="settings-card">
-      <div className="section-icon">
-        <SunMoon size={21} />
-      </div>
-      <h2>Apparence</h2>
-      <div className="appearance-choice">
-        <Segmented
-          kind="radios"
-          label="Apparence"
-          options={options}
-          value={value}
-          onChange={onChange}
-        />
-      </div>
-    </section>
+    <SettingRow
+      label="Apparence"
+      hint="Appliquée tout de suite. « Système » suit le réglage de votre Mac."
+    >
+      <Segmented
+        kind="radios"
+        label="Apparence"
+        options={options}
+        value={value}
+        onChange={onChange}
+      />
+    </SettingRow>
   );
 }

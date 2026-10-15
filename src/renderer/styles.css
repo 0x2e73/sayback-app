@@ -70,6 +70,7 @@
   --source-row-height: 40px;
   --source-thumb-width: 48px;
   --source-list-max: 240px;
+  --popover-list-max: 240px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -81,6 +82,7 @@
   --header-height: 52px;
   --pane-list-width: clamp(280px, 25vw, 360px);
   --reading-width: 680px;
+  --onboarding-width: 520px;
   /* Island defaults; the page sets the measured sizes inline. */
   --island-bar-height: 38px;
   --island-notch-width: 220px;
@@ -97,6 +99,7 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-loop: 1s;
+  --duration-finalize: 1.6s;
   --ease-linear: linear;
   /* Island shell only: a damped spring for its size, the one exception to the single curve. */
   --ease-island: cubic-bezier(0.32, 0.72, 0, 1);
@@ -291,14 +294,13 @@ p {
 .transcript-turn,
 .timestamp-link,
 .source-option,
-.model-select-trigger,
-.model-select-list button,
+.select-trigger,
+.select-option,
 .field input,
 .field select,
 .field textarea,
 .field-control,
 .search input,
-.onboarding-progress span,
 .switch-track {
   transition:
     background-color var(--duration-fast) var(--ease-out),
@@ -368,6 +370,14 @@ p {
     transform: translateY(-4px);
   }
 }
+@keyframes finalizing-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -377,6 +387,7 @@ p {
 @media (prefers-reduced-motion: reduce) {
   .row-progress-bar,
   .analysis-line-bar,
+  .onboarding-progress span,
   .level-meter-bar,
   .island-shell {
     transition: none;
@@ -408,6 +419,11 @@ p {
   .spin {
     animation: none;
   }
+  .finalizing-line::before {
+    width: 100%;
+    animation: none;
+    transform: none;
+  }
   .button:active:not(:disabled, [aria-disabled='true']),
   .chip[data-size='md']:active:not(:disabled) {
     transform: none;
@@ -428,19 +444,6 @@ p {
   display: grid;
   grid-template-columns: var(--pane-list-width) minmax(0, 1fr);
   height: 100%;
-}
-.section-icon {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-  color: var(--color-accent);
-}
-.brand-dot {
-  color: var(--color-accent);
 }
 .eyebrow {
   color: var(--color-text-subtle);
@@ -472,14 +475,4 @@ p {
 }
 .page-content > .empty-message {
   min-height: 100%;
-}
-.page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  margin-bottom: 30px;
-}
-.page-heading h1 {
-  margin: 0;
 }

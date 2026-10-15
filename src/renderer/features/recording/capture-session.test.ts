@@ -104,3 +104,68 @@ it('switches the recorded display while keeping the meeting and audio capture ac
   expect(onEnded).not.toHaveBeenCalled();
   await capture.stop();
 });
+
+async function startWithLimit(onEnded: () => void): Promise<CaptureSession> {
+  vi.stubGlobal('MediaStream', FakeStream);
+  vi.stubGlobal('MediaRecorder', FakeRecorder);
+  resources.open.mockResolvedValue({
+    audio: new FakeStream([{}]) as unknown as MediaStream,
+    analyser: {},
+    replaceDisplay: vi.fn(),
+    dispose: vi.fn(async () => undefined),
+  });
+  const meeting = { id: 'meeting-1' } as Meeting;
+  const api = {
+    createMeeting: vi.fn(async () => ({ ok: true, value: meeting })),
+    saveMedia: vi.fn(async () => ({ ok: true, value: undefined })),
+    finishMeeting: vi.fn(async () => ({ ok: true, value: meeting })),
+  } as unknown as DesktopApi;
+  return CaptureSession.start(api, 'Réunion', {
+    screen: false,
+    microphone: true,
+    systemAudio: false,
+    onFailure: vi.fn(),
+    onEnded,
+  });
+}
+
+it('ends the recording after two hours of recorded time, once, with no view to count', async () => {
+  vi.useFakeTimers();
+  const onEnded = vi.fn();
+  const capture = await startWithLimit(onEnded);
+  vi.advanceTimersByTime(7200 * 1000 - 1);
+  expect(onEnded).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1);
+  expect(onEnded).toHaveBeenCalledOnce();
+  vi.advanceTimersByTime(3600 * 1000);
+  expect(onEnded).toHaveBeenCalledOnce();
+  await capture.stop();
+  vi.useRealTimers();
+});
+
+it('does not count the time spent paused, and re-arms on resume', async () => {
+  vi.useFakeTimers();
+  const onEnded = vi.fn();
+  const capture = await startWithLimit(onEnded);
+  vi.advanceTimersByTime(3600 * 1000);
+  capture.togglePause();
+  vi.advanceTimersByTime(5 * 3600 * 1000);
+  expect(onEnded).not.toHaveBeenCalled();
+  capture.togglePause();
+  vi.advanceTimersByTime(3600 * 1000 - 1);
+  expect(onEnded).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1);
+  expect(onEnded).toHaveBeenCalledOnce();
+  await capture.stop();
+  vi.useRealTimers();
+});
+
+it('clears the limit when the recording stops', async () => {
+  vi.useFakeTimers();
+  const onEnded = vi.fn();
+  const capture = await startWithLimit(onEnded);
+  await capture.stop();
+  vi.advanceTimersByTime(3 * 3600 * 1000);
+  expect(onEnded).not.toHaveBeenCalled();
+  vi.useRealTimers();
+});

@@ -9,3 +9,5 @@ export function useSettings(api: DesktopApi) {
   const { appearanceError, chooseAppearance } = useAppearanceChoice(api, fields);
   return { ...fields, ...actions, error: actions.error || appearanceError, chooseAppearance };
 }
+
+export type FormSettings = ReturnType<typeof useSettings>;

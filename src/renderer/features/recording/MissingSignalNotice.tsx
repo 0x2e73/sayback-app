@@ -1,0 +1,46 @@
+import { useEffect, useState } from 'react';
+import { Notice, type LevelFeed } from '../../components/ui';
+
+export const MISSING_SIGNAL_DELAY = 10_000;
+// A mean of the spectrum under this is digital silence: no signal at all, not a quiet room.
+const SIGNAL_LEVEL = 0.01;
+
+export interface AudioSources {
+  microphone: boolean;
+  systemAudio: boolean;
+}
+
+export function missingSignalText({ microphone, systemAudio }: AudioSources): string {
+  if (microphone && !systemAudio) return 'Aucun son reçu du micro.';
+  if (systemAudio && !microphone) return 'Aucun son reçu du système.';
+  return 'Aucun son reçu.';
+}
+
+interface MissingSignalNoticeProps {
+  feed: LevelFeed;
+  sources: AudioSources;
+}
+
+/** Warns when ten seconds pass with no signal. Mounted only while recording: a pause resets it. */
+export function MissingSignalNotice({ feed, sources }: MissingSignalNoticeProps) {
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    let timer = setTimeout(() => setMissing(true), MISSING_SIGNAL_DELAY);
+    const stopListening = feed.onLevel((level) => {
+      if (level < SIGNAL_LEVEL) return;
+      clearTimeout(timer);
+      setMissing(false);
+      timer = setTimeout(() => setMissing(true), MISSING_SIGNAL_DELAY);
+    });
+    return () => {
+      clearTimeout(timer);
+      stopListening();
+    };
+  }, [feed]);
+  if (!missing) return null;
+  return (
+    <Notice tone="warning" role="status">
+      {missingSignalText(sources)}
+    </Notice>
+  );
+}
