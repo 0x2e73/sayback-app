@@ -144,3 +144,19 @@ export function declarations(css: string): Declaration[] {
 }
 
 export const withoutTokens = (value: string) => value.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
+
+function layered(look: Look, tokens: readonly string[]): Rgba {
+  return tokens
+    .map((token) => groundColour(token, look))
+    .reduce((below, layer) => over(layer, below));
+}
+
+/** Contrast between two stacks of grounds: a highlight against the page, two highlights apart. */
+export function layerContrast(
+  look: Look,
+  upper: readonly string[],
+  lower: readonly string[],
+): number {
+  const [a, b] = [luminance(layered(look, upper)), luminance(layered(look, lower))];
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}

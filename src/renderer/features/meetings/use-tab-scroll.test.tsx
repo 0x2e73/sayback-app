@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { restoredScroll, savedScroll, useTabScroll } from './use-tab-scroll';
@@ -64,5 +64,34 @@ describe('useTabScroll', () => {
     await user.click(screen.getByRole('button', { name: 'Notes' }));
     expect(scroller.scrollTop).toBe(300);
     expect(screen.getByText('notes')).toBeInTheDocument();
+  });
+});
+
+describe('useTabScroll callback', () => {
+  function Called({ onRestored }: { onRestored(tab: string, top: number): void }) {
+    const { select, scrollerRef, anchorRef } = useTabScroll<'notes' | 'transcript'>(
+      'notes',
+      (tab, scroller) => onRestored(tab, scroller.scrollTop),
+    );
+    return (
+      <div data-testid="scroller" ref={scrollerRef}>
+        <div ref={anchorRef} />
+        <button onClick={() => select('notes')}>Notes</button>
+        <button onClick={() => select('transcript')}>Transcription</button>
+      </div>
+    );
+  }
+
+  it('calls back once the new tab has its position', async () => {
+    const user = userEvent.setup();
+    const onRestored = vi.fn();
+    render(<Called onRestored={onRestored} />);
+    const scroller = screen.getByTestId('scroller');
+    scroller.scrollTop = 300;
+    await user.click(screen.getByRole('button', { name: 'Transcription' }));
+    scroller.scrollTop = 120;
+    await user.click(screen.getByRole('button', { name: 'Notes' }));
+    expect(onRestored).toHaveBeenNthCalledWith(1, 'transcript', 0);
+    expect(onRestored).toHaveBeenNthCalledWith(2, 'notes', 300);
   });
 });

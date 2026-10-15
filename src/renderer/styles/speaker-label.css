@@ -1,0 +1,27 @@
+.speaker-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 1.6;
+}
+.speaker-dot {
+  flex: none;
+  width: var(--speaker-dot);
+  height: var(--speaker-dot);
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+.speaker-tone-1 {
+  color: var(--color-speaker-1);
+}
+.speaker-tone-2 {
+  color: var(--color-speaker-2);
+}
+.speaker-tone-3 {
+  color: var(--color-speaker-3);
+}
+.speaker-tone-4 {
+  color: var(--color-speaker-4);
+}

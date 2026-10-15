@@ -2,6 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { AudioChunk, Meeting } from '../../../shared/contracts';
 import { meetingFixture } from '../../test-api';
+import { usePlaybackTime } from './playback-clock';
 import { useMediaPlayback } from './use-media-playback';
 
 export const chunk = (index: number, start: number, duration = 60): AudioChunk => ({
@@ -17,11 +18,12 @@ export const threeMinutes = meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z'
 
 export function Harness({ meeting }: { meeting: Meeting }) {
   const playback = useMediaPlayback(meeting);
+  const time = usePlaybackTime(playback.clock);
   return (
     <>
       <audio data-testid="media" {...playback.mediaProps} />
       {playback.videoProps && <video data-testid="video" {...playback.videoProps} />}
-      <p data-testid="at">{playback.at}</p>
+      <p data-testid="at">{time}</p>
       <p data-testid="duration">{playback.duration}</p>
       {playback.failed && <p>Échec</p>}
       <button onClick={playback.toggle}>{playback.playing ? 'Pause' : 'Lire'}</button>

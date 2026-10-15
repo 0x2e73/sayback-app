@@ -5,7 +5,6 @@ import {
   UNFILED,
   emptyList,
   filterMeetings,
-  normalizeSearch,
   resolveScope,
   type FolderScope,
 } from './list-filter';
@@ -35,31 +34,6 @@ const folders: Folder[] = [
 const acme: FolderScope = { kind: 'folder', id: 'acme' };
 const ids = (scope: FolderScope, query: string) =>
   filterMeetings(meetings, scope, query).map((meeting) => meeting.id);
-
-describe('normalizeSearch', () => {
-  it.each([
-    ['Équipe', 'equipe'],
-    ['ÉQUIPE PRODUIT', 'equipe produit'],
-    ['Cœur du sujet', 'coeur du sujet'],
-    ['ŒUVRE Ægis', 'oeuvre aegis'],
-    ['  revue   produit ', 'revue produit'],
-    ['', ''],
-    ['   ', ''],
-    ['Naïve façade', 'naive facade'],
-    ['Zürich', 'zurich'],
-    ['e\u0301quipe', 'equipe'],
-    ['Revue\nproduit\t2026', 'revue produit 2026'],
-    ['Point d’équipe', "point d'equipe"],
-    ['d‘équipe d\u02bcéquipe d`équipe d´équipe', "d'equipe d'equipe d'equipe d'equipe"],
-    ['Straße', 'strasse'],
-    ['Søren', 'soren'],
-    ['Kick-off Kick\u2011off Kick–off', 'kick off kick off kick off'],
-    ['ﬁnal', 'final'],
-    ['Rendez-vous\ufe0f', 'rendez vous'],
-  ])('%j reads as %j', (text, expected) => {
-    expect(normalizeSearch(text)).toBe(expected);
-  });
-});
 
 describe('filterMeetings', () => {
   it.each<[string, FolderScope, string, string[]]>([

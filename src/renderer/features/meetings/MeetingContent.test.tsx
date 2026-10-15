@@ -1,25 +1,29 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MeetingContent } from './MeetingContent';
-import type { TranscriptSearch } from './Transcript';
+import { useDetailView, type TranscriptView } from './use-detail-view';
 
 afterEach(cleanup);
 
-function renderContent(notes: ReactNode, transcript?: (search: TranscriptSearch) => ReactNode) {
-  render(
+const playAt = vi.fn();
+
+function Harness(props: { notes: ReactNode; transcript?: (view: TranscriptView) => ReactNode }) {
+  const view = useDetailView(playAt);
+  return (
     <MeetingContent
       header={<h1>Revue</h1>}
-      notes={notes}
-      transcript={transcript ?? (() => <p>Rien à lire.</p>)}
-    />,
+      view={view}
+      notes={props.notes}
+      transcript={props.transcript?.(view.transcript) ?? <p>Rien à lire.</p>}
+    />
   );
 }
 
-function searchField({ search, onSearch }: TranscriptSearch) {
+function searchField({ search, onSearch }: TranscriptView) {
   return (
     <input
       aria-label="Chercher"
@@ -31,7 +35,7 @@ function searchField({ search, onSearch }: TranscriptSearch) {
 
 it('keeps the transcript search when the tab changes and comes back', async () => {
   const user = userEvent.setup();
-  renderContent(<p>Notes</p>, searchField);
+  render(<Harness notes={<p>Notes</p>} transcript={searchField} />);
   await user.click(screen.getByRole('tab', { name: 'Transcription' }));
   await user.type(screen.getByRole('textbox', { name: 'Chercher' }), 'budget');
   await user.click(screen.getByRole('tab', { name: 'Notes' }));
@@ -40,20 +44,24 @@ it('keeps the transcript search when the tab changes and comes back', async () =
 });
 
 it('makes a panel without any control reachable by keyboard', () => {
-  renderContent(<p>Rien à faire ici.</p>);
+  render(<Harness notes={<p>Rien à faire ici.</p>} />);
   expect(screen.getByRole('tabpanel', { name: 'Notes' })).toHaveAttribute('tabindex', '0');
 });
 
 it('leaves a panel that holds controls out of the tab order', () => {
-  renderContent(<button type="button">Ajouter une précision</button>);
+  render(<Harness notes={<button type="button">Ajouter une précision</button>} />);
   expect(screen.getByRole('tabpanel', { name: 'Notes' })).not.toHaveAttribute('tabindex');
 });
 
 it('ignores a disabled control when looking for something to focus', () => {
-  renderContent(
-    <button type="button" disabled>
-      Ajouter une précision
-    </button>,
+  render(
+    <Harness
+      notes={
+        <button type="button" disabled>
+          Ajouter une précision
+        </button>
+      }
+    />,
   );
   expect(screen.getByRole('tabpanel', { name: 'Notes' })).toHaveAttribute('tabindex', '0');
 });
