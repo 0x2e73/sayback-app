@@ -286,7 +286,7 @@ p {
 .meeting-row,
 .transcript-turn,
 .timestamp-link,
-.capture-source-row,
+.source-option,
 .model-select-trigger,
 .model-select-list button,
 .field input,
@@ -394,7 +394,8 @@ p {
   .chip[data-size='md']:active:not(:disabled) {
     transform: none;
   }
-  .switch-thumb {
+  .switch-thumb,
+  .source-chevron {
     transition: none;
   }
   .button[aria-busy='true'] .button-label {

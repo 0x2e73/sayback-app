@@ -93,5 +93,9 @@ export function useWorkspace(api: DesktopApi) {
     showSettings: () => setCard('settings'),
     openNewMeeting: () => setNewMeeting(true),
     closeNewMeeting: () => setNewMeeting(false),
+    configureAnalysis: () => {
+      setNewMeeting(false);
+      setCard('settings');
+    },
   };
 }

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DesktopApi } from '../shared/contracts';
 import type { RecordingRequest } from '../shared/recording-state';
 import { App } from './App';
+import { startFromDialog } from './new-meeting-harness';
 import { apiFor, meetingFixture, ok, settings } from './test-api';
 
 const capture = vi.hoisted(() => ({ start: vi.fn() }));
@@ -84,9 +85,9 @@ describe('Menu bar events in the page', () => {
     const menu = menuBarApi();
     render(<App api={menu.api} />);
     await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
-    expect(screen.queryByLabelText('Titre de la réunion')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Nouvelle réunion' })).not.toBeInTheDocument();
     menu.newRecording();
-    expect(await screen.findByLabelText('Titre de la réunion')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Nouvelle réunion' })).toBeInTheDocument();
   });
 
   it('announces the recording, stops it on « Arrêter l’enregistrement », then announces the end', async () => {
@@ -95,9 +96,7 @@ describe('Menu bar events in the page', () => {
     render(<App api={menu.api} />);
     expect(menu.announce).toHaveBeenCalledWith({ recording: false });
     menu.newRecording();
-    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
-    await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
-    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    await startFromDialog(user, 'Revue du vendredi');
     await waitFor(() =>
       expect(menu.announce).toHaveBeenLastCalledWith({
         recording: true,
@@ -116,9 +115,7 @@ describe('Menu bar events in the page', () => {
     const menu = menuBarApi();
     render(<App api={menu.api} />);
     menu.newRecording();
-    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
-    await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
-    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    await startFromDialog(user, 'Revue du vendredi');
     await user.click(await screen.findByRole('button', { name: 'Pause' }));
     expect(menu.announce).toHaveBeenLastCalledWith({
       recording: true,
@@ -142,9 +139,7 @@ describe('Menu bar events in the page', () => {
     session.stop.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
     render(<App api={menu.api} />);
     menu.newRecording();
-    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
-    await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
-    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    await startFromDialog(user, 'Revue du vendredi');
     await user.click(await screen.findByRole('button', { name: 'Terminer la réunion' }));
     await waitFor(() =>
       expect(menu.announce).toHaveBeenLastCalledWith(expect.objectContaining({ stopping: true })),
@@ -158,9 +153,7 @@ describe('Menu bar events in the page', () => {
     const menu = menuBarApi();
     render(<App api={menu.api} />);
     menu.newRecording();
-    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
-    await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
-    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    await startFromDialog(user, 'Revue du vendredi');
     await screen.findByRole('button', { name: 'Pause' });
     menu.request('pause');
     menu.request('pause');

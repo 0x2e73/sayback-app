@@ -6,8 +6,7 @@
   display: grid;
   gap: var(--space-4);
 }
-.settings-form,
-.new-meeting-form {
+.settings-form {
   display: grid;
   gap: var(--space-5);
 }
@@ -38,30 +37,6 @@
 }
 .subtle-success {
   color: var(--color-ready);
-}
-.auto-analysis-option {
-  display: flex;
-  align-items: start;
-  gap: var(--space-3);
-  padding: 14px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-.auto-analysis-option input {
-  margin-top: 3px;
-  accent-color: var(--color-accent);
-}
-.auto-analysis-option span {
-  display: grid;
-  gap: var(--space-1);
-}
-.auto-analysis-option strong {
-  font-size: var(--text-control);
-}
-.auto-analysis-option small {
-  color: var(--color-text-subtle);
-  line-height: 1.45;
 }
 .text-link {
   padding: 0;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultCapturePrefs,
   defaultMeetingTitle,
   defaultScreenId,
   hasAudioSource,
@@ -96,5 +97,14 @@ describe('defaultScreenId', () => {
 
   it('answers nothing when no source was found', () => {
     expect(defaultScreenId([], 'screen:1:0')).toBe('');
+  });
+});
+
+it('offers every source and the analysis by default, on no particular screen', () => {
+  expect(defaultCapturePrefs).toEqual({
+    microphone: true,
+    systemAudio: true,
+    screen: true,
+    autoAnalyze: true,
   });
 });

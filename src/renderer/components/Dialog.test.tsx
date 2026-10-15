@@ -139,3 +139,17 @@ it('puts the focus on the element it is told to', () => {
   render(<Harness />);
   expect(screen.getByLabelText('Champ')).toHaveFocus();
 });
+
+it('lets Escape undo something before it closes', () => {
+  const close = vi.fn();
+  const undo = vi.fn().mockReturnValueOnce(true).mockReturnValue(false);
+  render(
+    <Dialog title="Titre" onEscape={undo} onClose={close}>
+      <p>Contenu</p>
+    </Dialog>,
+  );
+  fireEvent(dialogElement(), new Event('cancel', { cancelable: true }));
+  expect(close).not.toHaveBeenCalled();
+  fireEvent(dialogElement(), new Event('cancel', { cancelable: true }));
+  expect(close).toHaveBeenCalledOnce();
+});

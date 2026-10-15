@@ -9,6 +9,8 @@ interface DialogProps {
   busy?: boolean;
   /** Where the focus lands on opening; the browser would pick the close button. */
   initialFocus?: RefObject<HTMLElement | null>;
+  /** Escape goes here first: return true when it undid something and the dialog must stay. */
+  onEscape?(): boolean;
   onClose(): void;
 }
 
@@ -18,6 +20,7 @@ export function Dialog({
   footer,
   busy = false,
   initialFocus,
+  onEscape,
   onClose,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -55,6 +58,7 @@ export function Dialog({
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();
+        if (onEscape?.()) return;
         close();
       }}
       onClose={handleNativeClose}

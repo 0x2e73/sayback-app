@@ -10,3 +10,7 @@
   width: 60%;
   background: var(--color-surface);
 }
+
+.skeleton-block {
+  min-height: var(--space-4);
+}

@@ -8,6 +8,7 @@ import './styles/shared.css';
 import './styles/chip.css';
 import './styles/switch.css';
 import './styles/skeleton.css';
+import './styles/source-picker.css';
 import './styles/empty-state.css';
 import './styles/error-fallback.css';
 import './styles/meeting-list.css';

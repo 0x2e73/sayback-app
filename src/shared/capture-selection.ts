@@ -1,4 +1,4 @@
-import type { CaptureSource } from './contracts';
+import type { CapturePrefs, CaptureSource } from './contracts';
 
 export interface SourceToggles {
   microphone: boolean;
@@ -6,6 +6,14 @@ export interface SourceToggles {
   screen: boolean;
 }
 export type SourceKey = keyof SourceToggles;
+
+/** Before anything was remembered: every source on, the analysis too, the main screen. */
+export const defaultCapturePrefs: CapturePrefs = {
+  microphone: true,
+  systemAudio: true,
+  screen: true,
+  autoAnalyze: true,
+};
 
 const months = [
   'janvier',

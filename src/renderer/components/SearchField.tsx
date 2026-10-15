@@ -36,6 +36,10 @@ export function SearchField(props: SearchFieldProps) {
         value={query}
         disabled={disabled}
         onChange={(event) => props.onQuery(event.target.value)}
+        onKeyDown={(event) => {
+          // Enter has nothing left to search: it must not submit the form around the field.
+          if (event.key === 'Enter') event.preventDefault();
+        }}
       />
     </label>
   );

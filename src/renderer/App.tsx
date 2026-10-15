@@ -102,7 +102,12 @@ export function App({ api }: AppProps) {
         />
       </ErrorBoundary>
       {workspace.newMeeting && (
-        <NewMeetingDialog api={api} onClose={workspace.closeNewMeeting} onStart={workspace.start} />
+        <NewMeetingDialog
+          api={api}
+          onClose={workspace.closeNewMeeting}
+          onStart={workspace.start}
+          onConfigure={workspace.configureAnalysis}
+        />
       )}
     </AppShell>
   );
