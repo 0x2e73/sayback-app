@@ -1,34 +1,36 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
 
-  --color-bg: #0f1117;
-  --color-pane: #0a0b10;
-  --color-surface: rgb(255 255 255 / 0.05);
-  --color-surface-raised: rgb(255 255 255 / 0.09);
-  --color-overlay: #161a23;
-  --color-backdrop: rgb(0 0 0 / 0.5);
-  --color-border: rgb(255 255 255 / 0.09);
-  --color-border-strong: rgb(255 255 255 / 0.16);
-  --color-text: rgb(255 255 255 / 0.95);
-  --color-text-muted: rgb(255 255 255 / 0.72);
-  --color-text-subtle: rgb(255 255 255 / 0.55);
-  --color-accent: #8fb6ff;
+  --color-bg: #f4f5f7;
+  --color-pane: #ffffff;
+  --color-surface: rgb(0 0 0 / 0.04);
+  --color-surface-raised: rgb(0 0 0 / 0.07);
+  --color-overlay: #ffffff;
+  --color-backdrop: rgb(0 0 0 / 0.25);
+  --color-border: rgb(0 0 0 / 0.08);
+  --color-border-strong: rgb(0 0 0 / 0.15);
+  --color-text: rgb(0 0 0 / 0.9);
+  --color-text-muted: rgb(0 0 0 / 0.68);
+  --color-text-subtle: rgb(0 0 0 / 0.58);
+  --color-accent: #0050b8;
   --color-accent-soft: color-mix(in srgb, var(--color-accent) 45%, transparent);
   --color-focus: var(--color-accent);
-  --color-action: #f4f6fa;
-  --color-action-hover: #dfe3ec;
-  --color-on-action: #0d1017;
-  --color-live: #ff958c;
-  --color-danger: #ff8077;
-  --color-paused: #f5b94a;
-  --color-ready: #5fd3a0;
+  --color-action: #171717;
+  --color-action-hover: #383838;
+  --color-on-action: #ffffff;
+  --color-live: #a3161f;
+  --color-danger: #a8101a;
+  --color-paused: #734a00;
+  --color-ready: #126030;
   --color-live-tint: color-mix(in srgb, var(--color-live) 10%, transparent);
   --color-danger-tint: color-mix(in srgb, var(--color-danger) 10%, transparent);
   --color-danger-line: color-mix(in srgb, var(--color-danger) 30%, transparent);
   --color-paused-tint: color-mix(in srgb, var(--color-paused) 10%, transparent);
   --color-ready-tint: color-mix(in srgb, var(--color-ready) 10%, transparent);
   --color-accent-tint: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  --color-sidebar-veil: rgb(15 17 23 / 0.2);
+  --color-sidebar-veil: rgb(244 245 247 / 0.4);
+  --color-thumb: #ffffff;
+  --color-media: #000000;
   --color-sidebar: var(--color-bg);
 
   --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
@@ -59,7 +61,9 @@
   --pane-list-width: clamp(280px, 25vw, 360px);
   --reading-width: 680px;
 
-  --shadow-float: 0 12px 40px rgb(0 0 0 / 0.45), 0 0 0 1px var(--color-border);
+  --shadow-float:
+    0 1px 3px rgb(0 0 0 / 0.08), 0 12px 32px rgb(0 0 0 / 0.14), 0 0 0 1px var(--color-border);
+  --shadow-thumb: 0 0 0 1px var(--color-border);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --duration-fast: 120ms;
   --duration-base: 200ms;
@@ -73,7 +77,44 @@
   -webkit-font-smoothing: antialiased;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f1117;
+    --color-pane: #0a0b10;
+    --color-surface: rgb(255 255 255 / 0.05);
+    --color-surface-raised: rgb(255 255 255 / 0.09);
+    --color-overlay: #161a23;
+    --color-backdrop: rgb(0 0 0 / 0.5);
+    --color-border: rgb(255 255 255 / 0.09);
+    --color-border-strong: rgb(255 255 255 / 0.16);
+    --color-text: rgb(255 255 255 / 0.95);
+    --color-text-muted: rgb(255 255 255 / 0.72);
+    --color-text-subtle: rgb(255 255 255 / 0.55);
+    --color-accent: #8fb6ff;
+    --color-action: #f4f6fa;
+    --color-action-hover: #dfe3ec;
+    --color-on-action: #0d1017;
+    --color-live: #ff958c;
+    --color-danger: #ff8077;
+    --color-paused: #f5b94a;
+    --color-ready: #5fd3a0;
+    --color-sidebar-veil: rgb(15 17 23 / 0.2);
+    --color-thumb: var(--color-surface-raised);
+    --color-media: #000000;
+    --shadow-float: 0 12px 40px rgb(0 0 0 / 0.45), 0 0 0 1px var(--color-border);
+    --shadow-thumb: none;
+  }
+}
+
 @media (prefers-contrast: more) {
+  :root {
+    --color-text-subtle: rgb(0 0 0 / 0.68);
+    --color-border: rgb(0 0 0 / 0.25);
+    --color-border-strong: rgb(0 0 0 / 0.35);
+  }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
   :root {
     --color-text-subtle: rgb(255 255 255 / 0.72);
     --color-border: rgb(255 255 255 / 0.3);
@@ -215,6 +256,11 @@ p {
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
+}
+
+/* The theme changes at once: no button, badge or row lags behind the native material. */
+:root[data-theme-switching] * {
+  transition: none !important;
 }
 
 .meeting-row {

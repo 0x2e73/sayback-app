@@ -6,6 +6,7 @@ import { Onboarding } from './features/onboarding/Onboarding';
 import { useOnboarding } from './features/onboarding/use-onboarding';
 import { NewMeetingDialog } from './features/recording/NewMeetingDialog';
 import { useFullScreen } from './use-full-screen';
+import { useThemeSwitching } from './use-theme-switching';
 import { useWorkspace } from './use-workspace';
 import { WorkspaceContent } from './WorkspaceContent';
 
@@ -42,6 +43,7 @@ function OnboardingScreen({ api, onboarding }: OnboardingScreenProps) {
 export function App({ api }: AppProps) {
   const onboarding = useOnboarding(api);
   useFullScreen(api);
+  useThemeSwitching();
   const workspace = useWorkspace(api);
   const { library, folders, recording, notice } = workspace;
 

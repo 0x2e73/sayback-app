@@ -16,7 +16,7 @@
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-pane);
+  background: var(--color-media);
   text-align: left;
 }
 .recording-preview video {

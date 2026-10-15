@@ -1,8 +1,8 @@
-import { BrowserWindow, dialog } from 'electron';
+import { BrowserWindow, dialog, nativeTheme } from 'electron';
 import { join } from 'node:path';
 import { guardClose } from './close-guard';
 import { relayFullScreen } from './full-screen';
-import { windowChrome } from './window-chrome';
+import { followThemeBackground, windowChrome } from './window-chrome';
 
 interface WindowOptions {
   rendererUrl: string;
@@ -16,7 +16,7 @@ export function createWindow({ rendererUrl, isRecording }: WindowOptions): Brows
     minWidth: 900,
     minHeight: 650,
     title: 'SayBack',
-    ...windowChrome(process.platform),
+    ...windowChrome(process.platform, nativeTheme.shouldUseDarkColors),
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -25,6 +25,7 @@ export function createWindow({ rendererUrl, isRecording }: WindowOptions): Brows
     },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  followThemeBackground(process.platform, nativeTheme, window);
   relayFullScreen(window);
   window.webContents.on('will-navigate', (event, url) => {
     if (url !== rendererUrl) event.preventDefault();

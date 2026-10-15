@@ -120,7 +120,7 @@
   height: 100vh;
   aspect-ratio: auto;
   border-radius: 0;
-  background: var(--color-pane);
+  background: var(--color-media);
 }
 .detail-video-fullscreen {
   position: absolute;

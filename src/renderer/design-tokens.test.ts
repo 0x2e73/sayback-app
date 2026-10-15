@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   contrast,
+  contrastBlock,
   declarations,
   read,
   sheets,
+  themeBlock,
+  themes,
   tokenBlock,
+  tokenBlocks,
   withoutTokens,
   type Declaration,
 } from './design-tokens-support';
@@ -35,10 +39,6 @@ const allowed: Record<string, Set<string>> = {
   'font-weight': new Set(['400', '500', '600', 'inherit']),
   'letter-spacing': new Set(['0', '-0.02em', 'normal']),
 };
-
-function contrastBlock(css: string): string {
-  return /^@media \(prefers-contrast: more\)\s*\{[\s\S]*?^\}/m.exec(css)?.[0] ?? '';
-}
 
 function declaredTokens(css: string): Set<string> {
   const names = [...tokenBlock(css).matchAll(/(--[a-z0-9-]+)\s*:/gi)];
@@ -84,11 +84,15 @@ function cssViolations(css: string, declared: ReadonlySet<string>): string[] {
   return [...found, ...offenders];
 }
 
+function withoutBlocks(css: string): string {
+  return tokenBlocks(css).reduce((rest, block) => rest.replace(block, ''), css);
+}
+
 function sheetViolations(sheet: string): string[] {
   const css = read(sheet);
   const declared = declaredTokens(read('styles.css'));
-  const body = sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css;
-  return cssViolations(body.replace(contrastBlock(css), ''), declared);
+  const body = sheet === 'styles.css' ? withoutBlocks(css) : css;
+  return cssViolations(body, declared);
 }
 
 describe('guard', () => {
@@ -141,32 +145,46 @@ describe('design tokens', () => {
     expect(read('index.html')).not.toMatch(/<style[\s>]/i);
   });
 
-  it.each([
-    ['--color-text', ['--color-bg', '--color-surface-raised'], 4.5],
-    ['--color-text-muted', ['--color-bg', '--color-surface-raised'], 4.5],
-    ['--color-text-subtle', ['--color-bg', '--color-surface-raised'], 4.5],
-    ['--color-focus', ['--color-bg'], 3],
-    ['--color-on-action', ['--color-action'], 4.5],
-  ] as const)('%s stays readable over %j', (foreground, grounds, minimum) => {
-    expect(contrast(foreground, ...grounds)).toBeGreaterThanOrEqual(minimum);
+  describe.each(themes)('%s theme', (theme) => {
+    it.each([
+      ['--color-text', ['--color-bg', '--color-surface-raised'], 4.5],
+      ['--color-text-muted', ['--color-bg', '--color-surface-raised'], 4.5],
+      ['--color-text-subtle', ['--color-bg', '--color-surface-raised'], 4.5],
+      ['--color-focus', ['--color-bg'], 3],
+      ['--color-on-action', ['--color-action'], 4.5],
+    ] as const)('%s stays readable over %j', (foreground, grounds, minimum) => {
+      expect(contrast(theme, foreground, ...grounds)).toBeGreaterThanOrEqual(minimum);
+    });
+
+    it.each(['live', 'danger', 'paused', 'ready', 'accent'])(
+      '--color-%s stays readable on its tint',
+      (name) => {
+        const grounds = [
+          '--color-bg',
+          '--color-surface',
+          '--color-surface-raised',
+          `--color-${name}-tint`,
+        ];
+        expect(contrast(theme, `--color-${name}`, ...grounds)).toBeGreaterThanOrEqual(4.5);
+      },
+    );
+
+    it('shows the hover of the primary action', () => {
+      expect(contrast(theme, '--color-action', '--color-action-hover')).toBeGreaterThanOrEqual(1.1);
+      expect(contrast(theme, '--color-on-action', '--color-action-hover')).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    });
+
+    it('keeps white text readable on the danger button', () => {
+      expect(contrast(theme, '--color-on-action', '--color-danger')).toBeGreaterThanOrEqual(4.5);
+    });
   });
 
-  it.each(['live', 'danger', 'paused', 'ready', 'accent'])(
-    '--color-%s stays readable on its tint',
-    (name) => {
-      const grounds = [
-        '--color-bg',
-        '--color-surface',
-        '--color-surface-raised',
-        `--color-${name}-tint`,
-      ];
-      expect(contrast(`--color-${name}`, ...grounds)).toBeGreaterThanOrEqual(4.5);
-    },
-  );
-
-  it('shows the hover of the primary action', () => {
-    expect(contrast('--color-action', '--color-action-hover')).toBeGreaterThanOrEqual(1.1);
-    expect(contrast('--color-on-action', '--color-action-hover')).toBeGreaterThanOrEqual(4.5);
+  it('keeps the subtle text readable on a light sidebar material over a dark wallpaper', () => {
+    const material = '#d4d4d8';
+    const grounds = [material, '--color-sidebar-veil', '--color-surface-raised'];
+    expect(contrast('light', '--color-text-subtle', ...grounds)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('keeps the danger button filled on hover, over the neutral button hover', () => {
@@ -188,12 +206,54 @@ describe('design tokens', () => {
     expect(read('styles.css')).toMatch(rule);
   });
 
-  it('strengthens the muted tokens when more contrast is requested', () => {
-    const css = read('styles.css');
-    const block = contrastBlock(css);
+  it.each(themes)('strengthens the muted tokens in %s when more contrast is requested', (theme) => {
+    const block = contrastBlock(read('styles.css'), theme);
     for (const token of ['--color-text-subtle', '--color-border', '--color-border-strong']) {
       expect(block).toContain(`${token}:`);
     }
-    expect(css.indexOf(block)).toBeGreaterThan(css.indexOf(tokenBlock(css)));
+  });
+
+  it('orders the cascade: light, dark, light contrast, then dark contrast', () => {
+    const css = read('styles.css');
+    const positions = [
+      themeBlock(css, 'light'),
+      themeBlock(css, 'dark'),
+      contrastBlock(css, 'light'),
+      contrastBlock(css, 'dark'),
+    ].map((block) => css.indexOf(block));
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  it('lets the system draw both schemes', () => {
+    expect(tokenBlock(read('styles.css'))).toMatch(/color-scheme:\s*light dark;/);
+    expect(read('index.html')).toContain('<meta name="color-scheme" content="light dark" />');
+  });
+
+  it('redeclares in the dark block exactly the colour tokens with a literal value in :root', () => {
+    const css = read('styles.css');
+    const colourNames = (block: string, literalOnly: boolean) =>
+      declarations(block.replace(/^[^{]*\{/, ''))
+        .filter(({ property, value }) => {
+          if (!property.startsWith('--color-')) return false;
+          return !literalOnly || /^(?:#[0-9a-f]{6}|rgb\()/i.test(value);
+        })
+        .map(({ property }) => property)
+        .sort();
+    expect(colourNames(themeBlock(css, 'dark'), false)).toEqual(colourNames(tokenBlock(css), true));
+    expect(themeBlock(css, 'dark')).toContain('--shadow-float:');
+  });
+
+  it('gives the active tab and the media bands their own tokens', () => {
+    for (const token of ['--color-thumb', '--color-media']) {
+      for (const theme of themes) {
+        expect(themeBlock(read('styles.css'), theme)).toContain(`${token}:`);
+      }
+    }
+    expect(read('styles/segmented.css')).toMatch(/aria-selected='true'\]\s*\{[^}]*--color-thumb/);
+    expect(read('styles/recording.css')).toMatch(/\.recording-preview\s*\{[^}]*--color-media/);
+    expect(read('styles/meeting-detail.css')).toMatch(
+      /\.detail-video:fullscreen\s*\{[^}]*--color-media/,
+    );
   });
 });
