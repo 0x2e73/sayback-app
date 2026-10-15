@@ -50,6 +50,9 @@ export type LiveAvailability =
   | { state: 'ready' }
   | { state: 'unavailable'; reason: LiveUnavailableReason };
 
+/** Enough for a reloaded island to show the last turns; the island keeps no more. */
+export const KEPT_FINALS = 30;
+
 /** What a subscriber reloads: the availability, the latest finals and the open drafts. */
 export interface LiveTranscriptSnapshot {
   availability: LiveAvailability;

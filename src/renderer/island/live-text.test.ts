@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { IslandLiveSnapshot, LiveSegment } from '../../shared/live';
-import { applyLive, liveTurns, upsertSegment } from './live-text';
+import { applyLive, liveTurns, tailOf, TURN_TAIL, upsertSegment } from './live-text';
+import { KEPT_FINALS } from '../../shared/live';
 
 const segment = (extra: Partial<LiveSegment> = {}): LiveSegment => ({
   id: 'microphone-1',
@@ -34,6 +35,30 @@ describe('upsertSegment', () => {
     expect(
       upsertSegment([segment(), other], segment({ text: ' ', final: true, revision: 2 })),
     ).toEqual([other]);
+  });
+});
+
+describe('the bound of the live text', () => {
+  it(`keeps the last ${KEPT_FINALS} finals and every draft`, () => {
+    let segments: LiveSegment[] = [segment({ id: 'draft', start: 0 })];
+    for (let n = 0; n < KEPT_FINALS + 5; n += 1) {
+      segments = upsertSegment(segments, segment({ id: `final-${n}`, start: n + 1, final: true }));
+    }
+    const finals = segments.filter((item) => item.final).map((item) => item.id);
+    expect(finals).toHaveLength(KEPT_FINALS);
+    expect(finals[0]).toBe('final-5');
+    expect(segments.map((item) => item.id)).toContain('draft');
+  });
+
+  it('keeps the end of a long turn only, from a word', () => {
+    expect(tailOf('court')).toBe('court');
+    const long = `${'mot '.repeat(100)}fin`;
+    const tail = tailOf(long);
+    expect(tail.startsWith('…mot ')).toBe(true);
+    expect(tail.endsWith('fin')).toBe(true);
+    expect(tail.length).toBeLessThanOrEqual(TURN_TAIL + 1);
+    const turns = liveTurns([segment({ text: long })]);
+    expect(turns[0]?.text).toBe(tail);
   });
 });
 

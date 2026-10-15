@@ -1,4 +1,11 @@
-import type { LiveAvailability, LiveSegment, LiveTranscriptSnapshot } from '../shared/live';
+import {
+  KEPT_FINALS,
+  type LiveAvailability,
+  type LiveSegment,
+  type LiveTranscriptSnapshot,
+} from '../shared/live';
+
+export { KEPT_FINALS } from '../shared/live';
 
 export type LiveTranscriptEvent =
   | { kind: 'segment'; segment: LiveSegment }
@@ -7,8 +14,6 @@ export type LiveTranscriptEvent =
 
 export type LiveTranscriptListener = (event: LiveTranscriptEvent) => void;
 
-/** Enough for a reloaded island to show the last turns; the draft is never stored. */
-export const KEPT_FINALS = 30;
 // One open utterance per track, and one more while its final is decoded.
 const KEPT_DRAFTS = 4;
 

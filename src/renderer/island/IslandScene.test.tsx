@@ -136,6 +136,37 @@ describe('the live text of the recording island', () => {
     expect(screen.queryByRole('region', { name: 'Texte en direct' })).not.toBeInTheDocument();
   });
 
+  it('asks again once when the first snapshot fails', async () => {
+    const island = fakeIsland(recordingSnapshot());
+    island.liveSnapshot
+      .mockResolvedValueOnce({ ok: false, error: 'Trop de demandes.' })
+      .mockResolvedValueOnce({ ok: true, value: live([said({})]) });
+    render(<IslandApp api={island.api} now={() => Date.now()} />);
+    await flush();
+    expect(island.liveSnapshot).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('region', { name: 'Texte en direct' })).toHaveTextContent(
+      'On valide le budget jeudi.',
+    );
+  });
+
+  it('asks again when the first segment arrives while the snapshot is missing', async () => {
+    const island = fakeIsland(recordingSnapshot());
+    island.liveSnapshot
+      .mockRejectedValueOnce(new Error('gone'))
+      .mockRejectedValueOnce(new Error('gone'))
+      .mockResolvedValueOnce({ ok: true, value: live([said({})]) });
+    render(<IslandApp api={island.api} now={() => Date.now()} />);
+    await flush();
+    expect(island.liveSnapshot).toHaveBeenCalledTimes(2);
+    island.segment(said({ id: 'system-1', track: 'system', text: 'Ça me va.', start: 4 }));
+    island.segment(said({ id: 'system-2', track: 'system', text: 'Oui.', start: 5 }));
+    await flush();
+    expect(island.liveSnapshot).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole('region', { name: 'Texte en direct' })).toHaveTextContent(
+      'On valide le budget jeudi.',
+    );
+  });
+
   it.each([
     ['no-model', 'Texte en direct indisponible : aucun modèle local'],
     ['port-conflict', 'Texte en direct coupé par sécurité'],
