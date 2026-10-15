@@ -117,15 +117,46 @@ describe('startFromIsland', () => {
     expect(setCapturePrefs).not.toHaveBeenCalled();
   });
 
-  it('answers screen-denied when the screen is refused, listed or not', async () => {
+  it('answers screen-denied only when no screen is listed and the permission is denied', async () => {
     const { api, setCapturePrefs, onStart } = fixture();
-    onStart.mockRejectedValueOnce(new CaptureFailure('screen', 'NotAllowedError'));
+    api.getSources = () => ok([]);
+    api.getCapturePermission = () => ok('denied');
     await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({
       ok: false,
       error: 'screen-denied',
     });
-    api.getSources = () => ok([]);
+    api.getCapturePermission = () => ok('granted');
+    await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({
+      ok: false,
+      error: 'no-screen',
+    });
+    expect(onStart).not.toHaveBeenCalled();
+    expect(setCapturePrefs).not.toHaveBeenCalled();
+  });
+
+  it('trusts a listed screen over a denied permission', async () => {
+    const { api, onStart } = fixture();
     api.getCapturePermission = () => ok('denied');
+    api.getSources = () => ok([{ ...main, id: 'screen:3:0' }]);
+    await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({
+      ok: false,
+      error: 'no-screen',
+    });
+  });
+
+  it('reads a refused screen capture against the screens listed again', async () => {
+    const { api, setCapturePrefs, onStart } = fixture();
+    const refusal = new CaptureFailure('screen', 'NotAllowedError');
+    api.getCapturePermission = () => ok('denied');
+    onStart.mockRejectedValueOnce(refusal);
+    // Still listed: the refusal is not the permission.
+    await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({
+      ok: false,
+      error: 'failed',
+    });
+    const listings = [ok([main]), ok([])];
+    api.getSources = () => listings.shift() ?? ok([]);
+    onStart.mockRejectedValueOnce(refusal);
     await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({
       ok: false,
       error: 'screen-denied',
@@ -151,7 +182,7 @@ describe('startFromIsland', () => {
 
 describe('startErrorOf', () => {
   it.each([
-    [new CaptureFailure('screen', 'NotAllowedError'), 'screen-denied'],
+    [new CaptureFailure('screen', 'NotAllowedError'), 'failed'],
     [new CaptureFailure('screen', 'NotFoundError'), 'no-screen'],
     [new CaptureFailure('screen', 'NotReadableError'), 'failed'],
     [new CaptureFailure('microphone', 'NotAllowedError'), 'failed'],
@@ -159,7 +190,15 @@ describe('startErrorOf', () => {
     [new CaptureBusy('running'), 'failed'],
     [new Error('Une autre panne.'), 'failed'],
     ['pas une erreur', 'failed'],
-  ])('maps %o to %s', (failure, expected) => {
-    expect(startErrorOf(failure)).toBe(expected);
+  ])('maps %o to %s with the chosen screen listed', async (failure, expected) => {
+    const { api } = fixture();
+    api.getCapturePermission = () => ok('denied');
+    await expect(startErrorOf(api, failure, 'screen:1:0')).resolves.toBe(expected);
+  });
+
+  it('answers no-screen to a refusal once the chosen screen is gone', async () => {
+    const { api } = fixture();
+    const refusal = new CaptureFailure('screen', 'NotAllowedError');
+    await expect(startErrorOf(api, refusal, 'screen:9:0')).resolves.toBe('no-screen');
   });
 });

@@ -114,8 +114,11 @@ describe('a start asked by the island', () => {
     expect(screen.queryByRole('dialog', { name: 'Nouvelle réunion' })).not.toBeInTheDocument();
   });
 
-  it('answers screen-denied when the screen capture is refused, and remembers nothing', async () => {
+  it('answers screen-denied when the capture is refused and the screens are gone', async () => {
     const island = islandStartApi();
+    const listings = [ok([main])];
+    island.api.getSources = () => listings.shift() ?? ok([]);
+    island.api.getCapturePermission = () => ok('denied');
     capture.start.mockRejectedValueOnce(new CaptureFailure('screen', 'NotAllowedError'));
     render(<App api={island.api} />);
     await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });

@@ -2,9 +2,15 @@ import { analysisConfigured } from '../../../shared/analysis-settings';
 import {
   defaultCapturePrefs,
   hasAudioSource,
+  screenProblem,
   type SourceToggles,
 } from '../../../shared/capture-selection';
-import { unwrap, type CaptureSource, type DesktopApi } from '../../../shared/contracts';
+import {
+  unwrap,
+  type CapturePermission,
+  type CaptureSource,
+  type DesktopApi,
+} from '../../../shared/contracts';
 import type {
   RecordingStartError,
   RecordingStartOutcome,
@@ -27,13 +33,49 @@ type IslandStartApi = Pick<
 
 const refused = (error: RecordingStartError): RecordingStartOutcome => ({ ok: false, error });
 
-/** An unseen interruption and the screen capture name their error; anything else is `failed`. */
-export function startErrorOf(failure: unknown): RecordingStartError {
+interface ScreenListing {
+  listed: boolean;
+  chosen?: CaptureSource;
+}
+
+async function listScreens(api: IslandStartApi, id: string | undefined): Promise<ScreenListing> {
+  const sources: CaptureSource[] = await api
+    .getSources()
+    .then(unwrap)
+    .catch(() => []);
+  return {
+    listed: sources.some((source) => source.id.startsWith('screen:')),
+    chosen: sources.find((source) => source.id === id),
+  };
+}
+
+/** A screen problem when no screen is listed; else a chosen screen gone, or a plain failure. */
+async function screenFailure(
+  api: IslandStartApi,
+  { listed, chosen }: ScreenListing,
+): Promise<RecordingStartError> {
+  const permission = await api
+    .getCapturePermission('screen')
+    .then(unwrap)
+    .catch((): CapturePermission => 'not-determined');
+  return screenProblem(listed, permission) ?? (chosen ? 'failed' : 'no-screen');
+}
+
+/**
+ * What a failed start answers. A refused screen capture is only `screen-denied` once the screens
+ * are listed again and the system confirms it, as the island decides at its opening.
+ */
+export async function startErrorOf(
+  api: IslandStartApi,
+  failure: unknown,
+  screenId: string | undefined,
+): Promise<RecordingStartError> {
   if (failure instanceof CaptureBusy && failure.hold === 'interrupted') return 'interrupted';
   if (!(failure instanceof CaptureFailure) || failure.device !== 'screen') return 'failed';
-  if (failure.reason === 'NotAllowedError') return 'screen-denied';
-  if (failure.reason === 'NotFoundError') return 'no-screen';
-  return 'failed';
+  if (failure.reason === 'NotAllowedError') {
+    return screenFailure(api, await listScreens(api, screenId));
+  }
+  return failure.reason === 'NotFoundError' ? 'no-screen' : 'failed';
 }
 
 async function analysisReady(api: IslandStartApi): Promise<boolean> {
@@ -44,21 +86,11 @@ async function analysisReady(api: IslandStartApi): Promise<boolean> {
     .catch(() => false);
 }
 
-async function findScreen(api: IslandStartApi, id: string | undefined) {
-  const sources: CaptureSource[] = await api
-    .getSources()
+async function readPrefs(api: IslandStartApi) {
+  return api
+    .getCapturePrefs()
     .then(unwrap)
-    .catch(() => []);
-  return sources.find((source) => source.id === id);
-}
-
-// macOS reports a refusal for a right it never asked about: only a missing screen proves it.
-async function missingScreen(api: IslandStartApi): Promise<RecordingStartError> {
-  const permission = await api
-    .getCapturePermission('screen')
-    .then(unwrap)
-    .catch(() => 'not-determined');
-  return permission === 'denied' ? 'screen-denied' : 'no-screen';
+    .catch(() => defaultCapturePrefs);
 }
 
 const FAILED: RecordingStartOutcome = { ok: false, error: 'failed' };
@@ -93,12 +125,13 @@ export async function startFromIsland(
 ): Promise<RecordingStartOutcome> {
   if (!hasAudioSource(selection)) return refused('no-audio-source');
   const sourceId = selection.screenId ?? '';
-  const source = selection.screen ? await findScreen(api, sourceId) : undefined;
-  if (selection.screen && !source) return refused(await missingScreen(api));
-  const prefs = await api
-    .getCapturePrefs()
-    .then(unwrap)
-    .catch(() => defaultCapturePrefs);
+  // Read together, then straight to the capture: main primed a short-lived user activation.
+  const [screens, prefs, analysis] = await Promise.all([
+    listScreens(api, sourceId),
+    readPrefs(api),
+    analysisReady(api),
+  ]);
+  if (selection.screen && !screens.chosen) return refused(await screenFailure(api, screens));
   const { microphone, systemAudio, screen } = selection;
   const toggles: SourceToggles = { microphone, systemAudio, screen };
   try {
@@ -106,8 +139,8 @@ export async function startFromIsland(
       title,
       selection: toggles,
       sourceId,
-      source,
-      autoAnalyze: prefs.autoAnalyze && (await analysisReady(api)),
+      source: screens.chosen,
+      autoAnalyze: prefs.autoAnalyze && analysis,
       remembered: {
         ...toggles,
         autoAnalyze: prefs.autoAnalyze,
@@ -116,6 +149,6 @@ export async function startFromIsland(
     });
     return { ok: true };
   } catch (failure) {
-    return refused(startErrorOf(failure));
+    return refused(await startErrorOf(api, failure, selection.screenId));
   }
 }
