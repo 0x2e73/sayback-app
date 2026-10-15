@@ -80,5 +80,8 @@ it('sends the audio level to the main process without waiting for an answer', ()
   const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
   if (!api) throw new Error('the preload exposed nothing');
   api.sendLevel(0.25);
-  expect(electron.send).toHaveBeenCalledWith('live:level', 0.25);
+  api.sendLevel(Number.NaN);
+  api.sendLevel(Infinity);
+  api.sendLevel('0.5' as unknown as number);
+  expect(electron.send.mock.calls).toEqual([['live:level', 0.25]]);
 });

@@ -143,5 +143,11 @@ export function createIsland(ports: IslandPorts): Island {
 export function registerIslandHandlers({ handle, listen }: IpcRegistrar, island: Island): void {
   handle('island:ready', () => island.ready(), ['island']);
   handle('island:request', (input) => island.request(islandRequestSchema.parse(input)), ['island']);
-  listen('live:level', (input) => island.level(liveLevelSchema.parse(input)), ['main']);
+  listen(
+    'live:level',
+    (input) => {
+      if (island.window()) island.level(liveLevelSchema.parse(input));
+    },
+    ['main'],
+  );
 }

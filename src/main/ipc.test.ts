@@ -26,13 +26,14 @@ import { createWindowRoles } from './window-roles';
 
 function fakeWindow() {
   const mainFrame = { name: 'top' };
-  return { webContents: { mainFrame }, subFrame: { name: 'iframe' } };
+  return { webContents: { mainFrame }, subFrame: { name: 'iframe' }, isDestroyed: () => false };
 }
 
 const main = fakeWindow();
 const island = fakeWindow();
 let islandOpen = true;
 const stranger = fakeWindow();
+let time = 0;
 
 const from = (window: ReturnType<typeof fakeWindow>): Event => ({
   sender: window.webContents,
@@ -55,8 +56,9 @@ beforeEach(() => {
   electron.listeners.clear();
   received.length = 0;
   islandOpen = true;
+  time = 0;
   const roles = createWindowRoles({ main: () => main, island: () => (islandOpen ? island : null) });
-  const { handle, listen } = createIpcRegistrar(roles);
+  const { handle, listen } = createIpcRegistrar(roles, () => time);
   handle('meetings:list', () => 'meetings');
   handle('island:ready', () => 'snapshot', ['island']);
   listen('live:level', (level) => {
@@ -102,10 +104,36 @@ describe('role matrix for send channels', () => {
     send('live:level', from(main), 0.5);
     send('live:level', from(island), 0.6);
     send('live:level', fromSubFrame(main), 0.7);
-    send('island:poke', from(main));
-    send('island:poke', from(island));
-    send('island:poke', from(stranger));
+    send('island:poke', from(main), 1);
+    send('island:poke', from(island), 1);
+    send('island:poke', from(stranger), 1);
     expect(received).toEqual(['level 0.5', 'poke']);
+  });
+
+  it('drops a message without exactly one payload', () => {
+    send('live:level', from(main));
+    send('live:level', from(main), 0.1, 0.2);
+    send('live:level', from(main), 0.3);
+    expect(received).toEqual(['level 0.3']);
+  });
+
+  it('drops the messages beyond 20 a second on a channel, then takes them again', () => {
+    for (let index = 0; index < 25; index += 1) send('live:level', from(main), index);
+    expect(received).toHaveLength(20);
+    time = 1_000;
+    send('live:level', from(main), 99);
+    expect(received.at(-1)).toBe('level 99');
+  });
+
+  it('takes another rate when the channel asks for it', () => {
+    const { listen } = createIpcRegistrar(
+      createWindowRoles({ main: () => main, island: () => null }),
+      () => time,
+    );
+    let count = 0;
+    listen('live:rare', () => (count += 1), ['main'], 2);
+    for (let index = 0; index < 5; index += 1) send('live:rare', from(main), index);
+    expect(count).toBe(2);
   });
 
   it('drops a message whose handler throws, without raising', () => {
@@ -116,6 +144,24 @@ describe('role matrix for send channels', () => {
       throw new Error('invalid');
     });
     expect(() => send('live:broken', from(main), 'nonsense')).not.toThrow();
+  });
+});
+
+describe('window roles', () => {
+  it('refuses a destroyed window', () => {
+    const gone = { ...fakeWindow(), isDestroyed: () => true };
+    const roles = createWindowRoles({ main: () => gone, island: () => null });
+    expect(roles.allows(from(gone), ['main'])).toBe(false);
+  });
+
+  it('refuses instead of throwing when a window cannot be read', () => {
+    const roles = createWindowRoles({
+      main: () => {
+        throw new Error('Object has been destroyed');
+      },
+      island: () => null,
+    });
+    expect(roles.allows(from(main), ['main'])).toBe(false);
   });
 });
 

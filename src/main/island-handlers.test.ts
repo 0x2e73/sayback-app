@@ -175,7 +175,8 @@ describe('createIsland', () => {
 });
 
 describe('registerIslandHandlers', () => {
-  function registered() {
+  function registered(shown = true) {
+    const shownWindow = fakeWindow().window;
     const roles = new Map<string, readonly WindowRole[] | undefined>();
     const actions = new Map<string, (...args: unknown[]) => unknown>();
     const registrar: IpcRegistrar = {
@@ -189,7 +190,7 @@ describe('registerIslandHandlers', () => {
       },
     };
     const island = {
-      window: () => null,
+      window: () => (shown ? shownWindow : null),
       ready: vi.fn(),
       request: vi.fn(),
       level: vi.fn(),
@@ -219,6 +220,18 @@ describe('registerIslandHandlers', () => {
     const { actions, island } = registered();
     expect(() => actions.get('island:request')?.(request)).toThrow();
     expect(island.request).not.toHaveBeenCalled();
+  });
+
+  it('passes a valid level to the island', () => {
+    const { actions, island } = registered();
+    actions.get('live:level')?.(0.5);
+    expect(island.level).toHaveBeenCalledWith(0.5);
+  });
+
+  it('ignores the level while there is no island', () => {
+    const { actions, island } = registered(false);
+    expect(() => actions.get('live:level')?.(0.5)).not.toThrow();
+    expect(island.level).not.toHaveBeenCalled();
   });
 
   it.each([-0.1, 1.5, Number.NaN, '0.5', null])('drops the level %j', (level) => {
