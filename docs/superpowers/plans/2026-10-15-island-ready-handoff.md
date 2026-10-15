@@ -101,5 +101,5 @@ Until the handler exists, a start from the island ends in `failed` after 60 s.
 
 ## Known limits (not verified in the app)
 
-- The main window keeps `backgroundThrottling` at its default (`true`). While it is hidden, Chromium throttles its timers to about 1 Hz. The level feed (100 ms) and the 30 s frame timer of `capture-session.ts` are affected, and Chromium may pause the muted `<video>` preview of a hidden page. None of this blocks the capture. Fixing it means calling `webContents.setBackgroundThrottling(false)` while recording, which is pending a decision.
+- `recording-power.ts` turns background throttling off on the main page while a recording runs, and restores it on stop, crash or close. During the start itself, before the first `recording:state` with `recording: true`, the hidden page is still throttled: its timers run at about 1 Hz, which can slow the start slightly but does not block it. Chromium may also pause the muted `<video>` preview of a hidden page, which would make the 30 s snapshots stale.
 - The desktopCapturer path in a never-shown window was not exercised: the probe session lacked the Screen Recording permission.
