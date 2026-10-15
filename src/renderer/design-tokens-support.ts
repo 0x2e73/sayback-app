@@ -50,18 +50,39 @@ function declaredIn(block: string, name: string): string | undefined {
   return new RegExp(`(?<![\\w-])${name}:\\s*([^;]+);`).exec(block)?.[1]?.trim();
 }
 
+/** A theme, with or without the reinforcements of `prefers-contrast: more`. */
+export interface Look {
+  theme: Theme;
+  more: boolean;
+}
+
+export const looks: readonly Look[] = themes.flatMap((theme) => [
+  { theme, more: false },
+  { theme, more: true },
+]);
+
+export const describeLook = ({ theme, more }: Look) => (more ? `${theme}, more contrast` : theme);
+
+// Later blocks win in the stylesheet, so they come first here.
+function cascade(css: string, { theme, more }: Look): string[] {
+  const blocks = [tokenBlock(css)];
+  if (theme === 'dark') blocks.push(themeBlock(css, 'dark'));
+  if (more) blocks.push(contrastBlock(css, 'light'));
+  if (more && theme === 'dark') blocks.push(contrastBlock(css, 'dark'));
+  return blocks.reverse();
+}
+
 /** Dark overrides what it redeclares and inherits the rest from `:root`. */
-export function tokenValue(name: string, theme: Theme = 'light'): string {
-  const css = read('styles.css');
-  const own = theme === 'dark' ? declaredIn(themeBlock(css, 'dark'), name) : undefined;
-  const value = own ?? declaredIn(tokenBlock(css), name);
+export function tokenValue(name: string, theme: Theme = 'light', more = false): string {
+  const blocks = cascade(read('styles.css'), { theme, more });
+  const value = blocks.map((block) => declaredIn(block, name)).find((found) => found);
   if (!value) throw new Error(`missing token ${name}`);
   return value;
 }
 
 type Rgba = [number, number, number, number];
 
-function parseColour(value: string, theme: Theme): Rgba {
+function parseColour(value: string, look: Look): Rgba {
   const hex = /^#([0-9a-f]{6})$/i.exec(value)?.[1];
   if (hex) {
     const n = Number.parseInt(hex, 16);
@@ -70,10 +91,10 @@ function parseColour(value: string, theme: Theme): Rgba {
   const rgb = /^rgb\((\d+) (\d+) (\d+)(?: \/ ([\d.]+))?\)$/.exec(value);
   if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), rgb[4] ? Number(rgb[4]) : 1];
   const alias = /^var\((--[a-z0-9-]+)\)$/.exec(value)?.[1];
-  if (alias) return parseColour(tokenValue(alias, theme), theme);
+  if (alias) return parseColour(tokenValue(alias, look.theme, look.more), look);
   const mix = /^color-mix\(in srgb, var\((--[a-z0-9-]+)\) ([\d.]+)%, transparent\)$/.exec(value);
   if (mix) {
-    const [r, g, b, a] = parseColour(tokenValue(mix[1] ?? '', theme), theme);
+    const [r, g, b, a] = parseColour(tokenValue(mix[1] ?? '', look.theme, look.more), look);
     return [r, g, b, a * (Number(mix[2]) / 100)];
   }
   throw new Error(`unparsed colour ${value}`);
@@ -94,15 +115,16 @@ function luminance([r, g, b]: Rgba): number {
 }
 
 /** A ground is a token name, or a hex colour for a material the stylesheet does not declare. */
-function groundColour(ground: string, theme: Theme): Rgba {
-  return parseColour(ground.startsWith('#') ? ground : tokenValue(ground, theme), theme);
+function groundColour(ground: string, look: Look): Rgba {
+  const value = ground.startsWith('#') ? ground : tokenValue(ground, look.theme, look.more);
+  return parseColour(value, look);
 }
 
-export function contrast(theme: Theme, foreground: string, ...grounds: string[]): number {
+export function contrast(look: Look, foreground: string, ...grounds: string[]): number {
   const ground = grounds
-    .map((token) => groundColour(token, theme))
+    .map((token) => groundColour(token, look))
     .reduce((below, layer) => over(layer, below));
-  const text = over(groundColour(foreground, theme), ground);
+  const text = over(groundColour(foreground, look), ground);
   const [a, b] = [luminance(text), luminance(ground)];
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }

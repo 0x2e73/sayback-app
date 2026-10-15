@@ -3,7 +3,9 @@ import {
   contrast,
   contrastBlock,
   declarations,
+  describeLook,
   read,
+  looks,
   sheets,
   themeBlock,
   themes,
@@ -145,7 +147,7 @@ describe('design tokens', () => {
     expect(read('index.html')).not.toMatch(/<style[\s>]/i);
   });
 
-  describe.each(themes)('%s theme', (theme) => {
+  describe.each(looks.map((look) => [describeLook(look), look] as const))('%s', (_name, look) => {
     it.each([
       ['--color-text', ['--color-bg', '--color-surface-raised'], 4.5],
       ['--color-text-muted', ['--color-bg', '--color-surface-raised'], 4.5],
@@ -153,7 +155,7 @@ describe('design tokens', () => {
       ['--color-focus', ['--color-bg'], 3],
       ['--color-on-action', ['--color-action'], 4.5],
     ] as const)('%s stays readable over %j', (foreground, grounds, minimum) => {
-      expect(contrast(theme, foreground, ...grounds)).toBeGreaterThanOrEqual(minimum);
+      expect(contrast(look, foreground, ...grounds)).toBeGreaterThanOrEqual(minimum);
     });
 
     it.each(['live', 'danger', 'paused', 'ready', 'accent'])(
@@ -165,26 +167,28 @@ describe('design tokens', () => {
           '--color-surface-raised',
           `--color-${name}-tint`,
         ];
-        expect(contrast(theme, `--color-${name}`, ...grounds)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(look, `--color-${name}`, ...grounds)).toBeGreaterThanOrEqual(4.5);
       },
     );
 
     it('shows the hover of the primary action', () => {
-      expect(contrast(theme, '--color-action', '--color-action-hover')).toBeGreaterThanOrEqual(1.1);
-      expect(contrast(theme, '--color-on-action', '--color-action-hover')).toBeGreaterThanOrEqual(
+      expect(contrast(look, '--color-action', '--color-action-hover')).toBeGreaterThanOrEqual(1.1);
+      expect(contrast(look, '--color-on-action', '--color-action-hover')).toBeGreaterThanOrEqual(
         4.5,
       );
     });
 
     it('keeps white text readable on the danger button', () => {
-      expect(contrast(theme, '--color-on-action', '--color-danger')).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(look, '--color-on-action', '--color-danger')).toBeGreaterThanOrEqual(4.5);
     });
   });
 
   it('keeps the subtle text readable on a light sidebar material over a dark wallpaper', () => {
     const material = '#d4d4d8';
     const grounds = [material, '--color-sidebar-veil', '--color-surface-raised'];
-    expect(contrast('light', '--color-text-subtle', ...grounds)).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrast({ theme: 'light', more: false }, '--color-text-subtle', ...grounds),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   it('keeps the danger button filled on hover, over the neutral button hover', () => {
@@ -225,6 +229,14 @@ describe('design tokens', () => {
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
   });
 
+  it('freezes transitions, pseudo-elements included, while the theme switches', () => {
+    const css = read('styles.css').replace(/\s+/g, ' ');
+    const selectors = ['*', '*::before', '*::after'].map(
+      (target) => `:root[data-theme-switching] ${target}`,
+    );
+    expect(css).toContain(`${selectors.join(', ')} { transition: none !important; }`);
+  });
+
   it('lets the system draw both schemes', () => {
     expect(tokenBlock(read('styles.css'))).toMatch(/color-scheme:\s*light dark;/);
     expect(read('index.html')).toContain('<meta name="color-scheme" content="light dark" />');
@@ -236,7 +248,7 @@ describe('design tokens', () => {
       declarations(block.replace(/^[^{]*\{/, ''))
         .filter(({ property, value }) => {
           if (!property.startsWith('--color-')) return false;
-          return !literalOnly || /^(?:#[0-9a-f]{6}|rgb\()/i.test(value);
+          return !literalOnly || !/^(?:var|color-mix)\(/.test(value);
         })
         .map(({ property }) => property)
         .sort();
