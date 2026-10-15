@@ -7,7 +7,7 @@ import {
 } from '../../../shared/contracts';
 import { errorMessage } from '../../../shared/format';
 import { isLocalCompatibleUrl } from '../../../shared/compatible-url';
-import type { useSettingsFields } from './use-settings-fields';
+import { savedFrom, type useSettingsFields } from './use-settings-fields';
 
 type Fields = ReturnType<typeof useSettingsFields>;
 
@@ -133,21 +133,19 @@ export function useSettingsActions(api: DesktopApi, fields: Fields) {
     setSuccess('');
     try {
       const result = await saveWithModel(api, input, fields.models, fields.loadModels);
-      fields.setHasOpenAiKey(result.settings.hasOpenAiKey);
-      fields.setHasAnthropicKey(result.settings.hasAnthropicKey);
-      fields.setHasGeminiKey(result.settings.hasGeminiKey);
-      fields.setHasCompatibleKey(result.settings.hasCompatibleKey);
+      fields.applyKeyFlags(result.settings);
       fields.setOpenAiKey('');
       fields.setAnthropicKey('');
       fields.setGeminiKey('');
       fields.setCompatibleKey('');
       fields.setModel(result.model);
+      fields.markSaved(savedFrom(input, result.model));
       if (result.modelsUnavailable) {
         setError('Clé enregistrée, mais les modèles restent indisponibles. Réessayez.');
       } else if (!result.model) {
         setSuccess('Clé enregistrée. Choisissez un modèle pour les notes.');
       } else {
-        setSuccess('Paramètres enregistrés.');
+        setSuccess('Enregistré');
       }
     } catch (failure) {
       setError(errorMessage(failure));
@@ -159,10 +157,7 @@ export function useSettingsActions(api: DesktopApi, fields: Fields) {
   async function clearKey(provider: 'openai' | 'anthropic' | 'gemini' | 'compatible') {
     try {
       const settings = unwrap(await api.clearApiKey(provider));
-      fields.setHasOpenAiKey(settings.hasOpenAiKey);
-      fields.setHasAnthropicKey(settings.hasAnthropicKey);
-      fields.setHasGeminiKey(settings.hasGeminiKey);
-      fields.setHasCompatibleKey(settings.hasCompatibleKey);
+      fields.applyKeyFlags(settings);
       if (fields.notesProvider === provider) fields.clearModels();
       setSuccess('Clé supprimée.');
     } catch (failure) {

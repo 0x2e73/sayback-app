@@ -5,6 +5,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { newMeetingDialog } from './new-meeting-harness';
+import { chooseOption } from './select-harness';
 import { apiFor, ok, settings } from './test-api';
 
 afterEach(cleanup);
@@ -57,8 +58,8 @@ describe('Meeting workspace', () => {
     render(<App api={apiFor()} />);
     await user.click(await screen.findByRole('button', { name: 'Paramètres' }));
     await user.type(await screen.findByLabelText('Clé API OpenAI'), 'sk-test-personal');
-    await user.click(screen.getByRole('button', { name: 'Enregistrer les paramètres' }));
-    expect(await screen.findByText('Paramètres enregistrés.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(await screen.findByText('Enregistré')).toBeInTheDocument();
     expect(screen.getByLabelText('Clé API OpenAI')).toHaveValue('');
   });
   it('lets people select a fully local analysis without an API key', async () => {
@@ -77,15 +78,15 @@ describe('Meeting workspace', () => {
     const user = userEvent.setup();
     render(<App api={api} />);
     await user.click(await screen.findByRole('button', { name: 'Paramètres' }));
-    await user.selectOptions(screen.getByLabelText('Transcription de l’audio'), 'local');
-    await user.selectOptions(screen.getByLabelText('Compte rendu'), 'ollama');
+    await chooseOption(user, 'Transcription de l’audio', 'Local · whisper.cpp');
+    await chooseOption(user, 'Compte rendu', 'Ollama · local');
     await user.type(screen.getByLabelText(/Modèle Whisper local/), '/models/ggml-small.bin');
     await user.click(
-      await screen.findByRole('button', { name: 'Modèle pour les notes : aucun modèle choisi' }),
+      await screen.findByRole('button', { name: 'Modèle pour les notes Choisir un modèle' }),
     );
     await user.click(screen.getByRole('option', { name: 'gemma3:latest' }));
     expect(screen.queryByLabelText('Clé API OpenAI')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Enregistrer les paramètres' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         transcriptionProvider: 'local',
@@ -111,16 +112,16 @@ describe('Meeting workspace', () => {
     const user = userEvent.setup();
     render(<App api={api} />);
     await user.click(await screen.findByRole('button', { name: 'Paramètres' }));
-    await user.selectOptions(screen.getByLabelText('Transcription de l’audio'), 'gemini');
-    await user.selectOptions(screen.getByLabelText('Compte rendu'), 'compatible');
+    await chooseOption(user, 'Transcription de l’audio', 'Google · Gemini');
+    await chooseOption(user, 'Compte rendu', 'API compatible OpenAI');
     await user.type(screen.getByLabelText('Clé API Gemini'), 'gemini-secret');
     await user.type(
-      screen.getByLabelText('URL de base de l’API compatible'),
+      screen.getByLabelText('Adresse de l’API (compatible OpenAI)'),
       'https://openrouter.ai/api/v1',
     );
     await user.type(screen.getByLabelText('Clé de cette API'), 'router-secret');
     await user.type(screen.getByPlaceholderText('ex. openai/gpt-4o'), 'openai/gpt-4o');
-    await user.click(screen.getByRole('button', { name: 'Enregistrer les paramètres' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         transcriptionProvider: 'gemini',
@@ -142,7 +143,7 @@ describe('Meeting workspace', () => {
     await user.click(dropdown);
     expect(screen.getByRole('option', { name: 'whisper-1' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'gpt-4o' })).toBeInTheDocument();
-    await user.type(screen.getByRole('searchbox', { name: 'Rechercher un modèle' }), '4o');
+    await user.type(await screen.findByRole('searchbox', { name: 'Rechercher un modèle' }), '4o');
     expect(screen.queryByRole('option', { name: 'whisper-1' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('option', { name: 'gpt-4o' }));
     expect(dropdown).toHaveTextContent('gpt-4o');

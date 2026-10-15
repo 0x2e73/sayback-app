@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   unwrap,
   type Appearance,
@@ -10,12 +10,44 @@ import { errorMessage } from '../../../shared/format';
 import { isLocalCompatibleUrl } from '../../../shared/compatible-url';
 import { useModels } from './use-models';
 
-function modelsAvailable(provider: NotesProvider, settings: Settings): boolean {
+/** What the store holds; the form is dirty once it differs from it. */
+export interface SavedFields {
+  notesProvider: NotesProvider;
+  transcriptionProvider: Settings['transcriptionProvider'];
+  model: string;
+  compatibleBaseUrl: string;
+  whisperModelPath: string;
+}
+
+export function savedFrom(source: SavedFields, model = source.model): SavedFields {
+  return {
+    notesProvider: source.notesProvider,
+    transcriptionProvider: source.transcriptionProvider,
+    model,
+    compatibleBaseUrl: source.compatibleBaseUrl,
+    whisperModelPath: source.whisperModelPath,
+  };
+}
+
+function differs(saved: SavedFields, current: SavedFields): boolean {
+  return (Object.keys(saved) as (keyof SavedFields)[]).some((key) => saved[key] !== current[key]);
+}
+
+type KeyFlags = Pick<
+  Settings,
+  'hasOpenAiKey' | 'hasAnthropicKey' | 'hasGeminiKey' | 'hasCompatibleKey'
+>;
+
+function canListModels(
+  provider: NotesProvider,
+  keys: KeyFlags,
+  compatibleBaseUrl: string,
+): boolean {
   if (provider === 'ollama') return true;
-  if (provider === 'openai') return settings.hasOpenAiKey;
-  if (provider === 'anthropic') return settings.hasAnthropicKey;
-  if (provider === 'gemini') return settings.hasGeminiKey;
-  return settings.hasCompatibleKey || isLocalCompatibleUrl(settings.compatibleBaseUrl);
+  if (provider === 'openai') return keys.hasOpenAiKey;
+  if (provider === 'anthropic') return keys.hasAnthropicKey;
+  if (provider === 'gemini') return keys.hasGeminiKey;
+  return keys.hasCompatibleKey || isLocalCompatibleUrl(compatibleBaseUrl);
 }
 
 function useKeyFields() {
@@ -27,6 +59,12 @@ function useKeyFields() {
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const [hasCompatibleKey, setHasCompatibleKey] = useState(false);
+  const applyKeyFlags = useCallback((stored: KeyFlags) => {
+    setHasOpenAiKey(stored.hasOpenAiKey);
+    setHasAnthropicKey(stored.hasAnthropicKey);
+    setHasGeminiKey(stored.hasGeminiKey);
+    setHasCompatibleKey(stored.hasCompatibleKey);
+  }, []);
   return {
     openAiKey,
     anthropicKey,
@@ -40,10 +78,8 @@ function useKeyFields() {
     setAnthropicKey,
     setGeminiKey,
     setCompatibleKey,
-    setHasOpenAiKey,
-    setHasAnthropicKey,
-    setHasGeminiKey,
-    setHasCompatibleKey,
+    typedKey: !!(openAiKey || anthropicKey || geminiKey || compatibleKey),
+    applyKeyFlags,
   };
 }
 
@@ -53,11 +89,12 @@ export function useSettingsFields(api: DesktopApi) {
     useState<Settings['transcriptionProvider']>('openai');
   const [model, setModel] = useState('gpt-4.1-mini');
   const keys = useKeyFields();
-  const { setHasOpenAiKey, setHasAnthropicKey, setHasGeminiKey, setHasCompatibleKey } = keys;
+  const { applyKeyFlags } = keys;
   const [compatibleBaseUrl, setCompatibleBaseUrl] = useState('');
   const [whisperModelPath, setWhisperModelPath] = useState('');
   const [appearance, setAppearance] = useState<Appearance>('system');
   const [loadError, setLoadError] = useState('');
+  const [saved, markSaved] = useState<SavedFields | null>(null);
   const {
     items: models,
     loading: modelsLoading,
@@ -74,43 +111,45 @@ export function useSettingsFields(api: DesktopApi) {
         setNotesProvider(settings.notesProvider);
         setTranscriptionProvider(settings.transcriptionProvider);
         setModel(settings.model);
-        setHasOpenAiKey(settings.hasOpenAiKey);
-        setHasAnthropicKey(settings.hasAnthropicKey);
-        setHasGeminiKey(settings.hasGeminiKey);
-        setHasCompatibleKey(settings.hasCompatibleKey);
+        applyKeyFlags(settings);
         setCompatibleBaseUrl(settings.compatibleBaseUrl);
         setWhisperModelPath(settings.whisperModelPath);
         setAppearance(settings.appearance);
-        if (modelsAvailable(settings.notesProvider, settings)) {
+        markSaved(savedFrom(settings));
+        if (canListModels(settings.notesProvider, settings, settings.compatibleBaseUrl)) {
           void loadModels(settings.notesProvider).then((available) => {
-            if (available.length && !available.includes(settings.model)) {
-              setModel('');
-            }
+            if (available.length && !available.includes(settings.model)) setModel('');
           });
         }
       })
       .catch((failure: unknown) => setLoadError(errorMessage(failure)));
-  }, [api, loadModels, setHasOpenAiKey, setHasAnthropicKey, setHasGeminiKey, setHasCompatibleKey]);
+  }, [api, loadModels, applyKeyFlags]);
 
   function selectNotesProvider(provider: NotesProvider) {
     setNotesProvider(provider);
     setModel('');
     clearModels();
-    const ready =
-      provider === 'ollama' ||
-      (provider === 'openai' && keys.hasOpenAiKey) ||
-      (provider === 'anthropic' && keys.hasAnthropicKey) ||
-      (provider === 'gemini' && keys.hasGeminiKey) ||
-      (provider === 'compatible' &&
-        (keys.hasCompatibleKey || isLocalCompatibleUrl(compatibleBaseUrl)));
-    if (ready) void loadModels(provider);
+    if (canListModels(provider, keys, compatibleBaseUrl)) void loadModels(provider);
   }
+
+  const current = {
+    notesProvider,
+    transcriptionProvider,
+    model,
+    compatibleBaseUrl,
+    whisperModelPath,
+  };
+  const dirty = saved !== null && (keys.typedKey || differs(saved, current));
 
   return {
     notesProvider,
     transcriptionProvider,
     model,
     ...keys,
+    dirty,
+    /** Until the stored settings are read, the form shows placeholders. */
+    loaded: saved !== null,
+    markSaved,
     compatibleBaseUrl,
     whisperModelPath,
     appearance,
