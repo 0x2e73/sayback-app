@@ -22,6 +22,7 @@ import './styles/playback-bar.css';
 import './styles/recording.css';
 import './styles/model-select.css';
 import './styles/onboarding.css';
+import './styles/motion.css';
 
 declare global {
   interface Window {

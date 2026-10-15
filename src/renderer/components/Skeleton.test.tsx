@@ -6,7 +6,7 @@ import { Skeleton } from './Skeleton';
 
 afterEach(cleanup);
 
-it('is hidden from assistive technology and never moves', () => {
+it('is hidden from assistive technology', () => {
   const view = render(<Skeleton />);
   expect(view.container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
 });

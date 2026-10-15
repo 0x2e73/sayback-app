@@ -50,7 +50,6 @@
   border-top: 1px solid var(--color-border);
   background: var(--color-accent-tint);
   font-size: var(--text-caption);
-  animation: state-enter var(--duration-base) var(--ease-out);
 }
 .update-line-text {
   display: flex;

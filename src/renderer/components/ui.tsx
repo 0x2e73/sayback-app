@@ -1,6 +1,7 @@
 export { Button } from './Button';
 export { Dialog } from './Dialog';
-export { Notice } from './Notice';
+export { FloatingNotice, Notice } from './Notice';
+export { IconSwap } from './IconSwap';
 export { StatusBadge } from './StatusBadge';
 export { ConfirmDialog } from './ConfirmDialog';
 export { Chip } from './Chip';

@@ -143,3 +143,10 @@ it('leaves ↑ and ↓ alone in tabs', async () => {
   await user.keyboard('{ArrowDown}{ArrowUp}');
   expect(onChange).toHaveBeenCalledOnce();
 });
+
+it('holds one thumb, switched to transitions after its first position', () => {
+  render(<Harness />);
+  const thumb = document.querySelector<HTMLElement>('.segmented-thumb')!;
+  expect(thumb).toHaveAttribute('aria-hidden', 'true');
+  expect(thumb).toHaveAttribute('data-ready');
+});

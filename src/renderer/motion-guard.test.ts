@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { declarations, read, sheets, tokenBlock } from './design-tokens-support';
 
 const motionProperty = /^(?:-webkit-)?(?:transition|animation)(?:-[a-z-]+)?$/;
-const allowedVars = /var\(--(?:duration-fast|duration-base|duration-loop|ease-out|ease-linear)\)/g;
+const allowedVars =
+  /var\(--(?:duration-(?:fast|exit|base|slow|loop|ambient)|delay-(?:1|2|3|wait)|ease-(?:out|move|linear|ambient))\)/g;
 // The island shell alone animates its size, on its own curve (exception in frontend.md).
 const islandSheet = 'styles/island.css';
 const islandVars = /var\(--(?:duration-island|ease-island)\)/g;
@@ -23,12 +24,32 @@ const timingOnly = /^(?:-webkit-)?(?:transition|animation)-(?:duration|delay|tim
 const transitionList = /^(?:-webkit-)?transition(?:-property)?$/;
 const declaredMotionTokens = [
   '--duration-fast',
+  '--duration-exit',
   '--duration-base',
+  '--duration-slow',
   '--duration-loop',
+  '--duration-ambient',
+  '--delay-1',
+  '--delay-2',
+  '--delay-3',
+  '--delay-wait',
   '--ease-out',
+  '--ease-move',
   '--ease-linear',
+  '--ease-ambient',
+  // The island shell alone (exception in frontend.md).
   '--duration-island',
   '--ease-island',
+];
+const offsetTokens = [
+  '--motion-rise',
+  '--motion-drop',
+  '--motion-slide',
+  '--motion-scale-in',
+  '--motion-scale-out',
+  '--motion-press',
+  '--motion-icon',
+  '--motion-accept',
 ];
 
 function declarationProblem(
@@ -72,10 +93,12 @@ describe('motion guard', () => {
     '-webkit-transition: opacity 300ms ease',
     'transition: opacity calc(var(--duration-fast) * 3) var(--ease-out)',
     'transition: opacity 1e3ms',
-    'transition: opacity var(--duration-slow) var(--ease-out)',
     'transition: opacity var(--duration-fast) cubic-bezier(0, 0, 1, 1)',
     'TRANSITION: opacity 1S',
     'transition-property: height',
+    'transition: opacity var(--duration-island) var(--ease-out)',
+    'transition: opacity 200ms var(--ease-out)',
+    'transition-delay: 40ms',
     'transition-duration: 200ms',
     'animation-timing-function: ease',
   ])('catches %s', (declaration) => {
@@ -89,6 +112,10 @@ describe('motion guard', () => {
     'transition-duration: var(--duration-fast)',
     'animation: spin var(--duration-loop) var(--ease-linear) infinite',
     'animation: state-enter var(--duration-base) var(--ease-out)',
+    'transition: opacity var(--duration-slow) var(--ease-move) var(--delay-1)',
+    'transition: opacity var(--duration-exit) var(--ease-out) var(--delay-wait)',
+    'animation: skeleton-pulse var(--duration-ambient) var(--ease-ambient) infinite alternate',
+    'transition-delay: var(--delay-2)',
   ])('lets %s through', (declaration) => {
     expect(motionViolations(`.x { ${declaration}; }`)).toEqual([]);
   });
@@ -131,7 +158,7 @@ describe('motion guard', () => {
 
   it('declares exactly the allowed duration and easing tokens', () => {
     const names = [
-      ...tokenBlock(read('styles.css')).matchAll(/(--(?:duration|ease)-[a-z0-9-]+)\s*:/g),
+      ...tokenBlock(read('styles.css')).matchAll(/(--(?:duration|delay|ease)-[a-z0-9-]+)\s*:/g),
     ];
     expect(names.map(([, name]) => name).sort()).toEqual([...declaredMotionTokens].sort());
   });
@@ -146,4 +173,70 @@ describe('motion guard', () => {
       expect(read(sheet)).not.toMatch(/@keyframes|prefers-reduced-motion/);
     },
   );
+
+  it('keeps every duration under 300 ms but the loops, and exits quicker than entrances', () => {
+    const css = read('styles.css');
+    const milliseconds = (name: string) => {
+      const [, amount, unit] = new RegExp(`${name}:\\s*([\\d.]+)(ms|s)`).exec(css) ?? [];
+      return Number(amount) * (unit === 's' ? 1000 : 1);
+    };
+    for (const name of ['fast', 'exit', 'base', 'slow']) {
+      expect(milliseconds(`--duration-${name}`)).toBeLessThanOrEqual(300);
+    }
+    expect(milliseconds('--duration-exit')).toBeLessThan(milliseconds('--duration-base'));
+  });
+
+  it('allows infinite loops only on the loop and ambient durations, switched off under reduced motion', () => {
+    for (const sheet of sheets) {
+      const css = read(sheet);
+      const rules = [...css.matchAll(/([^{}]+)\{([^{}]*\binfinite\b[^{}]*)\}/g)];
+      for (const [, selector = '', body = ''] of rules) {
+        if (sheet === islandSheet) continue;
+        expect(body, selector).toMatch(/var\(--duration-(?:loop|ambient)\)/);
+        for (const name of selector.split(',').map((part) => part.trim())) {
+          expect(reducedBlock(), name).toContain(name);
+        }
+      }
+    }
+  });
+
+  it('gives every closing rule that sets a duration the exit duration', () => {
+    const durations = sheets.flatMap(closingDurations);
+    expect(durations.length).toBeGreaterThan(0);
+    for (const value of durations) expect(value).toContain('var(--duration-exit)');
+  });
+
+  it('resets every offset token to 0px or 1 and the staggers to 0ms under reduced motion', () => {
+    const block = reducedBlock();
+    for (const name of offsetTokens) {
+      expect(block).toMatch(new RegExp(`${name}:\\s*(?:0px|1);`));
+    }
+    for (const name of ['--delay-1', '--delay-2', '--delay-3']) {
+      expect(block).toMatch(new RegExp(`${name}:\\s*0ms;`));
+    }
+  });
+
+  it('declares every offset token once', () => {
+    const block = tokenBlock(read('styles.css'));
+    for (const name of offsetTokens) expect(block).toContain(`${name}:`);
+  });
+
+  it.each(sheets)('%s never asks for smooth scrolling', (sheet) => {
+    expect(read(sheet)).not.toMatch(/scroll-behavior:\s*smooth/);
+  });
 });
+
+function reducedBlock(): string {
+  const css = read('styles.css');
+  const start = css.indexOf('@media (prefers-reduced-motion: reduce)');
+  if (start < 0) throw new Error('styles.css needs a prefers-reduced-motion block');
+  return css.slice(start, css.indexOf('\n}\n', start) + 3);
+}
+
+function closingDurations(sheet: string): string[] {
+  const css = read(sheet).replace(/\/\*[\s\S]*?\*\//g, '');
+  return [...css.matchAll(/\[data-state='closing'\][^{}]*\{([^{}]*)\}/g)]
+    .flatMap(([, body = '']) => declarations(body))
+    .filter(({ property }) => /duration|^transition$/.test(property))
+    .map(({ value }) => value);
+}

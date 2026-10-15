@@ -24,10 +24,23 @@ button.chip:hover {
   background: var(--color-surface-raised);
   color: var(--color-text);
 }
+.chip[aria-pressed='true'] {
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
+}
 .chip[data-drag-over='true'] {
   border-color: var(--color-accent);
   background: var(--color-accent-tint);
   color: var(--color-text);
+  transform: scale(var(--motion-accept));
+  transition-duration: var(--duration-base);
+}
+.chip[data-accepted] {
+  animation: chip-accept var(--duration-slow) var(--ease-out);
 }
 
 .chip[data-size='md'] {

@@ -153,3 +153,25 @@ it('lets Escape undo something before it closes', () => {
   fireEvent(dialogElement(), new Event('cancel', { cancelable: true }));
   expect(close).toHaveBeenCalledOnce();
 });
+
+it('plays its exit before it leaves, then hands the focus back', () => {
+  vi.useFakeTimers();
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+    transitionDuration: '0.15s',
+  } as CSSStyleDeclaration);
+  const view = render(
+    <Dialog title="Nouvelle réunion" open onClose={vi.fn()}>
+      <p>Contenu</p>
+    </Dialog>,
+  );
+  expect(dialogElement()).toHaveAttribute('data-state', 'open');
+  view.rerender(
+    <Dialog title="Nouvelle réunion" open={false} onClose={vi.fn()}>
+      <p>Contenu</p>
+    </Dialog>,
+  );
+  expect(dialogElement()).toHaveAttribute('data-state', 'closing');
+  fireEvent.transitionEnd(dialogElement(), { propertyName: 'opacity' });
+  expect(document.querySelector('dialog')).toBeNull();
+  vi.useRealTimers();
+});

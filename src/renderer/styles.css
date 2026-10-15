@@ -91,11 +91,28 @@
   --shadow-float:
     0 1px 3px rgb(0 0 0 / 0.08), 0 12px 32px rgb(0 0 0 / 0.14), 0 0 0 1px var(--color-border);
   --shadow-thumb: 0 0 0 1px var(--color-border);
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --duration-fast: 120ms;
+  --duration-exit: 150ms;
   --duration-base: 200ms;
+  --duration-slow: 280ms;
   --duration-loop: 1s;
+  --duration-ambient: 1.6s;
+  --delay-1: 40ms;
+  --delay-2: 80ms;
+  --delay-3: 120ms;
+  --delay-wait: 300ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-move: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-linear: linear;
+  --ease-ambient: cubic-bezier(0.37, 0, 0.63, 1);
+  --motion-rise: 6px;
+  --motion-drop: -4px;
+  --motion-slide: 8px;
+  --motion-scale-in: 0.96;
+  --motion-scale-out: 0.98;
+  --motion-press: 0.97;
+  --motion-icon: 0.5;
+  --motion-accept: 1.06;
   /* Island shell only: a damped spring for its size, the one exception to the single curve. */
   --ease-island: cubic-bezier(0.32, 0.72, 0, 1);
   --duration-island: 280ms;
@@ -309,94 +326,113 @@ p {
   transition: none !important;
 }
 
-.meeting-row {
-  transition:
-    background-color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out),
-    opacity var(--duration-fast) var(--ease-out);
-}
 .button {
   transition:
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
 }
 .switch-thumb {
   transition:
     background-color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
-.chip[data-size='md'] {
+.chip {
   transition:
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
 }
 .button:active:not(:disabled, [aria-disabled='true']),
-.chip[data-size='md']:active:not(:disabled) {
-  transform: scale(0.97);
+button.chip:active:not(:disabled) {
+  transform: scale(var(--motion-press));
+}
+.button-label {
+  transition: opacity var(--duration-base) var(--ease-out);
 }
 .button[aria-busy='true'] .button-label {
   opacity: 0;
+}
+.button-spinner {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .button-spinner {
+    opacity: 0;
+  }
 }
 
 .spin {
   animation: spin var(--duration-loop) var(--ease-linear) infinite;
 }
 
-@keyframes state-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-@keyframes fade-enter {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes menu-enter {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
+/* Played once or in a loop; every entrance and exit is a transition (styles/motion.css). */
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
+@keyframes skeleton-pulse {
+  to {
+    opacity: 0.55;
+  }
+}
+@keyframes chip-accept {
+  from {
+    transform: scale(var(--motion-accept));
+    background-color: var(--color-accent-tint);
+    border-color: var(--color-accent);
+  }
+}
+/* Held on the accent tint, then back to the element's own background. */
+@keyframes turn-target {
+  0%,
+  40% {
+    background-color: var(--color-accent-tint);
+  }
+}
+/* Kept for the screens that have not moved to transitions yet. */
+@keyframes state-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+}
 
+/* Reduced motion changes tokens: every entrance becomes a fade, nothing slides or scales. */
 @media (prefers-reduced-motion: reduce) {
-  .row-progress-bar,
-  .analysis-line-bar,
-  .level-meter-bar,
-  .island-shell {
+  :root {
+    --motion-rise: 0px;
+    --motion-drop: 0px;
+    --motion-slide: 0px;
+    --motion-scale-in: 1;
+    --motion-scale-out: 1;
+    --motion-press: 1;
+    --motion-icon: 1;
+    --motion-accept: 1;
+    --delay-1: 0ms;
+    --delay-2: 0ms;
+    --delay-3: 0ms;
+  }
+  /* The prefix outranks the feature sheets, which load after this one. */
+  :root .row-progress-bar,
+  :root .analysis-line-bar,
+  :root .level-meter-bar,
+  :root .island-shell,
+  :root .segmented-thumb[data-ready],
+  :root .meeting-list-selection[data-ready],
+  :root .onboarding-progress span::after,
+  :root .switch-thumb,
+  :root .source-chevron {
     transition: none;
   }
-  @keyframes state-enter {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes menu-enter {
-    from {
-      opacity: 0;
-    }
-  }
-  .spin {
+  :root .spin,
+  :root .skeleton {
     animation: none;
-  }
-  .button:active:not(:disabled, [aria-disabled='true']),
-  .chip[data-size='md']:active:not(:disabled) {
-    transform: none;
-  }
-  .switch-thumb,
-  .source-chevron {
-    transition: none;
   }
   .button[aria-busy='true'] .button-label {
     opacity: 0.4;

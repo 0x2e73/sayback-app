@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, type KeyboardEvent } from 'react';
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -51,6 +51,32 @@ function semantics(option: SegmentedOption<string> | RadioOption<string>, select
   } as const;
 }
 
+/** The thumb is placed by hand: a state would render the whole group on every resize. */
+function useThumb(value: string) {
+  const group = useRef<HTMLDivElement>(null);
+  const thumb = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const box = group.current;
+    const mark = thumb.current;
+    if (!box || !mark) return;
+    function place(): void {
+      const active = box?.querySelector<HTMLElement>('.segmented-tab[tabindex="0"]');
+      if (!active || !mark) return;
+      mark.style.width = `${active.offsetWidth}px`;
+      mark.style.transform = `translateX(${active.offsetLeft}px)`;
+    }
+    place();
+    // Flush the first position before the transition is switched on: no slide from the corner.
+    void mark.offsetWidth;
+    mark.dataset.ready = '';
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(place);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [value]);
+  return { group, thumb };
+}
+
 /**
  * Tabs, or a radio group, with automatic activation: the arrows move the focus and the
  * selection together.
@@ -58,6 +84,7 @@ function semantics(option: SegmentedOption<string> | RadioOption<string>, select
 export function Segmented<T extends string>(props: SegmentedProps<T>) {
   const { label, options, value, onChange } = props;
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const { group, thumb } = useThumb(value);
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
     const next = targetIndex(event.key, index, options.length, props.kind === 'radios');
@@ -71,10 +98,12 @@ export function Segmented<T extends string>(props: SegmentedProps<T>) {
 
   return (
     <div
+      ref={group}
       className="segmented"
       role={props.kind === 'radios' ? 'radiogroup' : 'tablist'}
       aria-label={label}
     >
+      <span ref={thumb} className="segmented-thumb" aria-hidden="true" />
       {options.map((option, index) => {
         const selected = option.value === value;
         return (

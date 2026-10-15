@@ -119,7 +119,6 @@
   width: min(100%, 620px);
   margin: auto 0;
   padding: 50px 0;
-  animation: state-enter var(--duration-base) var(--ease-out);
 }
 
 .onboarding-copy h1 {
@@ -157,14 +156,27 @@
 }
 
 .onboarding-progress span {
+  position: relative;
   width: 28px;
   height: 4px;
+  overflow: hidden;
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
 }
 
-.onboarding-progress span.active {
+/* The active step fills from the left, so the progress reads as a move. */
+.onboarding-progress span::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-slow) var(--ease-move);
+}
+
+.onboarding-progress span.active::after {
+  transform: scaleX(1);
 }
 
 @media (max-width: 850px) {

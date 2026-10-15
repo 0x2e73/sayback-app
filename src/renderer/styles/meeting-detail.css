@@ -143,7 +143,7 @@
   height: 100%;
   background: var(--color-accent);
   transform-origin: left;
-  transition: transform var(--duration-base) var(--ease-out);
+  transition: transform var(--duration-slow) var(--ease-out);
 }
 /* Above the player bar, never over it. */
 .main-card:has(.playback-bar) .notice.notice-floating {

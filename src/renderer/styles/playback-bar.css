@@ -22,6 +22,7 @@
   font-variant-numeric: tabular-nums;
 }
 .playback-progress {
+  container-type: inline-size;
   position: relative;
   flex: 1;
   min-width: 80px;
@@ -35,6 +36,31 @@
   border-radius: var(--radius-pill);
   background: var(--color-accent);
   transform-origin: left;
+}
+/* Placed in container units from the ratio: a composited move, no layout. */
+.playback-progress-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  box-shadow: var(--shadow-thumb);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(var(--motion-icon));
+  transition:
+    opacity var(--duration-exit) var(--ease-out),
+    transform var(--duration-exit) var(--ease-out);
+}
+.playback-progress:has(input:enabled):hover .playback-progress-thumb,
+.playback-progress:has(input:focus-visible) .playback-progress-thumb,
+.playback-progress[data-dragging] .playback-progress-thumb {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: var(--duration-fast);
 }
 .playback-progress-input {
   position: absolute;

@@ -1,4 +1,5 @@
 .meeting-list {
+  position: relative;
   display: grid;
   gap: var(--space-2);
   padding: 0 var(--space-2) var(--space-3);
@@ -13,6 +14,7 @@
   font-weight: 600;
 }
 .meeting-row {
+  position: relative;
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
@@ -24,9 +26,6 @@
 }
 .meeting-row:hover {
   background: var(--color-surface);
-}
-.meeting-row[aria-selected='true'] {
-  background: var(--color-surface-raised);
 }
 .meeting-row[aria-disabled='true'] {
   opacity: 0.55;
@@ -107,7 +106,7 @@
   height: 100%;
   background: var(--color-accent);
   transform-origin: left;
-  transition: transform var(--duration-base) var(--ease-out);
+  transition: transform var(--duration-slow) var(--ease-out);
 }
 .chip-static {
   justify-self: start;
