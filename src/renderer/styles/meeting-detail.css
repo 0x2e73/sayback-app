@@ -112,7 +112,7 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: var(--color-media);
   object-fit: contain;
 }
 .detail-video:fullscreen {
