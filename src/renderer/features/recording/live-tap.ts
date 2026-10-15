@@ -1,7 +1,8 @@
 import { MAX_PCM_SAMPLES, type LiveTrack } from '../../../shared/live';
 import { PCM_PROCESSOR } from './pcm-downsampler';
 
-export type PcmSender = (track: LiveTrack, samples: Int16Array) => void;
+/** `offset`: where the block starts in the track, in samples, pauses excluded. */
+export type PcmSender = (track: LiveTrack, samples: Int16Array, offset: number) => void;
 
 /** Feeds the live transcription from the capture. It never throws: the recording comes first. */
 export interface LiveTap {
@@ -34,6 +35,8 @@ function contained(action: () => void): void {
 
 function createTap(context: AudioContext, send: PcmSender): LiveTap {
   const tracks = new Map<LiveTrack, TrackNodes>();
+  // Per track, across a replaced stream: the main process sees a gap when a block goes missing.
+  const offsets = new Map<LiveTrack, number>();
   let paused = false;
   let disposed = false;
 
@@ -52,7 +55,9 @@ function createTap(context: AudioContext, send: PcmSender): LiveTap {
   function forward(track: LiveTrack, data: unknown): void {
     if (paused || disposed || !(data instanceof Int16Array)) return;
     if (data.length === 0 || data.length > MAX_PCM_SAMPLES) return;
-    contained(() => send(track, data));
+    const offset = offsets.get(track) ?? 0;
+    offsets.set(track, offset + data.length);
+    contained(() => send(track, data, offset));
   }
 
   function open(track: LiveTrack, stream: MediaStream): void {

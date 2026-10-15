@@ -9,9 +9,12 @@ export const LIVE_TRACKS: readonly LiveTrack[] = liveTrackSchema.options;
 export const LIVE_SAMPLE_RATE = 16_000;
 /** One block is 200 ms; a second is the most one message may carry. */
 export const MAX_PCM_SAMPLES = LIVE_SAMPLE_RATE;
+/** A day of audio: far beyond any meeting, a bound on the offset a page may claim. */
+export const MAX_PCM_OFFSET = 86_400 * LIVE_SAMPLE_RATE;
 
 export const livePcmSchema = z.object({
   track: liveTrackSchema,
+  offset: z.number().int().min(0).max(MAX_PCM_OFFSET),
   samples: z
     .instanceof(Int16Array)
     .refine((samples) => samples.length >= 1 && samples.length <= MAX_PCM_SAMPLES),

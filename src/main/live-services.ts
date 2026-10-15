@@ -8,8 +8,8 @@ import type { RecordingStateHub } from './recording-state-hub';
 
 export interface LiveServicesPorts {
   recording: Pick<RecordingStateHub, 'subscribe'>;
-  transcript: Pick<LiveTranscriptHub, 'setAvailability' | 'clear' | 'snapshot'>;
-  transcription: Pick<LiveTranscription, 'start' | 'push' | 'pause' | 'stop'>;
+  transcript: Pick<LiveTranscriptHub, 'setAvailability' | 'clear' | 'snapshot' | 'subscribe'>;
+  transcription: Pick<LiveTranscription, 'start' | 'push' | 'pause' | 'stop' | 'setEngineReady'>;
   server: Pick<WhisperServer, 'start' | 'stop'>;
   gate: PcmGate;
   /** The `whisper-server` executable, read at each recording start. */
@@ -72,13 +72,18 @@ export function createLiveServices(ports: LiveServicesPorts): LiveServices {
   }
 
   ports.recording.subscribe(({ state }) => follow(state));
+  // Utterances wait while the model loads or the server restarts.
+  ports.transcript.subscribe((event) => {
+    if (event.kind !== 'availability') return;
+    ports.transcription.setEngineReady(event.availability.state === 'ready');
+  });
 
   return {
-    pcm({ track, samples }) {
+    pcm({ track, samples, offset }) {
       if (phase !== 'listening') return;
       const { state } = ports.transcript.snapshot().availability;
       if (state !== 'starting' && state !== 'ready') return;
-      if (ports.gate.admit(track, samples.length)) ports.transcription.push(track, samples);
+      if (ports.gate.admit(track, samples.length)) ports.transcription.push(track, samples, offset);
     },
     shutdown() {
       phase = 'off';

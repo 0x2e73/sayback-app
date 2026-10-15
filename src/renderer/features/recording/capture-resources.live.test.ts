@@ -56,9 +56,13 @@ it('attaches the microphone and the display audio to their own tracks', async ()
     api,
   );
   const block = new Int16Array(3_200);
-  const send = tap.open.mock.calls[0]?.[1] as (track: 'system', samples: Int16Array) => void;
-  send('system', block);
-  expect(api.sendPcm).toHaveBeenCalledWith('system', block);
+  const send = tap.open.mock.calls[0]?.[1] as (
+    track: 'system',
+    samples: Int16Array,
+    offset: number,
+  ) => void;
+  send('system', block, 6_400);
+  expect(api.sendPcm).toHaveBeenCalledWith('system', block, 6_400);
   expect(tap.open.mock.calls[0]?.[2]).toBe('/assets/pcm-worklet.js');
   expect(tap.attach).toHaveBeenCalledWith('microphone', microphone);
   expect(tap.attach).toHaveBeenCalledWith('system', display);

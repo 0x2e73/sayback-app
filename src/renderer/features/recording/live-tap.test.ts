@@ -85,9 +85,23 @@ it('routes each block to the track it came from', async () => {
   emit(nodes[1], second);
   emit(nodes[0], first);
   expect(send.mock.calls).toEqual([
-    ['system', second],
-    ['microphone', first],
+    ['system', second, 0],
+    ['microphone', first, 0],
   ]);
+});
+
+it('numbers the samples of each track, pauses excluded, across a replaced stream', async () => {
+  const send = vi.fn();
+  const tap = await open(send);
+  tap.attach('microphone', stream());
+  emit(nodes[0], new Int16Array(3_200));
+  tap.setPaused(true);
+  emit(nodes[0], new Int16Array(3_200));
+  tap.setPaused(false);
+  tap.attach('microphone', stream());
+  emit(nodes[1], new Int16Array(1_000));
+  emit(nodes[1], new Int16Array(3_200));
+  expect(send.mock.calls.map(([, , offset]) => offset as number)).toEqual([0, 3_200, 4_200]);
 });
 
 it('sends nothing for a track that was never attached or has no audio', async () => {

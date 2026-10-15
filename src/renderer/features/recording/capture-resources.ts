@@ -89,7 +89,7 @@ export async function openCaptureResources(
     const { audio, analyser, destination, sources } = mixAudio(audioContext, streams);
     const live = await openLiveTap(
       audioContext,
-      api && ((track, samples) => api.sendPcm(track, samples)),
+      api && ((track, samples, offset) => api.sendPcm(track, samples, offset)),
       PCM_WORKLET_URL,
     );
     // A track the user turned off is never attached, so nothing is sent for it.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveSegment } from '../../shared/live';
-import { LiveTranscription, spokenText } from './live-transcription';
+import { LiveTranscription } from './live-transcription';
 import { concat, silence, tone } from './live-test-signals';
 import type { LiveEngine } from './ports';
 
@@ -27,6 +27,7 @@ function setup() {
   const { engine, calls } = controlledEngine();
   const published: LiveSegment[] = [];
   const live = new LiveTranscription(engine, { publish: (segment) => published.push(segment) });
+  live.setEngineReady(true);
   return { live, calls, published };
 }
 
@@ -38,7 +39,7 @@ describe('live transcription', () => {
     const { live, calls, published } = setup();
     live.start();
 
-    live.push('microphone', utterance());
+    live.push('microphone', utterance(), 0);
     calls[0]!.resolve(' Bonjour à tous.\n');
     await settle();
 
@@ -60,7 +61,7 @@ describe('live transcription', () => {
     const { live, calls, published } = setup();
     live.start();
 
-    live.push('system', tone(2_000));
+    live.push('system', tone(2_000), 0);
     calls[0]!.resolve('Bonjour');
     await settle();
     live.pause();
@@ -77,8 +78,8 @@ describe('live transcription', () => {
     const { live, calls, published } = setup();
     live.start();
 
-    live.push('system', tone(2_000));
-    live.push('microphone', utterance());
+    live.push('system', tone(2_000), 0);
+    live.push('microphone', utterance(), 0);
     expect(calls).toHaveLength(1);
     calls[0]!.resolve('partiel');
     await settle();
@@ -92,7 +93,7 @@ describe('live transcription', () => {
     const { live, calls, published } = setup();
     live.start();
 
-    live.push('microphone', concat(utterance(), utterance()));
+    live.push('microphone', concat(utterance(), utterance()), 0);
     calls[0]!.reject(new Error('moteur arrêté'));
     await settle();
     calls[1]!.resolve('Deuxième phrase.');
@@ -105,7 +106,7 @@ describe('live transcription', () => {
     const { live, calls, published } = setup();
     live.start();
 
-    live.push('microphone', tone(2_000));
+    live.push('microphone', tone(2_000), 0);
     calls[0]!.resolve('Bonjour à');
     await settle();
     live.pause();
@@ -118,10 +119,41 @@ describe('live transcription', () => {
     ]);
   });
 
+  it('keeps speech heard while the model loads and decodes it once the engine answers', async () => {
+    const { live, calls, published } = setup();
+    live.setEngineReady(false);
+    live.start();
+
+    live.push('microphone', utterance(), 0);
+    expect(calls).toEqual([]);
+    live.setEngineReady(true);
+    calls[0]!.resolve('Pendant le chargement.');
+    await settle();
+
+    expect(published.map((segment) => segment.text)).toEqual(['Pendant le chargement.']);
+  });
+
+  it('gives up the oldest final beyond three per track and closes its draft with the last text', async () => {
+    const { live, calls, published } = setup();
+    live.start();
+    live.push('system', tone(2_000), 0);
+    calls[0]!.resolve('Premier brouillon');
+    await settle();
+    live.setEngineReady(false);
+
+    live.pause();
+    for (const offset of [32_000, 64_000, 96_000]) live.push('system', utterance(), offset);
+
+    expect(published.map(({ id, text, final }) => ({ id, text, final }))).toEqual([
+      { id: 'system-0', text: 'Premier brouillon', final: false },
+      { id: 'system-0', text: 'Premier brouillon', final: true },
+    ]);
+  });
+
   it('aborts the decode in progress on stop and ignores its late answer', async () => {
     const { live, calls, published } = setup();
     live.start();
-    live.push('microphone', utterance());
+    live.push('microphone', utterance(), 0);
 
     live.stop();
     calls[0]!.resolve('trop tard');
@@ -134,11 +166,11 @@ describe('live transcription', () => {
   it('ignores audio before the start and after the stop, and an empty block', () => {
     const { live, calls } = setup();
 
-    live.push('microphone', utterance());
+    live.push('microphone', utterance(), 0);
     live.start();
-    live.push('microphone', new Int16Array(0));
+    live.push('microphone', new Int16Array(0), 0);
     live.stop();
-    live.push('microphone', utterance());
+    live.push('microphone', utterance(), 0);
     live.pause();
 
     expect(calls).toEqual([]);
@@ -148,10 +180,10 @@ describe('live transcription', () => {
     const { live, calls, published } = setup();
     live.start();
 
-    live.push('microphone', utterance());
+    live.push('microphone', utterance(), 0);
     calls[0]!.resolve('[BLANK_AUDIO]');
     await settle();
-    live.push('system', tone(2_000));
+    live.push('system', tone(2_000), 0);
     calls[1]!.resolve('Euh');
     await settle();
     live.pause();
@@ -167,21 +199,15 @@ describe('live transcription', () => {
   it('starts every session from the first utterance again', async () => {
     const { live, calls, published } = setup();
     live.start();
-    live.push('microphone', utterance());
+    live.push('microphone', utterance(), 0);
     live.start();
 
-    live.push('microphone', utterance());
+    live.push('microphone', utterance(), 0);
     calls[1]!.resolve('Nouvelle session');
     await settle();
 
     expect(published.map(({ id, start }) => ({ id, start }))).toEqual([
       { id: 'microphone-0', start: 0 },
     ]);
-  });
-});
-
-describe('spoken text', () => {
-  it('removes the non-speech marks and spaces', () => {
-    expect(spokenText(' [BLANK_AUDIO] Oui,\n  bien sûr. [Rires]')).toBe('Oui, bien sûr.');
   });
 });

@@ -18,7 +18,13 @@ const recordingState = (
 function setup(binary: string | null = '/opt/homebrew/bin/whisper-server', model = 'base.bin') {
   const recording = createRecordingStateHub(() => 0);
   const transcript = createLiveTranscriptHub();
-  const transcription = { start: vi.fn(), push: vi.fn(), pause: vi.fn(), stop: vi.fn() };
+  const transcription = {
+    start: vi.fn(),
+    push: vi.fn(),
+    pause: vi.fn(),
+    stop: vi.fn(),
+    setEngineReady: vi.fn(),
+  };
   const server = {
     start: vi.fn(() => transcript.setAvailability({ state: 'ready' })),
     stop: vi.fn(async () => transcript.setAvailability({ state: 'off' })),
@@ -37,7 +43,7 @@ function setup(binary: string | null = '/opt/homebrew/bin/whisper-server', model
   return { recording, transcript, transcription, server, live, advance };
 }
 
-const block = { track: 'microphone' as const, samples: new Int16Array(3_200) };
+const block = { track: 'microphone' as const, offset: 0, samples: new Int16Array(3_200) };
 
 describe('live services', () => {
   it('starts the server with the recording and passes the audio on', () => {
@@ -48,7 +54,7 @@ describe('live services', () => {
 
     expect(server.start).toHaveBeenCalledWith('/opt/homebrew/bin/whisper-server', 'base.bin');
     expect(transcription.start).toHaveBeenCalledTimes(1);
-    expect(transcription.push).toHaveBeenCalledWith('microphone', block.samples);
+    expect(transcription.push).toHaveBeenCalledWith('microphone', block.samples, 0);
   });
 
   it('starts once however many states the recording announces', () => {
@@ -161,5 +167,13 @@ describe('live services', () => {
     live.pcm(block);
 
     expect(server.stop).toHaveBeenCalledTimes(1);
+  });
+  it('holds the decoding until the server answers, and again while it restarts', () => {
+    const { recording, transcript, transcription } = setup();
+
+    recording.publish(recordingState());
+    transcript.setAvailability({ state: 'starting' });
+
+    expect(transcription.setEngineReady.mock.calls).toEqual([[true], [false]]);
   });
 });

@@ -22,16 +22,34 @@ describe('live decode queue', () => {
     expect(queue.size).toBe(0);
   });
 
-  it('serves finals in order before any partial', () => {
+  it('serves finals in order and queues no partial while a final waits', () => {
     const queue = new LiveDecodeQueue();
     queue.push(job('microphone', 'partial', 3));
     queue.push(job('system', 'final', 1));
     queue.push(job('microphone', 'final', 2));
+    queue.push(job('system', 'partial', 4));
 
     expect(drain(queue)).toEqual([
       'system:final:1@1',
       'microphone:final:2@1',
       'microphone:partial:3@1',
+    ]);
+  });
+
+  it('keeps three finals per track and gives back the oldest beyond', () => {
+    const queue = new LiveDecodeQueue();
+    for (let id = 0; id < 3; id += 1)
+      expect(queue.push(job('microphone', 'final', id))).toEqual([]);
+    queue.push(job('system', 'final', 9));
+
+    const dropped = queue.push(job('microphone', 'final', 3));
+
+    expect(dropped.map((item) => item.event.id)).toEqual([0]);
+    expect(drain(queue)).toEqual([
+      'microphone:final:1@1',
+      'microphone:final:2@1',
+      'system:final:9@1',
+      'microphone:final:3@1',
     ]);
   });
 

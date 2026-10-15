@@ -4,23 +4,17 @@ import {
   DEFAULT_SEGMENTER,
   flushSegmenter,
   initialSegmenter,
-  segment,
+  segmentAt,
   type SegmenterConfig,
   type SegmenterEvent,
   type SegmenterState,
 } from './live-segmenter';
+import { spokenText } from './live-spoken-text';
 import type { LiveEngine } from './ports';
 
 /** Where the draft goes; nothing of it is ever stored. */
 export interface LiveDrafts {
   publish(segment: LiveSegment): void;
-}
-
-// Whisper marks silence and music between brackets: « [BLANK_AUDIO] », « [Musique] ».
-const NON_SPEECH = /\[[^\]]*\]/g;
-
-export function spokenText(raw: string): string {
-  return raw.replace(NON_SPEECH, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -33,6 +27,8 @@ export class LiveTranscription {
   /** The last draft shown of each open utterance. */
   private readonly shown = new Map<string, { revision: number; text: string }>();
   private active = false;
+  /** Utterances wait, within the queue bounds, until the engine answers. */
+  private engineReady = false;
   private session = 0;
   private running: AbortController | null = null;
 
@@ -47,9 +43,11 @@ export class LiveTranscription {
     this.active = true;
   }
 
-  push(track: LiveTrack, samples: Int16Array): void {
+  /** `offset`: where the block starts, in samples of the track, pauses excluded. */
+  push(track: LiveTrack, samples: Int16Array, offset: number): void {
     if (!this.active) return;
-    const step = segment(this.segmenters.get(track) ?? initialSegmenter(), samples, this.config);
+    const state = this.segmenters.get(track) ?? initialSegmenter();
+    const step = segmentAt(state, offset, samples, this.config);
     this.segmenters.set(track, step.state);
     this.enqueue(track, step.events);
   }
@@ -66,6 +64,12 @@ export class LiveTranscription {
     }
   }
 
+  /** The engine answers, or stopped answering (loading, restarting). */
+  setEngineReady(ready: boolean): void {
+    this.engineReady = ready;
+    if (ready) void this.drain();
+  }
+
   /** Drops the waiting utterances and the decode in progress. */
   stop(): void {
     this.active = false;
@@ -78,14 +82,16 @@ export class LiveTranscription {
   }
 
   private enqueue(track: LiveTrack, events: SegmenterEvent[]): void {
-    for (const event of events) this.queue.push({ track, event });
+    for (const event of events) {
+      for (const dropped of this.queue.push({ track, event })) this.giveUp(dropped);
+    }
     if (events.length > 0) void this.drain();
   }
 
   private async drain(): Promise<void> {
     if (this.running) return;
     const session = this.session;
-    for (let job = this.queue.next(); job; job = this.queue.next()) {
+    for (let job = this.nextJob(); job; job = this.nextJob()) {
       const controller = new AbortController();
       this.running = controller;
       const text = await this.decode(job, controller.signal);
@@ -95,6 +101,16 @@ export class LiveTranscription {
       const draft = this.draftOf(job, text);
       if (draft) this.drafts.publish(draft);
     }
+  }
+
+  private nextJob(): DecodeJob | undefined {
+    return this.engineReady ? this.queue.next() : undefined;
+  }
+
+  // A final given up for room still closes its draft with the last text shown.
+  private giveUp(job: DecodeJob): void {
+    const draft = this.draftOf(job, null);
+    if (draft) this.drafts.publish(draft);
   }
 
   private async decode(job: DecodeJob, signal: AbortSignal): Promise<string | null> {

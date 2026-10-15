@@ -91,12 +91,16 @@ it('sends a live audio block of a known track and a bounded size, and nothing el
   if (!api) throw new Error('the preload exposed nothing');
   electron.send.mockClear();
   const block = new Int16Array(3_200);
-  api.sendPcm('microphone', block);
-  api.sendPcm('system', new Int16Array(16_000));
-  api.sendPcm('microphone', new Int16Array(0));
-  api.sendPcm('microphone', new Int16Array(16_001));
-  api.sendPcm('speaker' as 'system', block);
-  api.sendPcm('system', new Float32Array(3_200) as unknown as Int16Array);
+  api.sendPcm('microphone', block, 0);
+  api.sendPcm('system', new Int16Array(16_000), 3_200);
+  api.sendPcm('microphone', new Int16Array(0), 0);
+  api.sendPcm('microphone', new Int16Array(16_001), 0);
+  api.sendPcm('speaker' as 'system', block, 0);
+  api.sendPcm('system', new Float32Array(3_200) as unknown as Int16Array, 0);
+  api.sendPcm('microphone', block, -1);
+  api.sendPcm('microphone', block, 1.5);
+  api.sendPcm('microphone', block, Number.NaN);
+  api.sendPcm('microphone', block, 86_400 * 16_000 + 1);
   expect(electron.send.mock.calls.map(([channel, payload]) => [channel, payload.track])).toEqual([
     ['live:pcm', 'microphone'],
     ['live:pcm', 'system'],
