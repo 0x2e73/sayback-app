@@ -35,6 +35,8 @@ export interface Settings {
   model: string;
   onboardingCompleted: boolean;
   appearance: Appearance;
+  /** The live draft is sent to the island; off, the island receives no text at all. */
+  islandLiveText: boolean;
 }
 export interface SettingsInput {
   notesProvider: NotesProvider;
@@ -169,6 +171,8 @@ export interface DesktopApi {
   onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
   /** Stores the colour scheme and applies it to the window at once. */
   setAppearance(value: Appearance): Promise<Result<void>>;
+  /** Stored at once, like the appearance; the island follows without a reload. */
+  setIslandLiveText(value: boolean): Promise<Result<void>>;
 }
 /** What the island page may do: it only talks to the main process. */
 export interface IslandApi {

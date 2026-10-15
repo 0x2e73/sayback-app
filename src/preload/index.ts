@@ -132,5 +132,6 @@ const api: DesktopApi = {
     };
   },
   setAppearance: (value) => ipcRenderer.invoke('settings:set-appearance', value),
+  setIslandLiveText: (value) => ipcRenderer.invoke('settings:set-island-live-text', value),
 };
 contextBridge.exposeInMainWorld('sayBack', api);

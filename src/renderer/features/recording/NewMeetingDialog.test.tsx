@@ -184,6 +184,7 @@ it('has the analysis switch when configured and a way to configure it otherwise'
         model: 'gpt-4.1-mini',
         onboardingCompleted: true,
         appearance: 'system',
+        islandLiveText: true,
       },
     }),
   });

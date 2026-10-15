@@ -112,6 +112,8 @@ it('sends the chosen appearance on its own channel', async () => {
   if (!api) throw new Error('the preload exposed nothing');
   await api.setAppearance('light');
   expect(ipcRenderer.invoke).toHaveBeenCalledWith('settings:set-appearance', 'light');
+  await api.setIslandLiveText(false);
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('settings:set-island-live-text', false);
 });
 
 it('sends the audio level to the main process without waiting for an answer', () => {

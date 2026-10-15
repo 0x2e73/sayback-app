@@ -28,6 +28,8 @@ const storedSchema = z.object({
   onboardingCompleted: z.boolean().default(false),
   // An unknown value reads as the system choice rather than losing the other settings.
   appearance: appearanceSchema.catch('system'),
+  // Absent from earlier versions: the live text shows in the island unless turned off.
+  islandLiveText: z.boolean().catch(true),
 });
 
 type StoredSettings = z.infer<typeof storedSchema>;
@@ -41,6 +43,7 @@ const legacyDefaults: StoredSettings = {
   model: 'gpt-4.1-mini',
   onboardingCompleted: false,
   appearance: 'system',
+  islandLiveText: true,
 };
 
 // Seules les nouvelles installations démarrent en local ; les réglages existants sont conservés.
@@ -98,6 +101,7 @@ export class Credentials {
       model: this.data.model,
       onboardingCompleted: this.data.onboardingCompleted,
       appearance: this.data.appearance,
+      islandLiveText: this.data.islandLiveText,
     };
   }
 
@@ -174,6 +178,10 @@ export class Credentials {
 
   setAppearance(value: Appearance): void {
     this.persist({ ...this.data, appearance: appearanceSchema.parse(value) });
+  }
+
+  setIslandLiveText(value: boolean): void {
+    this.persist({ ...this.data, islandLiveText: z.boolean().parse(value) });
   }
 
   completeOnboarding(): void {

@@ -19,6 +19,7 @@ export const settings: Settings = {
   model: 'gpt-4.1-mini',
   onboardingCompleted: true,
   appearance: 'system',
+  islandLiveText: true,
 };
 
 export const readySetup: LocalSetupStatus = {
@@ -101,6 +102,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     installUpdate: () => ok('started'),
     onUpdateStatus: () => () => undefined,
     setAppearance: () => ok(undefined),
+    setIslandLiveText: () => ok(undefined),
   };
 }
 
