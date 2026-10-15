@@ -32,9 +32,10 @@ type SegmentedProps<T extends string> = TabsProps<T> | RadiosProps<T>;
 
 export const tabId = (panelId: string) => `${panelId}-tab`;
 
-function targetIndex(key: string, index: number, count: number): number | null {
-  if (key === 'ArrowRight') return (index + 1) % count;
-  if (key === 'ArrowLeft') return (index - 1 + count) % count;
+// The radio pattern also moves with ↓ and ↑; tabs keep ← and → only.
+function targetIndex(key: string, index: number, count: number, vertical: boolean): number | null {
+  if (key === 'ArrowRight' || (vertical && key === 'ArrowDown')) return (index + 1) % count;
+  if (key === 'ArrowLeft' || (vertical && key === 'ArrowUp')) return (index - 1 + count) % count;
   if (key === 'Home') return 0;
   if (key === 'End') return count - 1;
   return null;
@@ -59,7 +60,7 @@ export function Segmented<T extends string>(props: SegmentedProps<T>) {
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
-    const next = targetIndex(event.key, index, options.length);
+    const next = targetIndex(event.key, index, options.length, props.kind === 'radios');
     if (next === null) return;
     const option = options[next];
     if (!option) return;

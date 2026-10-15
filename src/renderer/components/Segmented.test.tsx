@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { Segmented, type SegmentedOption } from './Segmented';
+import { Segmented, type RadioOption, type SegmentedOption } from './Segmented';
 
 afterEach(cleanup);
 
@@ -103,4 +103,43 @@ it('can stand for a radio group, with no panel to control', async () => {
   await user.keyboard('{ArrowRight}');
   expect(onChange).toHaveBeenLastCalledWith('light');
   expect(screen.getByRole('radio', { name: 'Clair' })).toHaveFocus();
+});
+
+const radioOptions: readonly RadioOption<string>[] = [
+  { value: 'system', label: 'Système' },
+  { value: 'light', label: 'Clair' },
+  { value: 'dark', label: 'Sombre' },
+];
+
+it('moves a radio group with ↑ and ↓ as with ← and →, wrapping around', async () => {
+  const user = userEvent.setup();
+  function Radios() {
+    const [value, setValue] = useState('system');
+    return (
+      <Segmented
+        kind="radios"
+        label="Apparence"
+        options={radioOptions}
+        value={value}
+        onChange={setValue}
+      />
+    );
+  }
+  render(<Radios />);
+  const radio = (name: string) => screen.getByRole('radio', { name });
+  await user.click(radio('Système'));
+  await user.keyboard('{ArrowDown}');
+  expect(radio('Clair')).toBeChecked();
+  expect(radio('Clair')).toHaveFocus();
+  await user.keyboard('{ArrowUp}{ArrowUp}');
+  expect(radio('Sombre')).toBeChecked();
+});
+
+it('leaves ↑ and ↓ alone in tabs', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(<Harness onChange={onChange} />);
+  await user.click(tab('Notes'));
+  await user.keyboard('{ArrowDown}{ArrowUp}');
+  expect(onChange).toHaveBeenCalledOnce();
 });
