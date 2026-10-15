@@ -19,6 +19,7 @@ vi.mock('electron', () => ({
   },
 }));
 
+import { ipcRenderer } from 'electron';
 import './index';
 
 it('passes full-screen changes to the page, ignoring anything but a boolean', () => {
@@ -53,4 +54,11 @@ it.each([
   expect(count).toBe(2);
   stop();
   expect(electron.listeners.has(channel)).toBe(false);
+});
+
+it('sends the chosen appearance on its own channel', async () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  await api.setAppearance('light');
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('settings:set-appearance', 'light');
 });

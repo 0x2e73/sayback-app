@@ -21,6 +21,7 @@ export const clarificationSchema = z.object({
   at: timeSchema,
   text: z.string().trim().min(1).max(2_000),
 });
+export const appearanceSchema = z.enum(['system', 'light', 'dark']);
 export const setupGuideSchema = z.enum(['whisper', 'ollama']);
 export const settingsSchema = z.object({
   notesProvider: z.enum(['openai', 'anthropic', 'gemini', 'compatible', 'ollama']),

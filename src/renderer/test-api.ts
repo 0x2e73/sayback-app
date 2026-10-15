@@ -18,6 +18,7 @@ export const settings: Settings = {
   whisperModelPath: '',
   model: 'gpt-4.1-mini',
   onboardingCompleted: true,
+  appearance: 'system',
 };
 
 export const readySetup: LocalSetupStatus = {
@@ -88,6 +89,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     checkForUpdate: () => ok(upToDate),
     installUpdate: () => ok('started'),
     onUpdateStatus: () => () => undefined,
+    setAppearance: () => ok(undefined),
   };
 }
 

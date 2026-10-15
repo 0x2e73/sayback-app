@@ -59,5 +59,6 @@ const api: DesktopApi = {
       ipcRenderer.removeListener('updates:changed', forward);
     };
   },
+  setAppearance: (value) => ipcRenderer.invoke('settings:set-appearance', value),
 };
 contextBridge.exposeInMainWorld('sayBack', api);

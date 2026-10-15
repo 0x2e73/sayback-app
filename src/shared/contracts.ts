@@ -18,6 +18,7 @@ export type {
 export type NotesProvider = 'openai' | 'anthropic' | 'gemini' | 'compatible' | 'ollama';
 export type TranscriptionProvider = 'openai' | 'gemini' | 'local';
 export type KeyProvider = 'openai' | 'anthropic' | 'gemini' | 'compatible';
+export type Appearance = 'system' | 'light' | 'dark';
 
 export interface Settings {
   notesProvider: NotesProvider;
@@ -30,6 +31,7 @@ export interface Settings {
   whisperModelPath: string;
   model: string;
   onboardingCompleted: boolean;
+  appearance: Appearance;
 }
 export interface SettingsInput {
   notesProvider: NotesProvider;
@@ -113,6 +115,8 @@ export interface DesktopApi {
   installUpdate(): Promise<Result<UpdateInstallOutcome>>;
   /** Called on every change of update state. Returns the unsubscribe function. */
   onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
+  /** Stores the colour scheme and applies it to the window at once. */
+  setAppearance(value: Appearance): Promise<Result<void>>;
 }
 export function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error);

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { z } from 'zod';
-import type { KeyProvider, Settings, SettingsInput } from '../../shared/contracts';
-import { settingsSchema } from '../../shared/validation';
+import type { Appearance, KeyProvider, Settings, SettingsInput } from '../../shared/contracts';
+import { appearanceSchema, settingsSchema } from '../../shared/validation';
 import { compatibleBaseUrl, isLocalCompatibleUrl } from '../../shared/compatible-url';
 import { defaultOllamaModel } from './local-setup';
 
@@ -26,6 +26,8 @@ const storedSchema = z.object({
   compatibleBaseUrl: z.string().default(''),
   model: z.string().default('gpt-4.1-mini'),
   onboardingCompleted: z.boolean().default(false),
+  // An unknown value reads as the system choice rather than losing the other settings.
+  appearance: appearanceSchema.catch('system'),
 });
 
 type StoredSettings = z.infer<typeof storedSchema>;
@@ -38,6 +40,7 @@ const legacyDefaults: StoredSettings = {
   compatibleBaseUrl: '',
   model: 'gpt-4.1-mini',
   onboardingCompleted: false,
+  appearance: 'system',
 };
 
 // Seules les nouvelles installations démarrent en local ; les réglages existants sont conservés.
@@ -94,6 +97,7 @@ export class Credentials {
       whisperModelPath: this.data.whisperModelPath,
       model: this.data.model,
       onboardingCompleted: this.data.onboardingCompleted,
+      appearance: this.data.appearance,
     };
   }
 
@@ -163,6 +167,11 @@ export class Credentials {
   clear(provider: KeyProvider): Settings {
     this.data.encryptedKeys[provider] = '';
     return this.persist();
+  }
+
+  setAppearance(value: Appearance): void {
+    this.data.appearance = appearanceSchema.parse(value);
+    this.persist();
   }
 
   completeOnboarding(): void {

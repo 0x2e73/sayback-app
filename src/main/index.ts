@@ -20,6 +20,7 @@ import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
 import { APP_NAME } from '../shared/update-channel';
 import type { UpdateService } from '../backend/application/updates';
+import type { Appearance } from '../shared/contracts';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -49,6 +50,10 @@ function isRecording(): boolean {
   return services?.meetings.list().some((meeting) => meeting.status === 'recording') ?? false;
 }
 
+function applyAppearance(value: Appearance): void {
+  nativeTheme.themeSource = value;
+}
+
 function openWindow(): BrowserWindow | null {
   if (!services) return null;
   const opened = createWindow({ rendererUrl, isRecording });
@@ -60,8 +65,6 @@ function openWindow(): BrowserWindow | null {
 }
 
 void app.whenReady().then(() => {
-  // The app has a single dark theme: title bar, menus and system dialogs follow it.
-  nativeTheme.themeSource = 'dark';
   const root = app.getPath('userData');
   const desktop = createServices(root, {
     available: () => safeStorage.isEncryptionAvailable(),
@@ -69,10 +72,12 @@ void app.whenReady().then(() => {
     decrypt: (value) => safeStorage.decryptString(value),
   });
   services = desktop;
+  // One switch: the CSS, the vibrancy, the scrollbars, the menus and the system dialogs follow it.
+  applyAppearance(desktop.credentials.settings().appearance);
   const handle = createIpcRegistrar(() => window);
   registerMeetingHandlers(handle, desktop);
   registerFolderHandlers(handle, desktop);
-  registerSettingsHandlers(handle, desktop, root);
+  registerSettingsHandlers(handle, desktop, root, applyAppearance);
   registerCapture(handle, () => window);
   registerWindowHandlers(handle, () => window);
   updates = createUpdateService({ getWindow: () => window, isRecording });

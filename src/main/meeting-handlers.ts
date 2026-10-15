@@ -1,5 +1,6 @@
 import { shell } from 'electron';
 import {
+  appearanceSchema,
   clarificationSchema,
   folderNameSchema,
   idSchema,
@@ -12,6 +13,7 @@ import {
 import type { RegisterHandler } from './ipc';
 import type { DesktopServices } from './services';
 import { isLocalCompatibleUrl } from '../shared/compatible-url';
+import type { Appearance } from '../shared/contracts';
 
 const setupGuides = {
   whisper: 'https://github.com/0x2e73/sayback-app/blob/main/docs/local-setup.md',
@@ -67,6 +69,7 @@ export function registerSettingsHandlers(
   handle: RegisterHandler,
   services: DesktopServices,
   root: string,
+  applyAppearance: (value: Appearance) => void,
 ) {
   const { credentials, models } = services;
   handle('settings:get', () => credentials.settings());
@@ -90,6 +93,11 @@ export function registerSettingsHandlers(
   handle('setup:open-guide', (guide) =>
     shell.openExternal(setupGuides[setupGuideSchema.parse(guide)]),
   );
+  handle('settings:set-appearance', (value) => {
+    const appearance = appearanceSchema.parse(value);
+    credentials.setAppearance(appearance);
+    applyAppearance(appearance);
+  });
   handle('data:open', async () => {
     const error = await shell.openPath(root);
     if (error) throw new Error('Le dossier ne peut pas être ouvert.');
