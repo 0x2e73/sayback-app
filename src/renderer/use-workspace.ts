@@ -80,7 +80,7 @@ export function useWorkspace(api: DesktopApi) {
     newMeeting,
     selected,
     notice: workspaceNotice({
-      recording: recording.error,
+      recording: recording.interrupted ? '' : recording.error,
       analysis: analysis.error,
       library: library.error,
       folders: folders.error,

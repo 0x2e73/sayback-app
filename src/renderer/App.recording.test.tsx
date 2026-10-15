@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { DesktopApi, Meeting } from '../shared/contracts';
 import { App } from './App';
@@ -20,6 +20,7 @@ class FakeSession {
   elapsed = 723;
   paused = false;
   displayStream = null;
+  audioSources = { microphone: true, systemAudio: false };
   source = undefined;
   meeting = { ...finished, status: 'recording' as const };
   analyser = { frequencyBinCount: 4, getByteFrequencyData: () => {} };
@@ -111,13 +112,64 @@ describe('Recording from the list pane', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Clé refusée');
   });
 
-  it('stops by itself after two hours', async () => {
+  it('keeps the recording screen after a failure until the meeting is opened', async () => {
+    let failWith: (error: Error) => void = () => {};
+    capture.start.mockImplementation(async (_api, _title, options) => {
+      failWith = options.onFailure;
+      return session;
+    });
+    const api = configuredApi();
+    const user = userEvent.setup();
+    render(<App api={api} />);
+    await startRecording(user);
+    await screen.findByRole('button', { name: 'Terminer la réunion' });
+    act(() => failWith(new Error('Disque plein.')));
+    const open = await screen.findByRole('button', { name: 'Ouvrir la réunion' });
+    expect(session.stop).toHaveBeenCalledOnce();
+    expect(screen.getByText('Enregistrement interrompu')).toBeInTheDocument();
+    expect(screen.queryByText('Disque plein.')).toBeNull();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    await waitFor(() => expect(open).not.toHaveAttribute('aria-busy'));
+    expect(screen.getByRole('heading', { level: 1, name: 'Revue du vendredi' })).toBeVisible();
+    expect(screen.queryByRole('option', { name: /Revue du vendredi/ })).toBeNull();
+    await user.click(open);
+    const row = await screen.findByRole('option', { name: /Revue du vendredi/ });
+    expect(row).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('button', { name: 'Ouvrir la réunion' })).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps the original failure when finalising also fails', async () => {
+    let failWith: (error: Error) => void = () => {};
+    capture.start.mockImplementation(async (_api, _title, options) => {
+      failWith = options.onFailure;
+      return session;
+    });
+    session.stop.mockRejectedValue(new Error('Autre erreur'));
+    const user = userEvent.setup();
+    render(<App api={configuredApi()} />);
+    await startRecording(user);
+    await screen.findByRole('button', { name: 'Terminer la réunion' });
+    act(() => failWith(new Error('Disque plein.')));
+    const open = await screen.findByRole('button', { name: 'Ouvrir la réunion' });
+    await waitFor(() => expect(open).not.toHaveAttribute('aria-busy'));
+    await user.click(open);
+    expect(await screen.findByRole('option', { name: /Revue du vendredi/ })).toBeInTheDocument();
+    expect(screen.queryByText('Autre erreur')).toBeNull();
+  });
+
+  it('finishes the meeting when the capture ends by itself, the window hidden or not', async () => {
+    let end: () => void = () => {};
+    capture.start.mockImplementation(async (_api, _title, options) => {
+      end = options.onEnded;
+      return session;
+    });
     const user = userEvent.setup();
     render(<App api={configuredApi()} />);
     await startRecording(user);
     await screen.findByRole('button', { name: 'Terminer la réunion' });
     expect(session.stop).not.toHaveBeenCalled();
-    session.elapsed = 7200;
+    act(() => end());
     await waitFor(() => expect(session.stop).toHaveBeenCalled());
     expect(await screen.findByRole('option', { name: /Revue du vendredi/ })).toBeInTheDocument();
   });

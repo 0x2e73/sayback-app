@@ -95,6 +95,7 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-loop: 1s;
+  --duration-finalize: 1.6s;
   --ease-linear: linear;
   /* Island shell only: a damped spring for its size, the one exception to the single curve. */
   --ease-island: cubic-bezier(0.32, 0.72, 0, 1);
@@ -364,6 +365,14 @@ p {
     transform: translateY(-4px);
   }
 }
+@keyframes finalizing-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -389,6 +398,11 @@ p {
   }
   .spin {
     animation: none;
+  }
+  .finalizing-line::before {
+    width: 100%;
+    animation: none;
+    transform: none;
   }
   .button:active:not(:disabled, [aria-disabled='true']),
   .chip[data-size='md']:active:not(:disabled) {

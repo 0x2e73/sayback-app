@@ -1,9 +1,85 @@
 .recording-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 100%;
+  padding-top: var(--space-6);
+  text-align: center;
+}
+.recording-header {
   display: grid;
   justify-items: center;
-  gap: var(--space-5);
-  padding: 42px 20px 64px;
-  text-align: center;
+  gap: var(--space-2);
+}
+.recording-header h1 {
+  margin: 0;
+}
+.recording-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-live);
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+.recording-status[data-phase='paused'] {
+  color: var(--color-paused);
+}
+.recording-status[data-phase='stopping'] {
+  color: var(--color-text-muted);
+}
+.recording-status[data-phase='failed'] {
+  color: var(--color-danger);
+}
+.recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+.recording-view > .notice {
+  width: min(100%, var(--reading-width));
+  text-align: left;
+}
+/* Reserves the notice's height so nothing below it moves when it appears. */
+.recording-signal {
+  width: min(100%, var(--reading-width));
+  min-height: 48px;
+}
+.recording-signal > .notice {
+  text-align: left;
+}
+.finalizing-line {
+  position: relative;
+  width: min(100%, var(--reading-width));
+  height: 2px;
+  overflow: hidden;
+  background: var(--color-border);
+}
+.finalizing-line::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--color-accent);
+  animation: finalizing-slide var(--duration-finalize) var(--ease-linear) infinite;
+}
+/* The buttons stay in reach however tall the capture preview is. */
+.recording-footer {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  margin-top: auto;
+  padding-block: var(--space-4);
+  background: var(--color-pane);
+}
+.recording-footer .caption {
+  margin: 0;
 }
 .recording-source {
   display: grid;
@@ -23,7 +99,7 @@
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
-  max-height: 360px;
+  max-height: min(360px, 35dvh);
   object-fit: contain;
 }
 .recording-preview-caption {
@@ -53,20 +129,12 @@
 .recording-source-loading .skeleton-block {
   height: calc(var(--source-row-height) * 2);
 }
-.recording-pill {
-  padding: 7px 13px;
-  border-radius: var(--radius-pill);
-  background: var(--color-live-tint);
-  color: var(--color-live);
-  font-weight: 600;
-}
-.recording-pill.is-paused {
-  background: var(--color-paused-tint);
-  color: var(--color-paused);
-}
 .recording-time {
   font-size: var(--text-timer-lg);
+  min-width: 7ch;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
   letter-spacing: -0.02em;
 }
 .recording-actions,
@@ -243,4 +311,7 @@
   .playback-bar {
     padding-inline: var(--space-3);
   }
+}
+.recording-actions {
+  justify-content: center;
 }
