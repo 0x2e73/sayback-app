@@ -367,7 +367,7 @@ p {
 .switch-thumb {
   transition:
     background-color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+    transform var(--duration-base) var(--ease-move);
 }
 .chip {
   transition:
@@ -433,13 +433,6 @@ button.chip:active:not(:disabled) {
     transform: scale(var(--motion-accept));
     background-color: var(--color-accent-tint);
     border-color: var(--color-accent);
-  }
-}
-/* Kept for the screens that have not moved to transitions yet. */
-@keyframes state-enter {
-  from {
-    opacity: 0;
-    transform: translateY(var(--motion-rise));
   }
 }
 

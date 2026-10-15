@@ -66,7 +66,7 @@
   aspect-ratio: 16 / 10;
 }
 .source-chevron {
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--duration-base) var(--ease-move);
 }
 .button[aria-expanded='true'] .source-chevron {
   transform: rotate(180deg);
@@ -76,9 +76,6 @@
 }
 
 /* The list of screens and windows. */
-.source-panel:not([data-instant]) {
-  animation: state-enter var(--duration-base) var(--ease-out);
-}
 .source-picker {
   display: grid;
   gap: var(--space-4);
@@ -169,6 +166,10 @@
   flex: none;
   color: var(--color-accent);
   opacity: 0;
+  transform: scale(var(--motion-icon));
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 .source-option[data-layout='tile'] .source-check {
   position: absolute;
@@ -180,4 +181,5 @@
 }
 .source-option:has(.source-input:checked) .source-check {
   opacity: 1;
+  transform: scale(1);
 }

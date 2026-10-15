@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, MouseEvent, Ref } from 'react';
 import { LoaderCircle } from 'lucide-react';
+import { Presence } from './Presence';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -36,7 +37,13 @@ export function Button(props: ButtonProps) {
       onClick={handleClick}
     >
       <span className="button-label">{children}</span>
-      {busy && <LoaderCircle size={16} className="spin button-spinner" aria-hidden="true" />}
+      <Presence open={busy}>
+        {({ ref, state }) => (
+          <span ref={ref} className="button-spinner" data-state={state} aria-hidden="true">
+            <LoaderCircle size={16} className="spin" />
+          </span>
+        )}
+      </Presence>
     </button>
   );
 }
