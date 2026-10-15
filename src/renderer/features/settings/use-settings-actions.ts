@@ -12,13 +12,21 @@ import { savedFrom, type useSettingsFields } from './use-settings-fields';
 type Fields = ReturnType<typeof useSettingsFields>;
 
 function missingTranscription(fields: Fields): string {
-  if (fields.transcriptionProvider === 'openai' && !fields.openAiKey && !fields.hasOpenAiKey) {
+  if (
+    fields.transcriptionProvider === 'openai' &&
+    !fields.openAiKey.trim() &&
+    !fields.hasOpenAiKey
+  ) {
     return 'Ajoutez une clé OpenAI pour transcrire l’audio.';
   }
   if (fields.transcriptionProvider === 'local' && !fields.whisperModelPath.trim()) {
     return 'Indiquez le chemin du modèle Whisper local.';
   }
-  if (fields.transcriptionProvider === 'gemini' && !fields.geminiKey && !fields.hasGeminiKey) {
+  if (
+    fields.transcriptionProvider === 'gemini' &&
+    !fields.geminiKey.trim() &&
+    !fields.hasGeminiKey
+  ) {
     return 'Ajoutez une clé Gemini pour transcrire l’audio.';
   }
   return '';
@@ -33,22 +41,22 @@ function missingNotes(fields: Fields): string {
   }
   const credentials = {
     openai: {
-      entered: fields.openAiKey,
+      entered: fields.openAiKey.trim(),
       saved: fields.hasOpenAiKey,
       message: 'Ajoutez une clé OpenAI pour générer le compte rendu.',
     },
     anthropic: {
-      entered: fields.anthropicKey,
+      entered: fields.anthropicKey.trim(),
       saved: fields.hasAnthropicKey,
       message: 'Ajoutez une clé Claude pour générer le compte rendu.',
     },
     gemini: {
-      entered: fields.geminiKey,
+      entered: fields.geminiKey.trim(),
       saved: fields.hasGeminiKey,
       message: 'Ajoutez une clé Gemini pour générer le compte rendu.',
     },
     compatible: {
-      entered: fields.compatibleKey,
+      entered: fields.compatibleKey.trim(),
       saved: fields.hasCompatibleKey || isLocalCompatibleUrl(fields.compatibleBaseUrl),
       message: 'Ajoutez la clé de votre API compatible.',
     },
@@ -57,13 +65,52 @@ function missingNotes(fields: Fields): string {
   return selected.entered || selected.saved ? '' : selected.message;
 }
 
+// A key typed now is saved first and unlocks the list, so the model can wait for it.
+function missingModel(fields: Fields): string {
+  if (fields.model.trim() || fields.typedKey) return '';
+  const typesItsUrl = fields.notesProvider === 'compatible' && !fields.models.length;
+  return typesItsUrl ? '' : 'Choisissez un modèle pour les notes.';
+}
+
+function unknownModel(fields: Fields): string {
+  const listed = fields.models.includes(fields.model);
+  const checked = fields.notesProvider !== 'compatible' && fields.models.length && fields.model;
+  return checked && !listed ? 'Choisissez un modèle dans la liste.' : '';
+}
+
+function saveBlocker(fields: Fields): string {
+  return (
+    missingTranscription(fields) ||
+    missingNotes(fields) ||
+    missingModel(fields) ||
+    unknownModel(fields)
+  );
+}
+
+function inputFrom(fields: Fields): SettingsInput {
+  return {
+    notesProvider: fields.notesProvider,
+    transcriptionProvider: fields.transcriptionProvider,
+    model: fields.model,
+    openAiKey: fields.openAiKey.trim(),
+    anthropicKey: fields.anthropicKey.trim(),
+    geminiKey: fields.geminiKey.trim(),
+    compatibleKey: fields.compatibleKey.trim(),
+    compatibleBaseUrl: fields.compatibleBaseUrl,
+    whisperModelPath: fields.whisperModelPath,
+  };
+}
+
 async function saveWithModel(
   api: DesktopApi,
   input: SettingsInput,
   currentModels: string[],
   loadModels: Fields['loadModels'],
+  onSaved: (settings: Settings) => void,
 ): Promise<{ settings: Settings; model: string; modelsUnavailable: boolean }> {
   let settings = unwrap(await api.saveSettings(input));
+  // Stored from here on: a later failure must not leave the form claiming otherwise.
+  onSaved(settings);
   if (input.notesProvider === 'compatible' && input.model) {
     void loadModels(input.notesProvider);
     return { settings, model: input.model, modelsUnavailable: false };
@@ -103,41 +150,25 @@ export function useSettingsActions(api: DesktopApi, fields: Fields) {
   const [success, setSuccess] = useState('');
 
   async function save() {
-    const missing = missingTranscription(fields) || missingNotes(fields);
-    if (missing) {
-      setError(missing);
+    const blocker = saveBlocker(fields);
+    if (blocker) {
+      setError(blocker);
       return;
     }
-    if (
-      fields.notesProvider !== 'compatible' &&
-      fields.models.length &&
-      fields.model &&
-      !fields.models.includes(fields.model)
-    ) {
-      setError('Choisissez un modèle dans la liste.');
-      return;
-    }
-    const input: SettingsInput = {
-      notesProvider: fields.notesProvider,
-      transcriptionProvider: fields.transcriptionProvider,
-      model: fields.model,
-      openAiKey: fields.openAiKey,
-      anthropicKey: fields.anthropicKey,
-      geminiKey: fields.geminiKey,
-      compatibleKey: fields.compatibleKey,
-      compatibleBaseUrl: fields.compatibleBaseUrl,
-      whisperModelPath: fields.whisperModelPath,
-    };
+    const input = inputFrom(fields);
     setBusy(true);
     setError('');
     setSuccess('');
     try {
-      const result = await saveWithModel(api, input, fields.models, fields.loadModels);
+      const result = await saveWithModel(api, input, fields.models, fields.loadModels, (stored) => {
+        fields.applyKeyFlags(stored);
+        fields.setOpenAiKey('');
+        fields.setAnthropicKey('');
+        fields.setGeminiKey('');
+        fields.setCompatibleKey('');
+        fields.markSaved(savedFrom(input));
+      });
       fields.applyKeyFlags(result.settings);
-      fields.setOpenAiKey('');
-      fields.setAnthropicKey('');
-      fields.setGeminiKey('');
-      fields.setCompatibleKey('');
       fields.setModel(result.model);
       fields.markSaved(savedFrom(input, result.model));
       if (result.modelsUnavailable) {

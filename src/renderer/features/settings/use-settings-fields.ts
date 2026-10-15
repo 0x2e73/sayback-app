@@ -9,6 +9,7 @@ import {
 import { errorMessage } from '../../../shared/format';
 import { isLocalCompatibleUrl } from '../../../shared/compatible-url';
 import { useModels } from './use-models';
+import { useNotesModel } from './use-notes-model';
 
 /** What the store holds; the form is dirty once it differs from it. */
 export interface SavedFields {
@@ -78,30 +79,37 @@ function useKeyFields() {
     setAnthropicKey,
     setGeminiKey,
     setCompatibleKey,
-    typedKey: !!(openAiKey || anthropicKey || geminiKey || compatibleKey),
+    typedKey: [openAiKey, anthropicKey, geminiKey, compatibleKey].some((key) => key.trim() !== ''),
     applyKeyFlags,
   };
+}
+
+/** The failure to read the stored settings, and the count of tries that clears it. */
+function useLoadAttempt() {
+  const [loadError, setLoadError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  function retryLoad() {
+    setLoadError('');
+    setAttempt((count) => count + 1);
+  }
+  return { loadError, setLoadError, attempt, retryLoad };
 }
 
 export function useSettingsFields(api: DesktopApi) {
   const [notesProvider, setNotesProvider] = useState<NotesProvider>('openai');
   const [transcriptionProvider, setTranscriptionProvider] =
     useState<Settings['transcriptionProvider']>('openai');
-  const [model, setModel] = useState('gpt-4.1-mini');
+  const notes = useNotesModel();
+  const { model, choose, reconcile } = notes;
   const keys = useKeyFields();
   const { applyKeyFlags } = keys;
   const [compatibleBaseUrl, setCompatibleBaseUrl] = useState('');
   const [whisperModelPath, setWhisperModelPath] = useState('');
   const [appearance, setAppearance] = useState<Appearance>('system');
-  const [loadError, setLoadError] = useState('');
+  const { loadError, setLoadError, attempt, retryLoad } = useLoadAttempt();
   const [saved, markSaved] = useState<SavedFields | null>(null);
-  const {
-    items: models,
-    loading: modelsLoading,
-    error: modelsError,
-    load: loadModels,
-    clear: clearModels,
-  } = useModels(api);
+  const list = useModels(api);
+  const { load: loadModels, clear: clearModels } = list;
 
   useEffect(() => {
     void api
@@ -110,26 +118,29 @@ export function useSettingsFields(api: DesktopApi) {
       .then((settings) => {
         setNotesProvider(settings.notesProvider);
         setTranscriptionProvider(settings.transcriptionProvider);
-        setModel(settings.model);
+        choose(settings.model);
         applyKeyFlags(settings);
         setCompatibleBaseUrl(settings.compatibleBaseUrl);
         setWhisperModelPath(settings.whisperModelPath);
         setAppearance(settings.appearance);
         markSaved(savedFrom(settings));
         if (canListModels(settings.notesProvider, settings, settings.compatibleBaseUrl)) {
-          void loadModels(settings.notesProvider).then((available) => {
-            if (available.length && !available.includes(settings.model)) setModel('');
-          });
+          void loadModels(settings.notesProvider).then((available) =>
+            reconcile(settings.notesProvider, settings.model, available),
+          );
         }
       })
       .catch((failure: unknown) => setLoadError(errorMessage(failure)));
-  }, [api, loadModels, applyKeyFlags]);
+  }, [api, loadModels, applyKeyFlags, choose, reconcile, setLoadError, attempt]);
 
   function selectNotesProvider(provider: NotesProvider) {
+    // Coming back to the stored provider brings its stored model back.
+    const restored = saved?.notesProvider === provider ? saved.model : '';
     setNotesProvider(provider);
-    setModel('');
+    notes.choose(restored);
     clearModels();
-    if (canListModels(provider, keys, compatibleBaseUrl)) void loadModels(provider);
+    if (!canListModels(provider, keys, compatibleBaseUrl)) return;
+    void loadModels(provider).then((available) => notes.reconcile(provider, restored, available));
   }
 
   const current = {
@@ -153,13 +164,15 @@ export function useSettingsFields(api: DesktopApi) {
     compatibleBaseUrl,
     whisperModelPath,
     appearance,
-    models,
-    modelsLoading,
-    modelsError,
+    models: list.items,
+    modelsLoading: list.loading,
+    modelsError: list.error,
     loadError,
     selectNotesProvider,
     setTranscriptionProvider,
-    setModel,
+    setModel: notes.choose,
+    removedModel: notes.removed,
+    retryLoad,
     setCompatibleBaseUrl,
     setWhisperModelPath,
     setAppearance,

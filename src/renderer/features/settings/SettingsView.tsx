@@ -15,6 +15,14 @@ export function SettingsView({ api, onShowOnboarding }: SettingsViewProps) {
   const settings = useSettings(api);
   const usesLocalModels =
     settings.transcriptionProvider === 'local' || settings.notesProvider === 'ollama';
+  if (settings.loadError && !settings.loaded) {
+    return (
+      <div className="settings-page">
+        <h1>Paramètres</h1>
+        <Notice retry={settings.retryLoad}>{settings.loadError}</Notice>
+      </div>
+    );
+  }
   return (
     <div className="settings-page">
       <h1>Paramètres</h1>

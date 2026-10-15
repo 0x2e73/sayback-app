@@ -61,7 +61,10 @@ function ProviderDetails({ settings }: ApiSettingsFormProps) {
   return (
     <>
       {settings.transcriptionProvider === 'local' && (
-        <SettingRow label="Modèle Whisper local" hint="Le fichier du modèle, au format .bin.">
+        <SettingRow
+          label="Modèle Whisper local"
+          hint="Le fichier du modèle, au format .bin. Whisper et ffmpeg doivent être installés sur cet ordinateur."
+        >
           {({ controlId, hintId }) => (
             <input
               id={controlId}
@@ -98,6 +101,7 @@ function ProviderDetails({ settings }: ApiSettingsFormProps) {
 
 function emptyModels(provider: NotesProvider): string {
   if (provider === 'ollama') return 'Aucun modèle Ollama installé.';
+  if (provider === 'compatible') return 'Saisissez l’identifiant du modèle.';
   return 'Enregistrez votre clé pour charger les modèles.';
 }
 
@@ -117,36 +121,35 @@ function modelHint(settings: FormSettings): ReactNode {
       </span>
     );
   }
+  if (settings.removedModel) {
+    return (
+      <span role="status">
+        Le modèle « {settings.removedModel} » n’est plus proposé, choisissez-en un.
+      </span>
+    );
+  }
   if (settings.notesProvider === 'ollama') {
     return <>Ollama doit être démarré, avec un modèle qui lit les images.</>;
+  }
+  if (settings.notesProvider === 'compatible' && !settings.models.length) {
+    return <>Si la liste ne se charge pas, saisissez l’identifiant du modèle.</>;
   }
   return null;
 }
 
+// One control for every case, so that typing is never interrupted by the list arriving.
 function ModelControl({ settings, ids }: ApiSettingsFormProps & { ids: RowIds }) {
-  const typed = settings.notesProvider === 'compatible' && !settings.models.length;
-  if (typed) {
-    return (
-      <input
-        id={ids.controlId}
-        type="text"
-        aria-describedby={ids.hintId}
-        value={settings.model}
-        placeholder="ex. openai/gpt-4o"
-        onChange={(event) => settings.setModel(event.target.value)}
-      />
-    );
-  }
+  const compatible = settings.notesProvider === 'compatible';
   return (
     <Select
       id={ids.controlId}
       labelledBy={ids.labelId}
       value={settings.model}
       options={settings.models.map((model) => ({ value: model, label: model }))}
-      placeholder="Choisir un modèle"
+      placeholder={compatible ? 'ex. openai/gpt-4o' : 'Choisir un modèle'}
       emptyMessage={emptyModels(settings.notesProvider)}
       searchLabel="Rechercher un modèle"
-      allowCustom={settings.notesProvider === 'compatible'}
+      allowCustom={compatible}
       onChange={settings.setModel}
     />
   );
@@ -200,7 +203,7 @@ export function ApiSettingsForm({ settings }: ApiSettingsFormProps) {
         title="Analyse"
         description="Choisissez séparément qui transcrit l’audio et qui rédige les notes. Les clés restent chiffrées sur cet ordinateur ; les modèles locaux n’en demandent aucune."
       >
-        {settings.loaded || settings.loadError ? (
+        {settings.loaded ? (
           <>
             <ProviderChoices settings={settings} />
             <ProviderDetails settings={settings} />

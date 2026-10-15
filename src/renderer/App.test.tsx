@@ -120,7 +120,9 @@ describe('Meeting workspace', () => {
       'https://openrouter.ai/api/v1',
     );
     await user.type(screen.getByLabelText('Clé de cette API'), 'router-secret');
-    await user.type(screen.getByPlaceholderText('ex. openai/gpt-4o'), 'openai/gpt-4o');
+    await user.click(screen.getByRole('button', { name: /^Modèle pour les notes/ }));
+    await user.type(screen.getByRole('combobox'), 'openai/gpt-4o');
+    await user.click(screen.getByRole('option', { name: 'Utiliser « openai/gpt-4o »' }));
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
