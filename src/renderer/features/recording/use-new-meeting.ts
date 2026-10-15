@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { defaultMeetingTitle } from '../../../shared/capture-selection';
 import { errorMessage } from '../../../shared/format';
-import { unwrap, type DesktopApi, type Settings } from '../../../shared/contracts';
+import {
+  unwrap,
+  type CapturePermissionKind,
+  type DesktopApi,
+  type Settings,
+} from '../../../shared/contracts';
 import { analysisConfigured } from '../../../shared/analysis-settings';
 import type { CaptureOptions } from './capture-session';
+import { openPrivacySettings } from './open-privacy-settings';
 import { useMeetingSelection } from './use-meeting-selection';
 
 export type CaptureSelection = Omit<CaptureOptions, 'onFailure' | 'onEnded'>;
@@ -73,16 +79,13 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
     return choice.habits.screenId;
   }
 
-  async function openSettings(kind: 'screen' | 'microphone'): Promise<void> {
+  async function openSettings(kind: CapturePermissionKind): Promise<void> {
     try {
-      unwrap(
-        await (kind === 'screen'
-          ? api.openScreenRecordingSettings()
-          : api.openMicrophoneSettings()),
-      );
+      await openPrivacySettings(api, kind);
     } catch (failure) {
       setError(errorMessage(failure));
     }
+    choice.refreshPermission(kind);
   }
 
   const hasSource = !selection.screen || Boolean(choice.sourceId);

@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { ok } from '../../test-api';
-import { mainScreen, openDialog, secondScreen } from './new-meeting-fixtures';
+import { browser, mainScreen, openDialog, secondScreen } from './new-meeting-fixtures';
 
 afterEach(cleanup);
 
@@ -79,6 +79,7 @@ it('turns a blocked microphone off and points to the macOS settings', async () =
 it('lets the user go on without a screen the system refuses', async () => {
   const { within: inDialog, user } = await openDialog({
     getCapturePermission: (kind) => ok(kind === 'screen' ? 'denied' : 'granted'),
+    getSources: () => ok([browser]),
   });
   expect(await inDialog.findByRole('alert')).toHaveTextContent(
     'SayBack n’a pas l’autorisation d’enregistrer l’écran.',
@@ -86,6 +87,59 @@ it('lets the user go on without a screen the system refuses', async () => {
   await user.click(inDialog.getByRole('button', { name: 'Continuer sans écran' }));
   expect(inDialog.queryByRole('alert')).toBeNull();
   expect(pressed(inDialog.getByRole('button', { name: 'Écran' }))).toBe('false');
+});
+
+it('trusts the list over a cached refusal: screens listed, nothing is blocked', async () => {
+  const { within: inDialog, startButton } = await openDialog({
+    getCapturePermission: () => ok('denied'),
+  });
+  await waitFor(() => expect(startButton).toBeEnabled());
+  expect(inDialog.queryByText(/n’a pas l’autorisation/)).toBeNull();
+});
+
+it('blames the screen permission when the list itself failed', async () => {
+  const { within: inDialog } = await openDialog({
+    getCapturePermission: (kind) => ok(kind === 'screen' ? 'denied' : 'granted'),
+    getSources: () => Promise.resolve({ ok: false, error: 'Impossible de lister les écrans.' }),
+  });
+  await waitFor(() =>
+    expect(inDialog.getByText(/n’a pas l’autorisation d’enregistrer l’écran/)).toBeInTheDocument(),
+  );
+});
+
+it('frees the microphone once the user has authorised it and come back', async () => {
+  let status: 'denied' | 'granted' = 'denied';
+  const { within: inDialog } = await openDialog({
+    getCapturePermission: (kind) => ok(kind === 'microphone' ? status : 'granted'),
+  });
+  const chip = inDialog.getByRole('button', { name: 'Microphone' });
+  await waitFor(() => expect(chip).toBeDisabled());
+  status = 'granted';
+  fireEvent(window, new Event('focus'));
+  await waitFor(() => expect(chip).toBeEnabled());
+  expect(pressed(chip)).toBe('true');
+  expect(inDialog.queryByText(/microphone est bloqué/)).toBeNull();
+});
+
+it('reads the permission again when the page becomes visible', async () => {
+  const getCapturePermission = vi.fn(() => ok('granted' as const));
+  await openDialog({ getCapturePermission });
+  const reads = getCapturePermission.mock.calls.length;
+  document.dispatchEvent(new Event('visibilitychange'));
+  await waitFor(() => expect(getCapturePermission.mock.calls.length).toBeGreaterThan(reads));
+});
+
+it('reads the permission again right after the macOS settings were opened', async () => {
+  const getCapturePermission = vi.fn((kind: string) =>
+    ok(kind === 'microphone' ? ('denied' as const) : ('granted' as const)),
+  );
+  const { within: inDialog, user } = await openDialog({ getCapturePermission });
+  await waitFor(() =>
+    expect(inDialog.getByRole('button', { name: 'Ouvrir les réglages' })).toBeInTheDocument(),
+  );
+  const reads = getCapturePermission.mock.calls.length;
+  await user.click(inDialog.getByRole('button', { name: 'Ouvrir les réglages' }));
+  await waitFor(() => expect(getCapturePermission.mock.calls.length).toBeGreaterThan(reads));
 });
 
 it('shows a skeleton while the sources load and keeps the start greyed', async () => {

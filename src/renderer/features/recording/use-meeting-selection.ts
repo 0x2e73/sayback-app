@@ -28,12 +28,17 @@ export function useMeetingSelection(api: DesktopApi) {
   const habits = prefs ?? defaultCapturePrefs;
   const { microphone, systemAudio, screen } = habits;
   const toggles = normalizeSelection(chosen ?? { microphone, systemAudio, screen });
-  const microphoneBlocked = microphonePermission === 'denied';
+  const microphoneBlocked = microphonePermission.status === 'denied';
   const selection: SourceToggles = {
     ...toggles,
     microphone: toggles.microphone && !microphoneBlocked,
   };
   const list = sources.state.status === 'ready' ? sources.state.sources : [];
+  // macOS reports a refusal for a right it never asked about: only a list without any screen
+  // (or one that failed) proves the screen is really blocked.
+  const noScreen =
+    sources.state.status === 'error' ||
+    (sources.state.status === 'ready' && !list.some((source) => source.id.startsWith('screen:')));
   const sourceId = list.some((source) => source.id === chosenSourceId)
     ? chosenSourceId
     : defaultScreenId(list, habits.screenId);
@@ -49,7 +54,9 @@ export function useMeetingSelection(api: DesktopApi) {
     selection,
     hasAudio: hasAudioSource(selection),
     microphoneBlocked,
-    screenBlocked: selection.screen && screenPermission === 'denied',
+    screenBlocked: selection.screen && screenPermission.status === 'denied' && noScreen,
+    refreshPermission: (kind: 'screen' | 'microphone') =>
+      (kind === 'screen' ? screenPermission : microphonePermission).refresh(),
     sources: sources.state,
     reloadSources: sources.reload,
     source: list.find((item) => item.id === sourceId),

@@ -152,6 +152,7 @@ describe('Meeting workspace', () => {
     const openSettings = vi.fn(() => ok(undefined));
     api.openScreenRecordingSettings = openSettings;
     api.getCapturePermission = (kind) => ok(kind === 'screen' ? 'denied' : 'granted');
+    api.getSources = () => ok([]);
     const user = userEvent.setup();
     render(<App api={api} />);
     await user.click(await screen.findByRole('button', { name: 'Démarrer l’enregistrement' }));
