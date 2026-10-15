@@ -13,11 +13,14 @@ const actions: MenuBarActions = {
 function fixture() {
   const titles: string[] = [];
   const menus: MenuBarEntry[][] = [];
-  const tray: TrayPort = {
-    setTitle: (title) => titles.push(title),
-    setContextMenu: vi.fn(),
+  const clicks = new Map<string, () => void>();
+  const onClick = vi.fn();
+  const tray = {
+    setTitle: (title: string) => titles.push(title),
+    popUpContextMenu: vi.fn(),
+    on: (event: 'click' | 'right-click', listener: () => void) => clicks.set(event, listener),
     destroy: vi.fn(),
-  };
+  } satisfies TrayPort;
   const menuBar = createMenuBar({
     createTray: () => tray,
     buildMenu: (template) => {
@@ -25,11 +28,13 @@ function fixture() {
       return template;
     },
     actions,
+    onClick,
     now: () => Date.now(),
   });
+  const click = (event: 'click' | 'right-click') => clicks.get(event)?.();
   // The hub stamps each state when it receives it.
   const announce = (state: RecordingState) => menuBar.announce({ state, receivedAt: Date.now() });
-  return { titles, menus, tray, menuBar, announce };
+  return { titles, menus, tray, menuBar, announce, click, onClick };
 }
 
 const running = (elapsed: number, extra: Partial<RecordingState> = {}): RecordingState =>
@@ -42,10 +47,29 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('createMenuBar', () => {
+  it('routes the left click to the island and the right click to the menu', () => {
+    const { click, onClick, tray, menus } = fixture();
+    click('click');
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(tray.popUpContextMenu).not.toHaveBeenCalled();
+    click('right-click');
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(tray.popUpContextMenu).toHaveBeenCalledWith(menus[0]);
+    expect(menus[0]?.[0]?.label).toBe('Nouvelle réunion…');
+  });
+
+  it('pops up the menu of the current state', () => {
+    const { announce, click, tray, menus } = fixture();
+    announce(running(5));
+    click('right-click');
+    expect(tray.popUpContextMenu).toHaveBeenLastCalledWith(menus.at(-1));
+    expect(menus.at(-1)?.[0]?.label).toBe('Arrêter l’enregistrement');
+  });
+
   it('starts with the menu at rest and no title', () => {
     const { menus, titles } = fixture();
     expect(menus).toHaveLength(1);
-    expect(menus[0]?.[0]?.label).toBe('Nouvel enregistrement…');
+    expect(menus[0]?.[0]?.label).toBe('Nouvelle réunion…');
     expect(titles).toEqual([]);
   });
 
@@ -59,7 +83,7 @@ describe('createMenuBar', () => {
     vi.advanceTimersByTime(5000);
     expect(titles.at(-1)).toBe('');
     expect(titles).toHaveLength(4);
-    expect(menus.at(-1)?.[0]?.label).toBe('Nouvel enregistrement…');
+    expect(menus.at(-1)?.[0]?.label).toBe('Nouvelle réunion…');
   });
 
   it('counts from the reception time of the hub, not from the announcement call', () => {

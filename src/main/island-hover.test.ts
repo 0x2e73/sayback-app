@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Point } from './island-geometry';
-import { nextHover, startIslandHover, type HoverArea } from './island-hover';
+import {
+  nextHover,
+  READY_HOVER,
+  startIslandHover,
+  type HoverArea,
+  type HoverState,
+} from './island-hover';
 
 const area: HoverArea = {
   compact: { x: 706, y: 0, width: 388, height: 38 },
@@ -43,6 +49,25 @@ describe('nextHover', () => {
     state = nextHover(state, inOpenOnly, area, 200);
     state = nextHover(state, away, area, 250);
     expect(nextHover(state, away, area, 500).expanded).toBe(true);
+  });
+});
+
+describe('nextHover on the ready island', () => {
+  const opened: HoverState = { expanded: true, entered: false };
+
+  it('closes 15 s after opening when the cursor never came', () => {
+    let state = nextHover(opened, away, area, 0, READY_HOVER);
+    state = nextHover(state, away, area, 14_999, READY_HOVER);
+    expect(state.expanded).toBe(true);
+    expect(nextHover(state, away, area, 15_000, READY_HOVER).expanded).toBe(false);
+  });
+
+  it('closes 3 s after the cursor leaves the open shell, once it has been in', () => {
+    let state = nextHover(opened, inOpenOnly, area, 0, READY_HOVER);
+    state = nextHover(state, away, area, 1_000, READY_HOVER);
+    state = nextHover(state, away, area, 3_999, READY_HOVER);
+    expect(state.expanded).toBe(true);
+    expect(nextHover(state, away, area, 4_000, READY_HOVER).expanded).toBe(false);
   });
 });
 
@@ -118,6 +143,39 @@ describe('startIslandHover', () => {
     cursor = inCompact;
     vi.advanceTimersByTime(1_000);
     expect(changes).toEqual([]);
+  });
+
+  it('stays open while held, then counts the whole delay again', () => {
+    let held = true;
+    const hover = startIslandHover({
+      cursor: () => cursor,
+      area: () => area,
+      onChange: (expanded) => changes.push(expanded),
+      delays: READY_HOVER,
+      initial: { expanded: true, entered: true },
+      hold: () => held,
+      now: () => Date.now(),
+    });
+    vi.advanceTimersByTime(30_000);
+    expect(changes).toEqual([]);
+    held = false;
+    vi.advanceTimersByTime(2_950);
+    expect(changes).toEqual([]);
+    vi.advanceTimersByTime(100);
+    expect(changes).toEqual([false]);
+    hover.stop();
+  });
+
+  it('opens at once when asked, then waits for the cursor as an untouched island', () => {
+    const hover = start();
+    hover.expand();
+    hover.expand();
+    expect(changes).toEqual([true]);
+    vi.advanceTimersByTime(14_900);
+    expect(changes).toEqual([true]);
+    vi.advanceTimersByTime(200);
+    expect(changes).toEqual([true, false]);
+    hover.stop();
   });
 
   it('waits while the island has no place on screen', () => {

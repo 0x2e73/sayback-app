@@ -12,12 +12,7 @@ describe('menuBarTemplate', () => {
     const labels = menuBarTemplate({ recording: false }, actions()).map(
       (entry) => entry.label ?? entry.type,
     );
-    expect(labels).toEqual([
-      'Nouvel enregistrement…',
-      'Ouvrir SayBack',
-      'separator',
-      'Quitter SayBack',
-    ]);
+    expect(labels).toEqual(['Nouvelle réunion…', 'Ouvrir SayBack', 'separator', 'Quitter SayBack']);
   });
 
   it('offers to stop during a recording', () => {

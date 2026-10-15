@@ -13,11 +13,13 @@ import { createServices, type DesktopServices } from './services';
 import { createIpcRegistrar } from './ipc';
 import { createWindowRoles } from './window-roles';
 import {
+  openPrivacyPane,
   registerFolderHandlers,
   registerMeetingHandlers,
   registerSettingsHandlers,
 } from './meeting-handlers';
-import { registerCapture } from './capture-permissions';
+import { listScreens, registerCapture } from './capture-permissions';
+import { capturePermission } from './capture-sources';
 import { createCapturePrefsStore } from '../backend/infrastructure/capture-prefs-store';
 import { registerCapturePrefs } from './capture-prefs';
 import { registerWindowHandlers } from './full-screen';
@@ -30,6 +32,7 @@ import { createRecordingPower } from './recording-power';
 import type { Island } from './island-controller';
 import { registerIslandHandlers } from './island-handlers';
 import { createElectronIsland } from './island-window';
+import { createStartRelay, registerStartRelay } from './start-relay';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
@@ -82,9 +85,10 @@ function livePage() {
   return liveWindow()?.webContents ?? null;
 }
 
-function openWindow(): BrowserWindow | null {
+// Hidden, it only carries a capture started from the island, and is never shown for it.
+function openWindow(show = true): BrowserWindow | null {
   if (!services) return null;
-  const opened = createWindow({ rendererUrl, isRecording });
+  const opened = createWindow({ rendererUrl, isRecording, show });
   window = opened;
   recordingState.watch(opened.webContents);
   opened.on('closed', () => {
@@ -115,7 +119,8 @@ void app.whenReady().then(() => {
     () => window,
     () => [window, island?.window() ?? null],
   );
-  registerCapturePrefs(handle, createCapturePrefsStore(join(root, 'capture-prefs.json')));
+  const capturePrefs = createCapturePrefsStore(join(root, 'capture-prefs.json'));
+  registerCapturePrefs(handle, capturePrefs);
   registerWindowHandlers(handle, () => window);
   updates = createUpdateService({ getWindow: () => window, isRecording });
   registerUpdateHandlers(handle, updates);
@@ -129,24 +134,47 @@ void app.whenReady().then(() => {
     isRecording,
     quitApp: () => app.quit(),
   });
+  const startRelay = createStartRelay({
+    getWindow: liveWindow,
+    openHiddenWindow: () => openWindow(false),
+  });
+  registerStartRelay(handle, startRelay);
   // A single icon for the whole run: `activate` and page reloads never come through here.
-  menuBar = createElectronMenuBar(menuBarActions);
+  menuBar = createElectronMenuBar(menuBarActions, () => island?.toggle());
   recordingState.subscribe((snapshot) => menuBar?.announce(snapshot));
   recordingState.subscribe(createRecordingPower({ page: livePage, blocker: powerSaveBlocker }));
-  registerRecordingState(handle, recordingState, menuBarActions.rendererReady);
+  registerRecordingState(handle, recordingState, () => {
+    menuBarActions.rendererReady();
+    startRelay.rendererReady();
+  });
   island = createElectronIsland({
     hub: recordingState,
     url: islandUrl,
     preload: join(import.meta.dirname, '../preload/island.cjs'),
+    ready: {
+      prefs: () => capturePrefs.get(),
+      screens: listScreens,
+      screenPermission: () => capturePermission('screen'),
+      today: () => new Date(),
+      start: (payload) => startRelay.start(payload),
+    },
     openApp: menuBarActions.open,
+    openDialog: menuBarActions.newRecording,
+    openPrivacySettings: () => {
+      openPrivacyPane('screen').catch((error: unknown) => {
+        console.error('[island] opening the screen recording settings failed', error);
+      });
+    },
     request: menuBarActions.request,
   });
   if (island) registerIslandHandlers(registrar, island);
   openWindow();
 });
 
+// The window may be hidden, carrying a capture started from the island: the Dock shows it.
 app.on('activate', () => {
   if (!window) openWindow();
+  else if (!window.isVisible()) window.show();
 });
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

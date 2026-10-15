@@ -5,7 +5,8 @@ import type { RecordingSnapshot } from './recording-state-hub';
 
 export interface TrayPort {
   setTitle(title: string): void;
-  setContextMenu(menu: unknown): void;
+  popUpContextMenu(menu: unknown): void;
+  on(event: 'click' | 'right-click', listener: () => void): unknown;
   destroy(): void;
 }
 
@@ -13,6 +14,8 @@ interface MenuBarDeps {
   createTray(): TrayPort;
   buildMenu(template: MenuBarEntry[]): unknown;
   actions: MenuBarActions;
+  /** A left click: the island. */
+  onClick(): void;
   /** Same monotonic clock as the recording state hub. */
   now?(): number;
 }
@@ -26,11 +29,15 @@ export function createMenuBar({
   createTray,
   buildMenu,
   actions,
+  onClick,
   now = () => performance.now(),
 }: MenuBarDeps): MenuBar {
   const tray = createTray();
   let timer: ReturnType<typeof setInterval> | undefined;
-  tray.setContextMenu(buildMenu(menuBarTemplate({ recording: false }, actions)));
+  // Not set as the context menu: macOS would open it on the left click too.
+  let menu = buildMenu(menuBarTemplate({ recording: false }, actions));
+  tray.on('click', onClick);
+  tray.on('right-click', () => tray.popUpContextMenu(menu));
 
   function stopTimer(): void {
     if (timer) clearInterval(timer);
@@ -39,7 +46,7 @@ export function createMenuBar({
 
   function announce({ state, receivedAt }: RecordingSnapshot): void {
     stopTimer();
-    tray.setContextMenu(buildMenu(menuBarTemplate(state, actions)));
+    menu = buildMenu(menuBarTemplate(state, actions));
     if (!state.recording) {
       tray.setTitle('');
       return;

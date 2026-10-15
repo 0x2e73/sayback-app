@@ -15,7 +15,7 @@ export interface MenuBarEntry {
 }
 
 function firstEntry(state: RecordingState, actions: MenuBarActions): MenuBarEntry {
-  if (!state.recording) return { label: 'Nouvel enregistrement…', click: actions.newRecording };
+  if (!state.recording) return { label: 'Nouvelle réunion…', click: actions.newRecording };
   if (state.stopping) return { label: 'Arrêt en cours…', enabled: false };
   return { label: 'Arrêter l’enregistrement', click: actions.stopRecording };
 }

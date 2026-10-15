@@ -2,6 +2,7 @@ import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
 import type { RecordingRequest, RecordingState } from './recording-state';
 import type { IslandRequest, IslandSnapshot } from './island';
+import type { RecordingStartOutcome, RecordingStartRequest } from './recording-start';
 import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
 export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
@@ -117,12 +118,18 @@ export interface DesktopApi {
   onFullScreenChange(listener: (fullScreen: boolean) => void): () => void;
   /** Tells the main process (menu bar, island) the time recorded, the pause and the closing. */
   announceRecordingState(state: RecordingState): Promise<Result<void>>;
-  /** Menu bar « Nouvel enregistrement… ». Returns the unsubscribe function. */
+  /** Menu bar « Nouvelle réunion… ». Returns the unsubscribe function. */
   onMenuBarNewRecording(listener: () => void): () => void;
   /** Audio level of the recording, 0 to 1, ten times a second; the island draws it. */
   sendLevel(level: number): void;
   /** Pause, resume or stop asked from the menu bar or the island. Returns the unsubscribe function. */
   onRecordingRequest(listener: (request: RecordingRequest) => void): () => void;
+  /**
+   * A start asked from the ready island, while the window may stay hidden: run the dialog's start
+   * and answer with `answerStartRequest`. Subscribe before the first `announceRecordingState`.
+   */
+  onStartRequest(listener: (request: RecordingStartRequest) => void): () => void;
+  answerStartRequest(id: string, outcome: RecordingStartOutcome): Promise<Result<void>>;
   /** Last known update state; the first call waits for the startup read of the channel. */
   getUpdateStatus(): Promise<Result<UpdateStatus>>;
   /** Re-reads the update channel now. */
@@ -148,6 +155,8 @@ export interface IslandApi {
   onState(listener: (snapshot: IslandSnapshot) => void): () => void;
   onExpanded(listener: (expanded: boolean) => void): () => void;
   onLevel(listener: (level: number) => void): () => void;
+  /** The end of a `start`: busy is over; on failure, the error to show. */
+  onStartResult(listener: (outcome: RecordingStartOutcome) => void): () => void;
 }
 export function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error);

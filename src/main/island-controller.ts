@@ -1,72 +1,68 @@
 import type { IslandRequest, IslandSnapshot } from '../shared/island';
-import type { RecordingRequest } from '../shared/recording-state';
+import type { IslandStart } from '../shared/recording-start';
 import { debounce, type Debounced } from './debounce';
-import type { IslandLayout, Rect } from './island-geometry';
-import type { HoverArea, IslandHover } from './island-hover';
-import type { RecordingSnapshot, RecordingStateHub } from './recording-state-hub';
+import type { IslandLayout } from './island-geometry';
+import {
+  READY_HOVER,
+  RECORDING_HOVER,
+  type HoverArea,
+  type HoverState,
+  type IslandHover,
+} from './island-hover';
+import type { Island, IslandPorts, IslandWindowPort } from './island-ports';
+import { ReadySession } from './island-ready';
+import type { RecordingSnapshot } from './recording-state-hub';
 
-export interface IslandWindowPort {
-  readonly webContents: {
-    readonly mainFrame: unknown;
-    send(channel: string, payload: unknown): void;
-    isDestroyed(): boolean;
-    on(event: 'render-process-gone', listener: () => void): unknown;
-  };
-  showInactive(): void;
-  setBounds(bounds: Rect): void;
-  setIgnoreMouseEvents(ignore: boolean): void;
-  isDestroyed(): boolean;
-  /** Identifier of the window among the capture sources. */
-  getMediaSourceId(): string;
-  destroy(): void;
-}
-
-export interface IslandPorts {
-  hub: Pick<RecordingStateHub, 'current' | 'elapsed' | 'subscribe'>;
-  /** Where the island goes on the current screens; null when no screen can hold it. */
-  layout(): Promise<IslandLayout | null>;
-  openWindow(layout: IslandLayout): IslandWindowPort;
-  startHover(area: () => HoverArea | null, onChange: (expanded: boolean) => void): IslandHover;
-  /** « Ouvrir SayBack ». */
-  openApp(): void;
-  /** Sent to the main page, which owns the capture. */
-  request(request: RecordingRequest): void;
-}
-
-export interface Island {
-  /** The island window while it exists, for the IPC roles. */
-  window(): IslandWindowPort | null;
-  /** The page has loaded: shows the window and returns what to draw. */
-  ready(): IslandSnapshot;
-  request(request: IslandRequest): void;
-  level(level: number): void;
-  screensChanged(): Promise<void>;
-  close(): void;
-}
+export type { Island, IslandPorts, IslandWindowPort } from './island-ports';
 
 // A burst of start and stop opens or closes the window once, after it settles.
 export const ISLAND_SETTLE = 200;
 // The time of the opening animation: a click aimed at what was under the island stays there.
 export const CLICK_GUARD = 250;
+// The page folds its shell on `island:expanded` false; the window goes once it is folded.
+export const FOLD_FALLBACK = 400;
+
+type Mode = 'ready' | 'recording';
+type IslandCommand = Exclude<IslandRequest, IslandStart>;
 
 const report = (what: string) => (error: unknown) => console.error(`[island] ${what}`, error);
 
-// Lives with the recording: created when it starts, destroyed when it ends.
+/**
+ * Ready: opened by the menu bar icon, open at once, closed by its own rules. Recording: lives
+ * with the recording. A ready island whose start succeeds becomes the recording one.
+ */
 class IslandController implements Island {
   private current: IslandWindowPort | null = null;
   private layout: IslandLayout | null = null;
   private hover: IslandHover | null = null;
+  private session: ReadySession | null = null;
+  /** The mode of the window shown or being opened; null without any. */
+  private mode: Mode | null = null;
   private expanded = false;
   private opening = false;
   private stale = false;
+  // Each opening and closing moves it on: an opening that outlived its turn is dropped.
+  private generation = 0;
   private readonly lifecycle: Debounced;
   private readonly clickGuard: Debounced;
+  private readonly commands: Record<IslandCommand, () => void>;
 
   constructor(private readonly ports: IslandPorts) {
     this.lifecycle = debounce(() => this.settle(), ISLAND_SETTLE);
     this.clickGuard = debounce(() => {
       if (this.expanded) this.window()?.setIgnoreMouseEvents(false);
     }, CLICK_GUARD);
+    this.commands = {
+      pause: () => ports.request('pause'),
+      resume: () => ports.request('resume'),
+      stop: () => ports.request('stop'),
+      open: () => this.openFromIsland(),
+      close: () => this.whenReady(() => this.dismiss()),
+      'open-privacy-settings': () => this.whenReady(() => ports.openPrivacySettings()),
+      'cycle-screen': () => {
+        this.session?.cycleScreen().catch(report('listing the screens failed'));
+      },
+    };
     ports.hub.subscribe((snapshot) => this.follow(snapshot));
   }
 
@@ -81,12 +77,25 @@ class IslandController implements Island {
     target.showInactive();
     // Placed again once shown: macOS may have pushed a new window below the menu bar.
     target.setBounds(this.layout.window);
+    // The ready island opens expanded: it takes clicks once its opening animation is over.
+    if (this.expanded) this.clickGuard.call();
     return current;
   }
 
   request(request: IslandRequest): void {
-    if (request === 'open') this.ports.openApp();
-    else this.ports.request(request);
+    if (typeof request === 'string') return this.commands[request]();
+    this.session?.start(request).catch(report('the start failed'));
+  }
+
+  toggle(): void {
+    if (this.ports.hub.current().state.recording) {
+      this.hover?.expand();
+      return;
+    }
+    const wasReady = this.mode === 'ready';
+    if (wasReady) return this.dismiss();
+    this.close();
+    this.open('ready').catch(report('opening failed'));
   }
 
   level(level: number): void {
@@ -108,44 +117,126 @@ class IslandController implements Island {
   }
 
   close(): void {
+    this.detach()?.destroy();
+  }
+
+  // Folded by the page first, then destroyed; its IPC role ends at once.
+  private dismiss(): void {
+    const leaving = this.detach();
+    if (!leaving) return;
+    leaving.setIgnoreMouseEvents(true);
+    if (!leaving.webContents.isDestroyed()) leaving.webContents.send('island:expanded', false);
+    setTimeout(() => {
+      if (!leaving.isDestroyed()) leaving.destroy();
+    }, FOLD_FALLBACK);
+  }
+
+  private detach(): IslandWindowPort | null {
+    const leaving = this.window();
+    this.generation += 1;
     this.lifecycle.cancel();
     this.clickGuard.cancel();
     this.hover?.stop();
+    this.session?.dispose();
     this.hover = null;
-    this.window()?.destroy();
+    this.session = null;
     this.current = null;
     this.layout = null;
+    this.mode = null;
     this.expanded = false;
+    this.opening = false;
+    return leaving;
+  }
+
+  private whenReady(action: () => void): void {
+    if (this.mode === 'ready') action();
+  }
+
+  private openFromIsland(): void {
+    if (this.mode !== 'ready') return this.ports.openApp();
+    this.ports.openDialog();
+    this.dismiss();
   }
 
   private follow({ state }: RecordingSnapshot): void {
+    if (state.recording && this.mode === 'ready') this.becomeRecording();
     if (this.window()) this.send('island:state', this.snapshot());
-    if (state.recording !== Boolean(this.current)) this.lifecycle.call();
+    if (state.recording !== (this.mode === 'recording')) this.lifecycle.call();
+  }
+
+  // The same window carries on; its hover folds it into wings once the cursor goes.
+  private becomeRecording(): void {
+    if (!this.window()) return this.close();
+    this.session?.dispose();
+    this.session = null;
+    this.mode = 'recording';
+    this.hover?.stop();
+    this.hover = this.startHover('recording', { expanded: this.expanded, entered: true });
   }
 
   private settle(): void {
-    if (!this.ports.hub.current().state.recording) return this.close();
-    if (!this.current && !this.opening) this.open().catch(report('opening failed'));
+    if (!this.ports.hub.current().state.recording) {
+      if (this.mode === 'recording') this.close();
+      return;
+    }
+    if (!this.mode) this.open('recording').catch(report('opening failed'));
   }
 
-  private async open(): Promise<void> {
+  private wanted(mode: Mode): boolean {
+    return this.ports.hub.current().state.recording === (mode === 'recording');
+  }
+
+  private async open(mode: Mode): Promise<void> {
+    const generation = ++this.generation;
+    this.mode = mode;
     this.opening = true;
     this.stale = false;
     try {
-      const next = await this.ports.layout();
-      if (!next || !this.ports.hub.current().state.recording) return;
-      this.layout = next;
-      this.current = this.ports.openWindow(next);
-      this.watch(this.current);
-      this.hover = this.ports.startHover(
-        () => this.area(),
-        (expanded) => this.setExpanded(expanded),
-      );
+      const [next, session] = await Promise.all([this.ports.layout(), this.openSession(mode)]);
+      if (generation !== this.generation || !next || !this.wanted(mode)) {
+        session?.dispose();
+        return this.abandon(generation);
+      }
+      this.show(mode, next, session);
+    } catch (error) {
+      this.abandon(generation);
+      throw error;
     } finally {
-      this.opening = false;
+      if (generation === this.generation) this.opening = false;
     }
     // The screens changed while they were read: read them again for the new window.
     if (this.stale) await this.screensChanged();
+  }
+
+  private openSession(mode: Mode): Promise<ReadySession | null> {
+    if (mode === 'recording') return Promise.resolve(null);
+    return ReadySession.open(this.ports.ready, {
+      changed: () => this.send('island:state', this.snapshot()),
+      result: (outcome) => this.send('island:start-result', outcome),
+    });
+  }
+
+  private abandon(generation: number): void {
+    if (generation === this.generation) this.mode = null;
+  }
+
+  private show(mode: Mode, layout: IslandLayout, session: ReadySession | null): void {
+    this.layout = layout;
+    this.session = session;
+    this.expanded = mode === 'ready';
+    this.current = this.ports.openWindow(layout);
+    this.watch(this.current);
+    this.hover = this.startHover(mode, { expanded: this.expanded, entered: false });
+  }
+
+  private startHover(mode: Mode, initial: HoverState): IslandHover {
+    return this.ports.startHover({
+      area: () => this.area(),
+      onChange: (expanded) => this.hovered(expanded),
+      delays: mode === 'ready' ? READY_HOVER : RECORDING_HOVER,
+      initial,
+      hold: () => this.session?.holding() ?? false,
+    });
   }
 
   private watch(target: IslandWindowPort): void {
@@ -159,6 +250,11 @@ class IslandController implements Island {
   // The open area is the visible shell, never the whole transparent window.
   private area(): HoverArea | null {
     return this.layout && { compact: this.layout.compact, open: this.layout.open };
+  }
+
+  private hovered(expanded: boolean): void {
+    if (!expanded && this.mode === 'ready') return this.dismiss();
+    this.setExpanded(expanded);
   }
 
   private setExpanded(next: boolean): void {
@@ -178,7 +274,11 @@ class IslandController implements Island {
     const { state } = this.ports.hub.current();
     // The elapsed time at sending: the page counts on from its own reception.
     const recording = state.recording ? { ...state, elapsed: this.ports.hub.elapsed() } : state;
-    return { recording, expanded: this.expanded, shape: this.layout.shape };
+    const frame = { recording, expanded: this.expanded, shape: this.layout.shape };
+    if (this.mode === 'ready' && this.session) {
+      return { ...frame, mode: 'ready', ready: this.session.state() };
+    }
+    return { ...frame, mode: 'recording' };
   }
 
   private send(channel: string, payload: unknown): void {

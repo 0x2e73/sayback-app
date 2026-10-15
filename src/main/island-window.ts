@@ -2,6 +2,7 @@ import { BrowserWindow, screen, type BrowserWindowConstructorOptions } from 'ele
 import type { RecordingRequest } from '../shared/recording-state';
 import { debounce } from './debounce';
 import { createIsland, type Island } from './island-controller';
+import type { ReadyPorts } from './island-ready';
 import { islandLayout, type DisplayInfo, type IslandLayout, type Rect } from './island-geometry';
 import { startIslandHover } from './island-hover';
 import { createNotchProbe, notchesOf, type NotchProbe } from './notch-probe';
@@ -77,7 +78,10 @@ interface ElectronIslandDeps {
   hub: Pick<RecordingStateHub, 'current' | 'elapsed' | 'subscribe'>;
   url: string;
   preload: string;
+  ready: ReadyPorts;
   openApp(): void;
+  openDialog(): void;
+  openPrivacySettings(): void;
   request(request: RecordingRequest): void;
 }
 
@@ -89,9 +93,12 @@ export function createElectronIsland(deps: ElectronIslandDeps): Island | null {
     hub: deps.hub,
     layout: () => readLayout(probe),
     openWindow: (layout) => openIslandWindow(deps.url, deps.preload, layout),
-    startHover: (area, onChange) =>
-      startIslandHover({ cursor: () => screen.getCursorScreenPoint(), area, onChange }),
+    startHover: (options) =>
+      startIslandHover({ ...options, cursor: () => screen.getCursorScreenPoint() }),
+    ready: deps.ready,
     openApp: deps.openApp,
+    openDialog: deps.openDialog,
+    openPrivacySettings: deps.openPrivacySettings,
     request: deps.request,
   });
   // Plugging a screen fires several events: the probe runs once they settle.

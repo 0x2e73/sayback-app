@@ -69,6 +69,30 @@ it('passes pause, resume and stop requests to the page, ignoring anything else',
   expect(electron.listeners.has('recording:request')).toBe(false);
 });
 
+it('passes a well-formed start request to the page, and sends its answer back', async () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  const request = {
+    id: 'a1',
+    title: 'Réunion',
+    selection: { microphone: true, systemAudio: false, screen: false },
+  };
+  const seen: unknown[] = [];
+  const stop = api.onStartRequest((received) => seen.push(received));
+  const relay = electron.listeners.get('recording:start-request');
+  for (const value of [request, null, { ...request, id: 3 }, { ...request, selection: {} }]) {
+    relay?.({}, value);
+  }
+  expect(seen).toEqual([request]);
+  stop();
+  expect(electron.listeners.has('recording:start-request')).toBe(false);
+  await api.answerStartRequest('a1', { ok: false, error: 'no-screen' });
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('recording:start-result', {
+    id: 'a1',
+    outcome: { ok: false, error: 'no-screen' },
+  });
+});
+
 it('sends the chosen appearance on its own channel', async () => {
   const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
   if (!api) throw new Error('the preload exposed nothing');
