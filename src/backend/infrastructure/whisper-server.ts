@@ -40,10 +40,18 @@ interface Running {
   port: number;
   exited: Promise<void>;
   gone: boolean;
+  /** Given up for a shared port: the checks still running must not give it up again. */
+  abandoned: boolean;
 }
 
 function watch(process: ServerProcess, port: number, onExit: (running: Running) => void): Running {
-  const running: Running = { process, port, gone: false, exited: Promise.resolve() };
+  const running: Running = {
+    process,
+    port,
+    gone: false,
+    abandoned: false,
+    exited: Promise.resolve(),
+  };
   running.exited = new Promise((resolve) => {
     const settle = () => {
       if (running.gone) return;
@@ -180,7 +188,7 @@ export class WhisperServer {
   /** True when our child alone listens on its port; otherwise the server is given up. */
   private async holdsPort(running: Running): Promise<boolean> {
     const listeners = await this.dependencies.listeners(running.port);
-    if (running.gone || this.running !== running) return false;
+    if (running.gone || running.abandoned || this.running !== running) return false;
     // Nothing listening: the server is dying, and its exit is handled as a crash.
     if (listeners?.length === 0) return false;
     if (listeners?.length === 1 && listeners[0] === running.process.pid) return true;
@@ -190,6 +198,7 @@ export class WhisperServer {
 
   // Someone else may receive the audio and the token: no restart on any port for this recording.
   private abandon(running: Running): void {
+    running.abandoned = true;
     this.session += 1;
     this.base = null;
     running.process.kill('SIGKILL');
