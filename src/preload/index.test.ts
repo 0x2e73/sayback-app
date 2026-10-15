@@ -39,21 +39,32 @@ it('passes full-screen changes to the page, ignoring anything but a boolean', ()
   expect(electron.listeners.has('window:full-screen-changed')).toBe(false);
 });
 
-it.each([
-  ['onMenuBarNewRecording', 'menu-bar:new-recording'],
-  ['onMenuBarStopRecording', 'menu-bar:stop-recording'],
-] as const)('relays %s to the page until it unsubscribes', (method, channel) => {
+it('relays the menu bar new recording to the page until it unsubscribes', () => {
   const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
   if (!api) throw new Error('the preload exposed nothing');
   let count = 0;
-  const stop = api[method](() => {
+  const stop = api.onMenuBarNewRecording(() => {
     count += 1;
   });
-  electron.listeners.get(channel)?.({}, undefined);
-  electron.listeners.get(channel)?.({}, 'anything');
+  electron.listeners.get('menu-bar:new-recording')?.({}, undefined);
+  electron.listeners.get('menu-bar:new-recording')?.({}, 'anything');
   expect(count).toBe(2);
   stop();
-  expect(electron.listeners.has(channel)).toBe(false);
+  expect(electron.listeners.has('menu-bar:new-recording')).toBe(false);
+});
+
+it('passes pause, resume and stop requests to the page, ignoring anything else', () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  const seen: string[] = [];
+  const stop = api.onRecordingRequest((request) => seen.push(request));
+  const relay = electron.listeners.get('recording:request');
+  for (const value of ['pause', 'open', 'resume', 1, null, { request: 'stop' }, 'stop']) {
+    relay?.({}, value);
+  }
+  expect(seen).toEqual(['pause', 'resume', 'stop']);
+  stop();
+  expect(electron.listeners.has('recording:request')).toBe(false);
 });
 
 it('sends the chosen appearance on its own channel', async () => {

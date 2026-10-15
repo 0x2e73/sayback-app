@@ -1,12 +1,15 @@
+import type { RecordingRequest } from '../shared/recording-state';
+
 export const MENU_BAR_NEW_RECORDING = 'menu-bar:new-recording';
-export const MENU_BAR_STOP_RECORDING = 'menu-bar:stop-recording';
+/** Pause, resume or stop, asked to the page that owns the capture. */
+export const RECORDING_REQUEST = 'recording:request';
 
 export interface MenuBarWindow {
   isMinimized(): boolean;
   restore(): void;
   show(): void;
   focus(): void;
-  webContents: { isLoading(): boolean; send(channel: string): void };
+  webContents: { isLoading(): boolean; send(channel: string, ...args: unknown[]): void };
 }
 
 interface ActionDeps {
@@ -19,6 +22,8 @@ interface ActionDeps {
 export interface MenuBarWindowActions {
   newRecording(): void;
   stopRecording(): void;
+  /** The page ignores a request that does not apply, such as a pause while paused. */
+  request(request: RecordingRequest): void;
   open(): void;
   quit(): void;
   /** The page has subscribed: a request made while it was loading can now reach it. */
@@ -39,6 +44,10 @@ export function createMenuBarActions(deps: ActionDeps): MenuBarWindowActions {
     return { window, reopened: !existing };
   }
 
+  function request(request: RecordingRequest): void {
+    deps.getWindow()?.webContents.send(RECORDING_REQUEST, request);
+  }
+
   return {
     newRecording() {
       const shown = reveal();
@@ -49,9 +58,8 @@ export function createMenuBarActions(deps: ActionDeps): MenuBarWindowActions {
       }
       shown.window.webContents.send(MENU_BAR_NEW_RECORDING);
     },
-    stopRecording() {
-      deps.getWindow()?.webContents.send(MENU_BAR_STOP_RECORDING);
-    },
+    stopRecording: () => request('stop'),
+    request,
     open() {
       reveal();
     },

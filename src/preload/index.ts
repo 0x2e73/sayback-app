@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { DesktopApi, UpdateStatus } from '../shared/contracts';
+import type { RecordingRequest } from '../shared/recording-state';
+
+// The sandboxed preload cannot load zod: payloads are checked by hand.
+function isRecordingRequest(value: unknown): value is RecordingRequest {
+  return value === 'pause' || value === 'resume' || value === 'stop';
+}
 
 // Payload-free event: the page is only told that it happened.
 function listenTo(channel: string, listener: () => void): () => void {
@@ -37,7 +43,6 @@ const api: DesktopApi = {
   openSetupGuide: (guide) => ipcRenderer.invoke('setup:open-guide', guide),
   isFullScreen: () => ipcRenderer.invoke('window:is-full-screen'),
   onFullScreenChange: (listener) => {
-    // The sandboxed preload cannot load zod: validate the one boolean by hand.
     const relay = (_event: IpcRendererEvent, fullScreen: unknown) => {
       if (typeof fullScreen === 'boolean') listener(fullScreen);
     };
@@ -48,7 +53,15 @@ const api: DesktopApi = {
   },
   announceRecordingState: (state) => ipcRenderer.invoke('recording:state', state),
   onMenuBarNewRecording: (listener) => listenTo('menu-bar:new-recording', listener),
-  onMenuBarStopRecording: (listener) => listenTo('menu-bar:stop-recording', listener),
+  onRecordingRequest: (listener) => {
+    const relay = (_event: IpcRendererEvent, request: unknown) => {
+      if (isRecordingRequest(request)) listener(request);
+    };
+    ipcRenderer.on('recording:request', relay);
+    return () => {
+      ipcRenderer.removeListener('recording:request', relay);
+    };
+  },
   getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
   checkForUpdate: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),

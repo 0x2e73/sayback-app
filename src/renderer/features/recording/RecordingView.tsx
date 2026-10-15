@@ -35,9 +35,14 @@ export function RecordingView({
   stopping: boolean;
 }) {
   const [elapsed, setElapsed] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(capture.paused);
   const [level, setLevel] = useState(0);
   const source = useRecordingSource(api, capture);
+  // A pause may come from the menu bar or the island: the label follows the session.
+  useEffect(() => {
+    setPaused(capture.paused);
+    return capture.onPauseChange(() => setPaused(capture.paused));
+  }, [capture]);
   useEffect(() => {
     const data = new Uint8Array(capture.analyser.frequencyBinCount);
     const timer = setInterval(() => {
@@ -73,14 +78,7 @@ export function RecordingView({
         Audio et écran sauvegardés ici. L’analyse ne démarre qu’après l’arrêt.
       </span>
       <div className="recording-actions">
-        <Button
-          variant="secondary"
-          disabled={stopping}
-          onClick={() => {
-            capture.togglePause();
-            setPaused(capture.paused);
-          }}
-        >
+        <Button variant="secondary" disabled={stopping} onClick={() => capture.togglePause()}>
           {paused ? <Play size={16} /> : <Pause size={16} />}
           {paused ? 'Reprendre' : 'Pause'}
         </Button>

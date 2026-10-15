@@ -4,6 +4,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DesktopApi } from '../shared/contracts';
+import type { RecordingRequest } from '../shared/recording-state';
 import { App } from './App';
 import { apiFor, meetingFixture, ok, settings } from './test-api';
 
@@ -38,11 +39,14 @@ interface Fixture {
   announce: ReturnType<typeof vi.fn>;
   unsubscribed: ReturnType<typeof vi.fn>;
   newRecording(): void;
-  stopRecording(): void;
+  request(request: RecordingRequest): void;
 }
 
 function menuBarApi(): Fixture {
-  const listeners = { create: () => {}, stop: () => {} };
+  const listeners: { create(): void; request(request: RecordingRequest): void } = {
+    create: () => {},
+    request: () => {},
+  };
   const announce = vi.fn(() => ok(undefined));
   const unsubscribed = vi.fn();
   const api = apiFor([]);
@@ -54,8 +58,8 @@ function menuBarApi(): Fixture {
     listeners.create = listener;
     return unsubscribed;
   };
-  api.onMenuBarStopRecording = (listener) => {
-    listeners.stop = listener;
+  api.onRecordingRequest = (listener) => {
+    listeners.request = listener;
     return unsubscribed;
   };
   return {
@@ -63,7 +67,7 @@ function menuBarApi(): Fixture {
     announce,
     unsubscribed,
     newRecording: () => act(() => listeners.create()),
-    stopRecording: () => act(() => listeners.stop()),
+    request: (request) => act(() => listeners.request(request)),
   };
 }
 
@@ -102,7 +106,7 @@ describe('Menu bar events in the page', () => {
         stopping: false,
       }),
     );
-    menu.stopRecording();
+    menu.request('stop');
     await waitFor(() => expect(session.stop).toHaveBeenCalledOnce());
     await waitFor(() => expect(menu.announce).toHaveBeenLastCalledWith({ recording: false }));
   });
@@ -149,13 +153,37 @@ describe('Menu bar events in the page', () => {
     await waitFor(() => expect(menu.announce).toHaveBeenLastCalledWith({ recording: false }));
   });
 
-  it('ignores a stop request when nothing is recording', async () => {
+  it('pauses and resumes on request, and the recording view follows', async () => {
+    const user = userEvent.setup();
     const menu = menuBarApi();
     render(<App api={menu.api} />);
-    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
-    expect(() => menu.stopRecording()).not.toThrow();
-    expect(session.stop).not.toHaveBeenCalled();
+    menu.newRecording();
+    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
+    await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
+    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    await screen.findByRole('button', { name: 'Pause' });
+    menu.request('pause');
+    menu.request('pause');
+    expect(session.togglePause).toHaveBeenCalledOnce();
+    expect(screen.getByText('En pause')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reprendre' })).toBeInTheDocument();
+    menu.request('resume');
+    menu.request('resume');
+    expect(session.togglePause).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
   });
+
+  it.each(['pause', 'resume', 'stop'] as const)(
+    'ignores a %s request when nothing is recording',
+    async (request) => {
+      const menu = menuBarApi();
+      render(<App api={menu.api} />);
+      await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+      expect(() => menu.request(request)).not.toThrow();
+      expect(session.stop).not.toHaveBeenCalled();
+      expect(session.togglePause).not.toHaveBeenCalled();
+    },
+  );
 
   it('stops listening when the page unmounts', async () => {
     const menu = menuBarApi();

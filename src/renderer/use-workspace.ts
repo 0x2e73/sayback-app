@@ -41,12 +41,9 @@ export function useWorkspace(api: DesktopApi) {
     [clearFilter, runAutoAnalysis, updateMeeting],
   );
   const recording = useRecording(api, onFinished);
-  useMenuBar(api, recording.capture, recording.stopping, {
-    // One recording at a time: the pane is locked meanwhile.
-    onNewRecording: () => {
-      if (!recording.capture) setNewMeeting(true);
-    },
-    onStopRecording: recording.stop,
+  // One recording at a time: the pane is locked meanwhile.
+  useMenuBar(api, recording, () => {
+    if (!recording.capture) setNewMeeting(true);
   });
 
   async function start(title: string, options: StartOptions, autoAnalyze: boolean) {

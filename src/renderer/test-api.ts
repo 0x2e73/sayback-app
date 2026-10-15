@@ -84,7 +84,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     onFullScreenChange: () => () => {},
     announceRecordingState: () => ok(undefined),
     onMenuBarNewRecording: () => () => {},
-    onMenuBarStopRecording: () => () => {},
+    onRecordingRequest: () => () => {},
     getUpdateStatus: () => ok(upToDate),
     checkForUpdate: () => ok(upToDate),
     installUpdate: () => ok('started'),

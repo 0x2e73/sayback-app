@@ -70,10 +70,22 @@ describe('new recording', () => {
 });
 
 describe('stop recording and open', () => {
-  it('tells the page to stop', () => {
+  it('asks the page to stop', () => {
     const window = fakeWindow();
     setup(window).actions.stopRecording();
-    expect(window.webContents.send).toHaveBeenCalledWith('menu-bar:stop-recording');
+    expect(window.webContents.send).toHaveBeenCalledWith('recording:request', 'stop');
+  });
+
+  it.each(['pause', 'resume', 'stop'] as const)('passes the %s request to the page', (request) => {
+    const window = fakeWindow();
+    setup(window).actions.request(request);
+    expect(window.webContents.send.mock.calls).toEqual([['recording:request', request]]);
+  });
+
+  it('ignores a request without a window, without opening one', () => {
+    const { actions, openWindow } = setup(null);
+    expect(() => actions.request('pause')).not.toThrow();
+    expect(openWindow).not.toHaveBeenCalled();
   });
 
   it('ignores a stop request without a window', () => {
