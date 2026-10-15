@@ -95,6 +95,17 @@ function useLoadAttempt() {
   return { loadError, setLoadError, attempt, retryLoad };
 }
 
+/** The settings applied at once, outside the form and its save button. */
+function useInstantFields() {
+  const [appearance, setAppearance] = useState<Appearance>('system');
+  const [islandLiveText, setIslandLiveText] = useState(true);
+  const readInstant = useCallback((settings: Settings) => {
+    setAppearance(settings.appearance);
+    setIslandLiveText(settings.islandLiveText);
+  }, []);
+  return { appearance, setAppearance, islandLiveText, setIslandLiveText, readInstant };
+}
+
 export function useSettingsFields(api: DesktopApi) {
   const [notesProvider, setNotesProvider] = useState<NotesProvider>('openai');
   const [transcriptionProvider, setTranscriptionProvider] =
@@ -105,7 +116,8 @@ export function useSettingsFields(api: DesktopApi) {
   const { applyKeyFlags } = keys;
   const [compatibleBaseUrl, setCompatibleBaseUrl] = useState('');
   const [whisperModelPath, setWhisperModelPath] = useState('');
-  const [appearance, setAppearance] = useState<Appearance>('system');
+  const instant = useInstantFields();
+  const { readInstant } = instant;
   const { loadError, setLoadError, attempt, retryLoad } = useLoadAttempt();
   const [saved, markSaved] = useState<SavedFields | null>(null);
   const list = useModels(api);
@@ -122,7 +134,7 @@ export function useSettingsFields(api: DesktopApi) {
         applyKeyFlags(settings);
         setCompatibleBaseUrl(settings.compatibleBaseUrl);
         setWhisperModelPath(settings.whisperModelPath);
-        setAppearance(settings.appearance);
+        readInstant(settings);
         markSaved(savedFrom(settings));
         if (canListModels(settings.notesProvider, settings, settings.compatibleBaseUrl)) {
           void loadModels(settings.notesProvider).then((available) =>
@@ -131,7 +143,7 @@ export function useSettingsFields(api: DesktopApi) {
         }
       })
       .catch((failure: unknown) => setLoadError(errorMessage(failure)));
-  }, [api, loadModels, applyKeyFlags, choose, reconcile, setLoadError, attempt]);
+  }, [api, loadModels, applyKeyFlags, choose, reconcile, readInstant, setLoadError, attempt]);
 
   function selectNotesProvider(provider: NotesProvider) {
     // Coming back to the stored provider brings its stored model back.
@@ -163,7 +175,7 @@ export function useSettingsFields(api: DesktopApi) {
     markSaved,
     compatibleBaseUrl,
     whisperModelPath,
-    appearance,
+    ...instant,
     models: list.items,
     modelsLoading: list.loading,
     modelsError: list.error,
@@ -175,7 +187,6 @@ export function useSettingsFields(api: DesktopApi) {
     retryLoad,
     setCompatibleBaseUrl,
     setWhisperModelPath,
-    setAppearance,
     loadModels,
     clearModels,
   };

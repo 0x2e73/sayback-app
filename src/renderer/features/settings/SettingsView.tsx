@@ -3,6 +3,7 @@ import { Button, Notice } from '../../components/ui';
 import { LocalSetupPanel } from '../local-setup/LocalSetupPanel';
 import { ApiSettingsForm } from './ApiSettingsForm';
 import { AppearanceSettings } from './AppearanceSettings';
+import { IslandTextSettings } from './IslandTextSettings';
 import { SettingRow, SettingsGroup } from './SettingsLayout';
 import { useSettings } from './use-settings';
 
@@ -38,6 +39,11 @@ export function SettingsView({ api, onShowOnboarding }: SettingsViewProps) {
       )}
       <SettingsGroup title="Général">
         <AppearanceSettings value={settings.appearance} onChange={settings.chooseAppearance} />
+        <IslandTextSettings
+          value={settings.islandLiveText}
+          busy={settings.islandLiveTextBusy}
+          onChange={(value) => void settings.chooseIslandLiveText(value)}
+        />
         <SettingRow label="Introduction" hint="Revoir les étapes de présentation de l’application.">
           <Button variant="secondary" onClick={onShowOnboarding}>
             Revoir l’introduction
