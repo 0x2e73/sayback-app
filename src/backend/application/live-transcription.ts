@@ -30,7 +30,8 @@ export function spokenText(raw: string): string {
 export class LiveTranscription {
   private readonly segmenters = new Map<LiveTrack, SegmenterState>();
   private readonly queue = new LiveDecodeQueue();
-  private readonly revisions = new Map<string, number>();
+  /** The last draft shown of each open utterance. */
+  private readonly shown = new Map<string, { revision: number; text: string }>();
   private active = false;
   private session = 0;
   private running: AbortController | null = null;
@@ -73,7 +74,7 @@ export class LiveTranscription {
     this.running?.abort();
     this.running = null;
     this.segmenters.clear();
-    this.revisions.clear();
+    this.shown.clear();
   }
 
   private enqueue(track: LiveTrack, events: SegmenterEvent[]): void {
@@ -91,7 +92,7 @@ export class LiveTranscription {
       // Stopped meanwhile: the answer belongs to a finished session.
       if (session !== this.session) return;
       this.running = null;
-      const draft = text === null ? null : this.draftOf(job, text);
+      const draft = this.draftOf(job, text);
       if (draft) this.drafts.publish(draft);
     }
   }
@@ -104,15 +105,19 @@ export class LiveTranscription {
     }
   }
 
-  // An empty text is shown only to close a draft already on screen.
-  private draftOf({ track, event }: DecodeJob, text: string): LiveSegment | null {
+  /**
+   * An empty text is shown only to close a draft already on screen. A final that failed keeps the
+   * last draft, so no utterance stays open forever.
+   */
+  private draftOf({ track, event }: DecodeJob, decoded: string | null): LiveSegment | null {
     const id = `${track}-${event.id}`;
-    const previous = this.revisions.get(id);
+    const previous = this.shown.get(id);
     const final = event.kind === 'final';
-    if (!text && (!final || previous === undefined)) return null;
-    const revision = (previous ?? -1) + 1;
-    if (final) this.revisions.delete(id);
-    else this.revisions.set(id, revision);
+    const text = decoded ?? (final ? previous?.text : undefined);
+    if (text === undefined || (!text && (!final || !previous))) return null;
+    const revision = (previous?.revision ?? -1) + 1;
+    if (final) this.shown.delete(id);
+    else this.shown.set(id, { revision, text });
     return { id, track, text, start: event.start, end: event.end, final, revision };
   }
 }

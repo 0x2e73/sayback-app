@@ -101,6 +101,23 @@ describe('live transcription', () => {
     expect(published.map((segment) => segment.id)).toEqual(['microphone-1']);
   });
 
+  it('keeps the last draft as the final when the final decode fails', async () => {
+    const { live, calls, published } = setup();
+    live.start();
+
+    live.push('microphone', tone(2_000));
+    calls[0]!.resolve('Bonjour à');
+    await settle();
+    live.pause();
+    calls[1]!.reject(new Error('moteur arrêté'));
+    await settle();
+
+    expect(published.map(({ text, final, revision }) => ({ text, final, revision }))).toEqual([
+      { text: 'Bonjour à', final: false, revision: 0 },
+      { text: 'Bonjour à', final: true, revision: 1 },
+    ]);
+  });
+
   it('aborts the decode in progress on stop and ignores its late answer', async () => {
     const { live, calls, published } = setup();
     live.start();
