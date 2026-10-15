@@ -48,9 +48,10 @@ it('keeps the list beside the card in the narrow layout', () => {
   expect(narrow).toMatch(/\.page-content\s*\{/);
 });
 
-it('keeps the onboarding logo clear of the traffic lights in one column', () => {
+it('keeps the onboarding column below the traffic lights, at most 520 px wide', () => {
+  expect(tokenValue('--onboarding-width')).toBe('520px');
   expect(read('styles/onboarding.css')).toMatch(
-    /@media \(max-width: 850px\)[\s\S]*\.onboarding-visual\s*\{[^}]*padding-top:\s*max\(24px,\s*var\(--chrome-band\)\)/,
+    /\.onboarding-column\s*\{[^}]*width:\s*min\(100%,\s*var\(--onboarding-width\)\)[^}]*padding-top:\s*max\(var\(--space-6\),\s*var\(--chrome-band\)\)/,
   );
 });
 

@@ -425,3 +425,58 @@
     transform: translateY(var(--motion-rise));
   }
 }
+
+/* Select: the popover opens out of its trigger and folds back at the exit speed. */
+.select-popover {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .select-popover {
+    opacity: 0;
+    transform: scale(var(--motion-scale-in)) translateY(var(--motion-drop));
+  }
+  .select-popover[data-upward] {
+    transform: scale(var(--motion-scale-in)) translateY(calc(-1 * var(--motion-drop)));
+  }
+}
+.select-popover[data-state='closing'] {
+  opacity: 0;
+  transform: scale(var(--motion-scale-out));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.select-trigger,
+.select-option {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.select-trigger:active:not(:disabled),
+.select-option:active {
+  transform: scale(var(--motion-press-soft));
+}
+
+/* Recording screen: the warning leaves in a fade, the line and the state colours settle. */
+.notice[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.recording-status,
+.recording-dot {
+  transition:
+    color var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+.finalizing-line {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .finalizing-line {
+    opacity: 0;
+  }
+}

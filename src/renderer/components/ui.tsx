@@ -12,3 +12,4 @@ export { LevelMeter, type LevelFeed } from './LevelMeter';
 export { Switch } from './Switch';
 export { Skeleton } from './Skeleton';
 export { SearchField } from './SearchField';
+export { Select, type SelectOption } from './Select';

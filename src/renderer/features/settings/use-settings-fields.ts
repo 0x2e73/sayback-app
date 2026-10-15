@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   unwrap,
   type Appearance,
@@ -9,13 +9,46 @@ import {
 import { errorMessage } from '../../../shared/format';
 import { isLocalCompatibleUrl } from '../../../shared/compatible-url';
 import { useModels } from './use-models';
+import { useNotesModel } from './use-notes-model';
 
-function modelsAvailable(provider: NotesProvider, settings: Settings): boolean {
+/** What the store holds; the form is dirty once it differs from it. */
+export interface SavedFields {
+  notesProvider: NotesProvider;
+  transcriptionProvider: Settings['transcriptionProvider'];
+  model: string;
+  compatibleBaseUrl: string;
+  whisperModelPath: string;
+}
+
+export function savedFrom(source: SavedFields, model = source.model): SavedFields {
+  return {
+    notesProvider: source.notesProvider,
+    transcriptionProvider: source.transcriptionProvider,
+    model,
+    compatibleBaseUrl: source.compatibleBaseUrl,
+    whisperModelPath: source.whisperModelPath,
+  };
+}
+
+function differs(saved: SavedFields, current: SavedFields): boolean {
+  return (Object.keys(saved) as (keyof SavedFields)[]).some((key) => saved[key] !== current[key]);
+}
+
+type KeyFlags = Pick<
+  Settings,
+  'hasOpenAiKey' | 'hasAnthropicKey' | 'hasGeminiKey' | 'hasCompatibleKey'
+>;
+
+function canListModels(
+  provider: NotesProvider,
+  keys: KeyFlags,
+  compatibleBaseUrl: string,
+): boolean {
   if (provider === 'ollama') return true;
-  if (provider === 'openai') return settings.hasOpenAiKey;
-  if (provider === 'anthropic') return settings.hasAnthropicKey;
-  if (provider === 'gemini') return settings.hasGeminiKey;
-  return settings.hasCompatibleKey || isLocalCompatibleUrl(settings.compatibleBaseUrl);
+  if (provider === 'openai') return keys.hasOpenAiKey;
+  if (provider === 'anthropic') return keys.hasAnthropicKey;
+  if (provider === 'gemini') return keys.hasGeminiKey;
+  return keys.hasCompatibleKey || isLocalCompatibleUrl(compatibleBaseUrl);
 }
 
 function useKeyFields() {
@@ -27,6 +60,12 @@ function useKeyFields() {
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const [hasCompatibleKey, setHasCompatibleKey] = useState(false);
+  const applyKeyFlags = useCallback((stored: KeyFlags) => {
+    setHasOpenAiKey(stored.hasOpenAiKey);
+    setHasAnthropicKey(stored.hasAnthropicKey);
+    setHasGeminiKey(stored.hasGeminiKey);
+    setHasCompatibleKey(stored.hasCompatibleKey);
+  }, []);
   return {
     openAiKey,
     anthropicKey,
@@ -40,31 +79,37 @@ function useKeyFields() {
     setAnthropicKey,
     setGeminiKey,
     setCompatibleKey,
-    setHasOpenAiKey,
-    setHasAnthropicKey,
-    setHasGeminiKey,
-    setHasCompatibleKey,
+    typedKey: [openAiKey, anthropicKey, geminiKey, compatibleKey].some((key) => key.trim() !== ''),
+    applyKeyFlags,
   };
+}
+
+/** The failure to read the stored settings, and the count of tries that clears it. */
+function useLoadAttempt() {
+  const [loadError, setLoadError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  function retryLoad() {
+    setLoadError('');
+    setAttempt((count) => count + 1);
+  }
+  return { loadError, setLoadError, attempt, retryLoad };
 }
 
 export function useSettingsFields(api: DesktopApi) {
   const [notesProvider, setNotesProvider] = useState<NotesProvider>('openai');
   const [transcriptionProvider, setTranscriptionProvider] =
     useState<Settings['transcriptionProvider']>('openai');
-  const [model, setModel] = useState('gpt-4.1-mini');
+  const notes = useNotesModel();
+  const { model, choose, reconcile } = notes;
   const keys = useKeyFields();
-  const { setHasOpenAiKey, setHasAnthropicKey, setHasGeminiKey, setHasCompatibleKey } = keys;
+  const { applyKeyFlags } = keys;
   const [compatibleBaseUrl, setCompatibleBaseUrl] = useState('');
   const [whisperModelPath, setWhisperModelPath] = useState('');
   const [appearance, setAppearance] = useState<Appearance>('system');
-  const [loadError, setLoadError] = useState('');
-  const {
-    items: models,
-    loading: modelsLoading,
-    error: modelsError,
-    load: loadModels,
-    clear: clearModels,
-  } = useModels(api);
+  const { loadError, setLoadError, attempt, retryLoad } = useLoadAttempt();
+  const [saved, markSaved] = useState<SavedFields | null>(null);
+  const list = useModels(api);
+  const { load: loadModels, clear: clearModels } = list;
 
   useEffect(() => {
     void api
@@ -73,54 +118,61 @@ export function useSettingsFields(api: DesktopApi) {
       .then((settings) => {
         setNotesProvider(settings.notesProvider);
         setTranscriptionProvider(settings.transcriptionProvider);
-        setModel(settings.model);
-        setHasOpenAiKey(settings.hasOpenAiKey);
-        setHasAnthropicKey(settings.hasAnthropicKey);
-        setHasGeminiKey(settings.hasGeminiKey);
-        setHasCompatibleKey(settings.hasCompatibleKey);
+        choose(settings.model);
+        applyKeyFlags(settings);
         setCompatibleBaseUrl(settings.compatibleBaseUrl);
         setWhisperModelPath(settings.whisperModelPath);
         setAppearance(settings.appearance);
-        if (modelsAvailable(settings.notesProvider, settings)) {
-          void loadModels(settings.notesProvider).then((available) => {
-            if (available.length && !available.includes(settings.model)) {
-              setModel('');
-            }
-          });
+        markSaved(savedFrom(settings));
+        if (canListModels(settings.notesProvider, settings, settings.compatibleBaseUrl)) {
+          void loadModels(settings.notesProvider).then((available) =>
+            reconcile(settings.notesProvider, settings.model, available),
+          );
         }
       })
       .catch((failure: unknown) => setLoadError(errorMessage(failure)));
-  }, [api, loadModels, setHasOpenAiKey, setHasAnthropicKey, setHasGeminiKey, setHasCompatibleKey]);
+  }, [api, loadModels, applyKeyFlags, choose, reconcile, setLoadError, attempt]);
 
   function selectNotesProvider(provider: NotesProvider) {
+    // Coming back to the stored provider brings its stored model back.
+    const restored = saved?.notesProvider === provider ? saved.model : '';
     setNotesProvider(provider);
-    setModel('');
+    notes.choose(restored);
     clearModels();
-    const ready =
-      provider === 'ollama' ||
-      (provider === 'openai' && keys.hasOpenAiKey) ||
-      (provider === 'anthropic' && keys.hasAnthropicKey) ||
-      (provider === 'gemini' && keys.hasGeminiKey) ||
-      (provider === 'compatible' &&
-        (keys.hasCompatibleKey || isLocalCompatibleUrl(compatibleBaseUrl)));
-    if (ready) void loadModels(provider);
+    if (!canListModels(provider, keys, compatibleBaseUrl)) return;
+    void loadModels(provider).then((available) => notes.reconcile(provider, restored, available));
   }
+
+  const current = {
+    notesProvider,
+    transcriptionProvider,
+    model,
+    compatibleBaseUrl,
+    whisperModelPath,
+  };
+  const dirty = saved !== null && (keys.typedKey || differs(saved, current));
 
   return {
     notesProvider,
     transcriptionProvider,
     model,
     ...keys,
+    dirty,
+    /** Until the stored settings are read, the form shows placeholders. */
+    loaded: saved !== null,
+    markSaved,
     compatibleBaseUrl,
     whisperModelPath,
     appearance,
-    models,
-    modelsLoading,
-    modelsError,
+    models: list.items,
+    modelsLoading: list.loading,
+    modelsError: list.error,
     loadError,
     selectNotesProvider,
     setTranscriptionProvider,
-    setModel,
+    setModel: notes.choose,
+    removedModel: notes.removed,
+    retryLoad,
     setCompatibleBaseUrl,
     setWhisperModelPath,
     setAppearance,

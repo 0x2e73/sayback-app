@@ -1,9 +1,9 @@
-import { CircleHelp, Cpu, FolderOpen, KeyRound } from 'lucide-react';
 import type { DesktopApi } from '../../../shared/contracts';
 import { Button, Notice } from '../../components/ui';
 import { LocalSetupPanel } from '../local-setup/LocalSetupPanel';
 import { ApiSettingsForm } from './ApiSettingsForm';
 import { AppearanceSettings } from './AppearanceSettings';
+import { SettingRow, SettingsGroup } from './SettingsLayout';
 import { useSettings } from './use-settings';
 
 interface SettingsViewProps {
@@ -15,61 +15,43 @@ export function SettingsView({ api, onShowOnboarding }: SettingsViewProps) {
   const settings = useSettings(api);
   const usesLocalModels =
     settings.transcriptionProvider === 'local' || settings.notesProvider === 'ollama';
+  if (settings.loadError && !settings.loaded) {
+    return (
+      <div className="settings-page">
+        <h1>Paramètres</h1>
+        <Notice retry={settings.retryLoad}>{settings.loadError}</Notice>
+      </div>
+    );
+  }
   return (
     <div className="settings-page">
-      <div className="page-heading">
-        <h1>Paramètres</h1>
-      </div>
+      <h1>Paramètres</h1>
       {settings.error && <Notice>{settings.error}</Notice>}
-      <section className="settings-card">
-        <div className="section-icon">
-          <KeyRound size={21} />
-        </div>
-        <h2>Intelligence artificielle</h2>
-        <p>
-          Choisissez séparément qui transcrit l’audio et qui rédige les notes. Les clés restent
-          chiffrées sur cet ordinateur ; les modèles locaux ne demandent aucune clé.
-        </p>
-        <ApiSettingsForm settings={settings} />
-      </section>
+      <ApiSettingsForm settings={settings} />
       {usesLocalModels && (
-        <section className="settings-card">
-          <div className="section-icon">
-            <Cpu size={21} />
-          </div>
-          <h2>Mode local</h2>
-          <p>
-            Whisper et Ollama tournent sur cet ordinateur. Enregistrez vos paramètres, puis
-            revérifiez après une installation.
-          </p>
+        <SettingsGroup
+          title="Mode local"
+          description="Whisper et Ollama tournent sur cet ordinateur. Enregistrez vos paramètres, puis revérifiez après une installation."
+        >
           <LocalSetupPanel api={api} />
-        </section>
+        </SettingsGroup>
       )}
-      <AppearanceSettings value={settings.appearance} onChange={settings.chooseAppearance} />
-      <section className="settings-card">
-        <div className="section-icon">
-          <CircleHelp size={21} />
-        </div>
-        <h2>Découvrir SayBack</h2>
-        <p>Revoir les étapes de présentation de l’application.</p>
-        <Button variant="secondary" onClick={onShowOnboarding}>
-          Revoir l’introduction
-        </Button>
-      </section>
-      <section className="settings-card">
-        <div className="section-icon">
-          <FolderOpen size={21} />
-        </div>
-        <h2>Stockage local</h2>
-        <p>
-          Les enregistrements, transcriptions et notes restent sur cet ordinateur. Aucun compte
-          n’est nécessaire.
-        </p>
-        <Button variant="secondary" onClick={() => void settings.openFolder()}>
-          <FolderOpen size={16} />
-          Ouvrir le dossier
-        </Button>
-      </section>
+      <SettingsGroup title="Général">
+        <AppearanceSettings value={settings.appearance} onChange={settings.chooseAppearance} />
+        <SettingRow label="Introduction" hint="Revoir les étapes de présentation de l’application.">
+          <Button variant="secondary" onClick={onShowOnboarding}>
+            Revoir l’introduction
+          </Button>
+        </SettingRow>
+        <SettingRow
+          label="Stockage local"
+          hint="Les enregistrements, transcriptions et notes restent sur cet ordinateur. Aucun compte n’est nécessaire."
+        >
+          <Button variant="secondary" onClick={() => void settings.openFolder()}>
+            Ouvrir le dossier
+          </Button>
+        </SettingRow>
+      </SettingsGroup>
     </div>
   );
 }

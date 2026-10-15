@@ -5,6 +5,18 @@ directories:
 files:
   - out/**/*
   - package.json
+# onlyLoadAppFromAsar and the update channel (hash of app.asar) both depend on it.
+asar: true
+# Flipped in the Electron binary just before signing. Without a Developer ID the bundle is only
+# ad-hoc signed: flipping breaks that signature, so it is redone, or arm64 macOS kills the app.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableCookieEncryption: true
+  onlyLoadAppFromAsar: true
+  enableEmbeddedAsarIntegrityValidation: true
+  resetAdHocDarwinSignature: true
 mac:
   category: public.app-category.productivity
   target: [dmg]

@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { slowTransitions } from '../../slow-transitions';
+import { slowTransitions } from '../../slow-transitions.test-support';
 import { dialogApi } from './new-meeting-fixtures';
 import { NewMeetingDialog } from './NewMeetingDialog';
 

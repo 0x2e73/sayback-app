@@ -20,7 +20,8 @@ import './styles/meeting-detail.css';
 import './styles/meeting-notes.css';
 import './styles/playback-bar.css';
 import './styles/recording.css';
-import './styles/model-select.css';
+import './styles/select.css';
+import './styles/settings.css';
 import './styles/onboarding.css';
 import './styles/motion.css';
 

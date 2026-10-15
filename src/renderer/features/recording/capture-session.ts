@@ -1,5 +1,6 @@
 import type { CaptureSource, DesktopApi, Meeting } from '../../../shared/contracts';
 import { unwrap } from '../../../shared/contracts';
+import { MAX_RECORDING_SECONDS } from './recording-limit';
 import { RecordingWriter } from './recording-writer';
 
 import {
@@ -23,6 +24,7 @@ export class CaptureSession {
   private rotation = Promise.resolve();
   private rotationTimer?: ReturnType<typeof setInterval>;
   private frameTimer?: ReturnType<typeof setInterval>;
+  private limitTimer?: ReturnType<typeof setTimeout>;
   private stopPromise?: Promise<Meeting>;
   private switching?: Promise<void>;
   private preview?: HTMLVideoElement;
@@ -53,6 +55,7 @@ export class CaptureSession {
       capture.startAudio();
       if (resources.display) capture.startVideo(resources.display);
       capture.scheduleAudioRotation();
+      capture.armLimit();
       return capture;
     } catch (error) {
       await resources.dispose();
@@ -78,8 +81,17 @@ export class CaptureSession {
     }, 60_000);
   }
 
+  private armLimit() {
+    clearTimeout(this.limitTimer);
+    if (this.paused || this.stopPromise) return;
+    const remaining = Math.max(0, MAX_RECORDING_SECONDS - this.elapsed) * 1000;
+    this.limitTimer = setTimeout(() => this.options.onEnded(), remaining);
+  }
   get paused(): boolean {
     return this.pausedAt > 0;
+  }
+  get audioSources(): { microphone: boolean; systemAudio: boolean } {
+    return { microphone: this.options.microphone, systemAudio: this.options.systemAudio };
   }
   get displayStream(): MediaStream | undefined {
     return this.resources.display;
@@ -204,6 +216,7 @@ export class CaptureSession {
       if (this.audioRecorder?.state === 'recording') this.audioRecorder.pause();
       if (this.videoRecorder?.state === 'recording') this.videoRecorder.pause();
     }
+    this.armLimit();
     this.pauseListeners.forEach((listener) => listener());
   }
   /** Called on every pause and resume. Returns the unsubscribe function. */
@@ -222,6 +235,7 @@ export class CaptureSession {
     if (this.stopPromise) return this.stopPromise;
     clearInterval(this.rotationTimer);
     clearInterval(this.frameTimer);
+    clearTimeout(this.limitTimer);
     if (!this.pausedAt) this.pausedAt = performance.now();
     this.stopPromise = (async () => {
       try {

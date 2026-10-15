@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { useRef } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { slowTransitions } from '../slow-transitions';
+import { slowTransitions } from '../slow-transitions.test-support';
 import { Dialog } from './Dialog';
 
 afterEach(() => {

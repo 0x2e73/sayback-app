@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { meetingFixture } from '../../test-api';
-import { slowTransitions } from '../../slow-transitions';
+import { slowTransitions } from '../../slow-transitions.test-support';
 import { groupByDate } from './date-groups';
 import { ALL_MEETINGS } from './list-filter';
 import { ListBody } from './ListBody';

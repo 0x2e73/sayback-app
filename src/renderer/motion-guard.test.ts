@@ -3,7 +3,7 @@ import { declarations, read, sheets, tokenBlock } from './design-tokens-support'
 
 const motionProperty = /^(?:-webkit-)?(?:transition|animation)(?:-[a-z-]+)?$/;
 const allowedVars =
-  /var\(--(?:duration-(?:fast|exit|base|slow|row|glide|loop|ambient)|delay-(?:1|2|3|wait)|ease-(?:out|move|linear|ambient))\)/g;
+  /var\(--(?:duration-(?:fast|exit|base|slow|row|glide|loop|ambient|finalize)|delay-(?:1|2|3|wait)|ease-(?:out|move|linear|ambient))\)/g;
 // The island shell alone animates its size, on its own curve (exception in frontend.md).
 const islandSheet = 'styles/island.css';
 const islandVars = /var\(--(?:duration-island|ease-island)\)/g;
@@ -33,6 +33,7 @@ const declaredMotionTokens = [
   '--duration-glide',
   '--duration-loop',
   '--duration-ambient',
+  '--duration-finalize',
   '--delay-1',
   '--delay-2',
   '--delay-3',
@@ -222,7 +223,7 @@ describe('motion guard', () => {
       const rules = [...css.matchAll(/([^{}]+)\{([^{}]*\binfinite\b[^{}]*)\}/g)];
       for (const [, selector = '', body = ''] of rules) {
         if (sheet === islandSheet) continue;
-        expect(body, selector).toMatch(/var\(--duration-(?:loop|ambient)\)/);
+        expect(body, selector).toMatch(/var\(--duration-(?:loop|ambient|finalize)\)/);
         for (const name of selector.split(',').map((part) => part.trim())) {
           expect(reducedBlock(), name).toContain(name);
         }

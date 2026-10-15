@@ -68,6 +68,7 @@
   --source-row-height: 40px;
   --source-thumb-width: 48px;
   --source-list-max: 240px;
+  --popover-list-max: 240px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -79,6 +80,7 @@
   --header-height: 52px;
   --pane-list-width: clamp(280px, 25vw, 360px);
   --reading-width: 680px;
+  --onboarding-width: 520px;
   /* Island defaults; the page sets the measured sizes inline. */
   --island-bar-height: 38px;
   --island-notch-width: 220px;
@@ -105,6 +107,7 @@
   --delay-wait: 300ms;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-move: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-finalize: 1.6s;
   --ease-linear: linear;
   --ease-ambient: cubic-bezier(0.37, 0, 0.63, 1);
   --motion-rise: 10px;
@@ -307,14 +310,13 @@ p {
 .transcript-turn,
 .timestamp-link,
 .source-option,
-.model-select-trigger,
-.model-select-list button,
+.select-trigger,
+.select-option,
 .field input,
 .field select,
 .field textarea,
 .field-control,
 .search input,
-.onboarding-progress span,
 .switch-track {
   transition:
     background-color var(--duration-fast) var(--ease-out),
@@ -376,6 +378,14 @@ button.chip:active:not(:disabled) {
 }
 
 /* Played once or in a loop; every entrance and exit is a transition (styles/motion.css). */
+@keyframes finalizing-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -431,7 +441,7 @@ button.chip:active:not(:disabled) {
   :root .island-shell,
   :root .segmented-thumb[data-ready],
   :root .meeting-list-selection[data-ready],
-  :root .onboarding-progress span::after,
+  :root .onboarding-progress span,
   :root .switch-thumb,
   :root .source-chevron {
     transition: none;
@@ -439,6 +449,11 @@ button.chip:active:not(:disabled) {
   :root .spin,
   :root .skeleton {
     animation: none;
+  }
+  :root .finalizing-line::before {
+    width: 100%;
+    animation: none;
+    transform: none;
   }
   .button[aria-busy='true'] .button-label {
     opacity: 0.4;
@@ -452,19 +467,6 @@ button.chip:active:not(:disabled) {
   display: grid;
   grid-template-columns: var(--pane-list-width) minmax(0, 1fr);
   height: 100%;
-}
-.section-icon {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-  color: var(--color-accent);
-}
-.brand-dot {
-  color: var(--color-accent);
 }
 .eyebrow {
   color: var(--color-text-subtle);
@@ -496,14 +498,4 @@ button.chip:active:not(:disabled) {
 }
 .page-content > .empty-message {
   min-height: 100%;
-}
-.page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  margin-bottom: 30px;
-}
-.page-heading h1 {
-  margin: 0;
 }

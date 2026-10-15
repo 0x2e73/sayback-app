@@ -10,6 +10,8 @@ interface NoticeProps {
   retry?: () => void;
   action?: ReactNode;
   floating?: boolean;
+  /** Announced politely for something that is not an error. */
+  role?: 'status' | 'alert';
   presence?: PresenceBinding;
 }
 
@@ -19,6 +21,7 @@ export function Notice({
   retry,
   action,
   floating = false,
+  role,
   presence,
 }: NoticeProps) {
   const Icon = tone === 'info' ? Info : AlertCircle;
@@ -27,7 +30,7 @@ export function Notice({
       className={`notice notice-${tone}${floating ? ' notice-floating' : ''}`}
       ref={presence?.ref}
       data-state={presence?.state}
-      role={tone === 'info' ? 'status' : 'alert'}
+      role={role ?? (tone === 'info' ? 'status' : 'alert')}
     >
       <Icon size={17} aria-hidden="true" />
       <span>{children}</span>
