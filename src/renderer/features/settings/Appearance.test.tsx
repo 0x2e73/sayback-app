@@ -29,15 +29,15 @@ it('offers the appearance as three choices, on the stored one', async () => {
   expect(within(group).getByRole('radio', { name: 'Sombre' })).not.toBeChecked();
 });
 
-it('places the section after the local mode and before the introduction', async () => {
+it('puts the appearance first in the general group, after the analysis', async () => {
   await openSettings();
   const headings = screen
     .getAllByRole('heading', { level: 2 })
     .map((heading) => heading.textContent);
-  expect(headings.indexOf('Apparence')).toBeGreaterThan(
-    headings.indexOf('Intelligence artificielle'),
-  );
-  expect(headings.indexOf('Apparence')).toBeLessThan(headings.indexOf('Découvrir SayBack'));
+  expect(headings).toEqual(['Analyse', 'Général']);
+  const general = screen.getByRole('region', { name: 'Général' });
+  expect(within(general).getByRole('radiogroup', { name: 'Apparence' })).toBeInTheDocument();
+  expect(general).toHaveTextContent(/Apparence.*Introduction.*Stockage local/);
 });
 
 it('applies the choice at once, without the save button', async () => {

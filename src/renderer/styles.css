@@ -68,6 +68,7 @@
   --source-row-height: 40px;
   --source-thumb-width: 48px;
   --source-list-max: 240px;
+  --popover-list-max: 240px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -79,6 +80,7 @@
   --header-height: 52px;
   --pane-list-width: clamp(280px, 25vw, 360px);
   --reading-width: 680px;
+  --onboarding-width: 520px;
   /* Island defaults; the page sets the measured sizes inline. */
   --island-bar-height: 38px;
   --island-notch-width: 220px;
@@ -288,14 +290,13 @@ p {
 .transcript-turn,
 .timestamp-link,
 .source-option,
-.model-select-trigger,
-.model-select-list button,
+.select-trigger,
+.select-option,
 .field input,
 .field select,
 .field textarea,
 .field-control,
 .search input,
-.onboarding-progress span,
 .switch-track {
   transition:
     background-color var(--duration-fast) var(--ease-out),
@@ -382,6 +383,7 @@ p {
 @media (prefers-reduced-motion: reduce) {
   .row-progress-bar,
   .analysis-line-bar,
+  .onboarding-progress span,
   .level-meter-bar,
   .island-shell {
     transition: none;
@@ -425,19 +427,6 @@ p {
   grid-template-columns: var(--pane-list-width) minmax(0, 1fr);
   height: 100%;
 }
-.section-icon {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-  color: var(--color-accent);
-}
-.brand-dot {
-  color: var(--color-accent);
-}
 .eyebrow {
   color: var(--color-text-subtle);
   font-size: var(--text-caption);
@@ -468,14 +457,4 @@ p {
 }
 .page-content > .empty-message {
   min-height: 100%;
-}
-.page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  margin-bottom: 30px;
-}
-.page-heading h1 {
-  margin: 0;
 }
