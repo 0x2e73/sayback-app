@@ -99,6 +99,42 @@ describe('role matrix for invoke channels', () => {
   });
 });
 
+describe('rate of invoke channels', () => {
+  function limited() {
+    const { handle } = createIpcRegistrar(
+      createWindowRoles({ main: () => main, island: () => null }),
+      () => time,
+    );
+    let ran = 0;
+    handle('privacy:rare', () => (ran += 1), ['main'], 2);
+    return () => ran;
+  }
+
+  it('answers an error beyond the rate, without running the action, then takes calls again', async () => {
+    const ran = limited();
+    const answers = [];
+    for (let index = 0; index < 4; index += 1) {
+      answers.push(await invoke('privacy:rare', from(main)));
+    }
+    expect(answers.map((answer) => answer.ok)).toEqual([true, true, false, false]);
+    expect(ran()).toBe(2);
+    time = 1_000;
+    expect((await invoke('privacy:rare', from(main))).ok).toBe(true);
+  });
+
+  it('does not count a call from a window that has no right to it', async () => {
+    limited();
+    for (let index = 0; index < 5; index += 1) await invoke('privacy:rare', from(stranger));
+    expect((await invoke('privacy:rare', from(main))).ok).toBe(true);
+  });
+
+  it('leaves a channel without a rate unlimited', async () => {
+    for (let index = 0; index < 50; index += 1) {
+      expect((await invoke('meetings:list', from(main))).ok).toBe(true);
+    }
+  });
+});
+
 describe('role matrix for send channels', () => {
   it('passes a message from an allowed window only', () => {
     send('live:level', from(main), 0.5);
