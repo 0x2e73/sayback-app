@@ -140,15 +140,28 @@ describe('live services', () => {
     expect(transcription.push).not.toHaveBeenCalled();
   });
 
-  it('drops audio arriving faster than twice real time', () => {
+  it('drops audio beyond the burst of its track', () => {
     const { recording, transcription, live, advance } = setup();
     recording.publish(recordingState());
 
-    for (let index = 0; index < 10; index += 1) live.pcm(block);
+    for (let index = 0; index < 20; index += 1) live.pcm(block);
     advance(1_000);
     live.pcm(block);
 
-    expect(transcription.push).toHaveBeenCalledTimes(6);
+    expect(transcription.push).toHaveBeenCalledTimes(16);
+  });
+
+  it('saves no rate credit during a pause', () => {
+    const { recording, transcription, live, advance } = setup();
+    recording.publish(recordingState());
+    for (let index = 0; index < 15; index += 1) live.pcm(block);
+
+    recording.publish(recordingState(true));
+    advance(60_000);
+    recording.publish(recordingState(false));
+    live.pcm(block);
+
+    expect(transcription.push).toHaveBeenCalledTimes(15);
   });
 
   it('ignores audio outside a recording', () => {
@@ -175,5 +188,13 @@ describe('live services', () => {
     transcript.setAvailability({ state: 'starting' });
 
     expect(transcription.setEngineReady.mock.calls).toEqual([[true], [false]]);
+  });
+  it('ignores a late state from the page once quit began', async () => {
+    const { recording, server, live } = setup();
+    await live.shutdown();
+
+    recording.publish(recordingState());
+
+    expect(server.start).not.toHaveBeenCalled();
   });
 });

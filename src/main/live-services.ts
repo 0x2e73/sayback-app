@@ -39,6 +39,8 @@ function phaseOf(state: RecordingState): Phase {
  */
 export function createLiveServices(ports: LiveServicesPorts): LiveServices {
   let phase: Phase = 'off';
+  // After quit began, a late state from a dying page must not start a server again.
+  let closed = false;
 
   function begin(): void {
     ports.gate.reset();
@@ -58,6 +60,7 @@ export function createLiveServices(ports: LiveServicesPorts): LiveServices {
   }
 
   function follow(state: RecordingState): void {
+    if (closed) return;
     if (!state.recording) ports.transcript.clear();
     const next = phaseOf(state);
     if (next === phase) return;
@@ -68,6 +71,7 @@ export function createLiveServices(ports: LiveServicesPorts): LiveServices {
       return;
     }
     if (previous === 'off') begin();
+    ports.gate.setPaused(next === 'paused');
     if (next === 'paused') ports.transcription.pause();
   }
 
@@ -86,6 +90,7 @@ export function createLiveServices(ports: LiveServicesPorts): LiveServices {
       if (ports.gate.admit(track, samples.length)) ports.transcription.push(track, samples, offset);
     },
     shutdown() {
+      closed = true;
       phase = 'off';
       return end();
     },

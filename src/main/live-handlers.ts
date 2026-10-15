@@ -2,8 +2,9 @@ import { livePcmSchema } from '../shared/live';
 import type { IpcRegistrar } from './ipc';
 import type { LiveServices } from './live-services';
 
-// Two tracks of five 200 ms blocks a second: twice that before blocks are dropped.
-export const PCM_PER_SECOND = 20;
+// Only a ceiling on messages before validation: the per-track token bucket of the live
+// services does the real limiting, with room for a three-second burst on both tracks.
+export const PCM_PER_SECOND = 100;
 
 /** Audio of the live comes from the main page only, which owns the capture. */
 export function registerLiveHandlers(

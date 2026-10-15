@@ -99,13 +99,13 @@ describe('live:pcm', () => {
     expect(received).toEqual([]);
   });
 
-  it('drops blocks beyond twenty a second', () => {
-    for (let index = 0; index < 25; index += 1) {
+  it('drops messages beyond a hundred a second, before any validation', () => {
+    for (let index = 0; index < 120; index += 1) {
       send(from(main), { track: 'microphone', offset: 0, samples: block() });
     }
     time = 1_000;
     send(from(main), { track: 'microphone', offset: 0, samples: block() });
 
-    expect(received).toHaveLength(21);
+    expect(received).toHaveLength(101);
   });
 });
