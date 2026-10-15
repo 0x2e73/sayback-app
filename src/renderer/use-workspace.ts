@@ -7,6 +7,7 @@ import { useFolders } from './features/list/use-folders';
 import { useMeetings } from './features/list/use-meetings';
 import { useAutoAnalysis } from './features/meetings/use-auto-analysis';
 import type { CaptureOptions } from './features/recording/capture-session';
+import { answerIslandStart } from './features/recording/island-start';
 import { useRecording } from './features/recording/use-recording';
 import { useUpdateInstall } from './features/updates/use-update-install';
 import { useUpdateStatus } from './features/updates/use-update-status';
@@ -42,8 +43,11 @@ export function useWorkspace(api: DesktopApi) {
   );
   const recording = useRecording(api, onFinished);
   // One recording at a time: the pane is locked meanwhile.
-  useMenuBar(api, recording, () => {
-    if (!recording.capture) setNewMeeting(true);
+  useMenuBar(api, recording, {
+    onNewRecording: () => {
+      if (!recording.capture) setNewMeeting(true);
+    },
+    onStartRequest: (request) => void answerIslandStart(api, request, start),
   });
 
   async function start(title: string, options: StartOptions, autoAnalyze: boolean) {

@@ -17,7 +17,7 @@ import { useCaptureSources } from './use-capture-sources';
  * (the screen to share, a blocked microphone) is computed from them, never stored.
  */
 export function useMeetingSelection(api: DesktopApi) {
-  const { prefs, remember } = useCapturePrefs(api);
+  const prefs = useCapturePrefs(api);
   const sources = useCaptureSources(api);
   const microphonePermission = useCapturePermission(api, 'microphone');
   const screenPermission = useCapturePermission(api, 'screen');
@@ -66,6 +66,5 @@ export function useMeetingSelection(api: DesktopApi) {
     withoutScreen: () => setChosen(normalizeSelection({ ...toggles, screen: false }, 'screen')),
     chooseSource: setChosenSourceId,
     chooseAnalysis: setChosenAnalysis,
-    remember,
   };
 }

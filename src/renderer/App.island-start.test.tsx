@@ -1,0 +1,140 @@
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DesktopApi } from '../shared/contracts';
+import type { RecordingStartRequest } from '../shared/recording-start';
+import { App } from './App';
+import { CaptureFailure } from './features/recording/capture-resources';
+import { apiFor, meetingFixture, ok, settings } from './test-api';
+
+const capture = vi.hoisted(() => ({ start: vi.fn() }));
+vi.mock('./features/recording/capture-session', () => ({
+  CaptureSession: { start: capture.start },
+}));
+
+const finished = meetingFixture('rec', 'Réunion du 15 octobre, 11 h 42', '2026-10-15T09:42:00Z');
+const main = { id: 'screen:1:0', name: 'Écran 1', thumbnail: '', primary: true };
+
+const fakeSession = () => ({
+  elapsed: 0,
+  paused: false,
+  displayStream: null,
+  source: main,
+  audioSources: { microphone: true, systemAudio: true },
+  meeting: { ...finished, status: 'recording' as const },
+  analyser: { frequencyBinCount: 4, getByteFrequencyData: () => {} },
+  stop: vi.fn(async () => finished),
+  onPauseChange: () => () => {},
+});
+
+const request: RecordingStartRequest = {
+  id: 'start-1',
+  title: 'Réunion du 15 octobre, 11 h 42',
+  selection: { microphone: true, systemAudio: true, screen: true, screenId: 'screen:1:0' },
+};
+
+interface Fixture {
+  api: DesktopApi;
+  order: string[];
+  answer: ReturnType<typeof vi.fn<DesktopApi['answerStartRequest']>>;
+  remember: ReturnType<typeof vi.fn<DesktopApi['setCapturePrefs']>>;
+  ask(request: RecordingStartRequest): Promise<void>;
+}
+
+function islandStartApi(): Fixture {
+  let listener: (request: RecordingStartRequest) => void = () => {};
+  const order: string[] = [];
+  const api = apiFor([]);
+  api.getSettings = () => ok({ ...settings, hasOpenAiKey: true });
+  api.getSources = () => ok([main]);
+  api.announceRecordingState = () => {
+    order.push('announce');
+    return ok(undefined);
+  };
+  api.onStartRequest = (next) => {
+    order.push('subscribe');
+    listener = next;
+    return () => {};
+  };
+  const answer = vi.fn<DesktopApi['answerStartRequest']>(() => ok(undefined));
+  const remember = vi.fn<DesktopApi['setCapturePrefs']>(() => ok(undefined));
+  api.answerStartRequest = answer;
+  api.setCapturePrefs = remember;
+  return { api, order, answer, remember, ask: (next) => act(async () => listener(next)) };
+}
+
+beforeEach(() => {
+  capture.start.mockReset();
+  capture.start.mockImplementation(async () => fakeSession());
+});
+afterEach(cleanup);
+
+describe('a start asked by the island', () => {
+  it('listens before telling the main process the page is there', async () => {
+    const island = islandStartApi();
+    render(<App api={island.api} />);
+    await waitFor(() => expect(island.order).toContain('announce'));
+    expect(island.order[0]).toBe('subscribe');
+  });
+
+  it('starts the recording, remembers the choices, then answers ok', async () => {
+    const island = islandStartApi();
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    await island.ask(request);
+    await waitFor(() => expect(island.answer).toHaveBeenCalledWith('start-1', { ok: true }));
+    expect(capture.start).toHaveBeenCalledWith(
+      island.api,
+      'Réunion du 15 octobre, 11 h 42',
+      expect.objectContaining({ microphone: true, systemAudio: true, screen: true, source: main }),
+    );
+    expect(island.remember).toHaveBeenCalledWith(
+      expect.objectContaining({ screen: true, screenId: 'screen:1:0' }),
+    );
+    expect(screen.queryByRole('dialog', { name: 'Nouvelle réunion' })).not.toBeInTheDocument();
+  });
+
+  it('answers screen-denied when the screen capture is refused, and remembers nothing', async () => {
+    const island = islandStartApi();
+    capture.start.mockRejectedValueOnce(new CaptureFailure('screen', 'NotAllowedError'));
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    await island.ask(request);
+    await waitFor(() =>
+      expect(island.answer).toHaveBeenCalledWith('start-1', { ok: false, error: 'screen-denied' }),
+    );
+    expect(island.remember).not.toHaveBeenCalled();
+  });
+
+  it('answers failed while a recording already runs', async () => {
+    const island = islandStartApi();
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    await island.ask(request);
+    await waitFor(() => expect(island.answer).toHaveBeenCalledWith('start-1', { ok: true }));
+    await island.ask({ ...request, id: 'start-2' });
+    await waitFor(() =>
+      expect(island.answer).toHaveBeenCalledWith('start-2', { ok: false, error: 'failed' }),
+    );
+    expect(capture.start).toHaveBeenCalledOnce();
+  });
+
+  it('answers failed to a second request that arrives during the first start', async () => {
+    const island = islandStartApi();
+    let open: () => void = () => {};
+    capture.start.mockImplementationOnce(
+      () => new Promise((resolve) => (open = () => resolve(fakeSession()))),
+    );
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    await island.ask(request);
+    await island.ask({ ...request, id: 'start-2' });
+    await waitFor(() =>
+      expect(island.answer).toHaveBeenCalledWith('start-2', { ok: false, error: 'failed' }),
+    );
+    await act(async () => open());
+    await waitFor(() => expect(island.answer).toHaveBeenCalledWith('start-1', { ok: true }));
+    expect(capture.start).toHaveBeenCalledOnce();
+  });
+});
