@@ -519,3 +519,77 @@
 .transcript-turn {
   transition: background-color var(--duration-base) var(--ease-out);
 }
+
+/* New meeting dialog: the content follows the shell, one beat after another. */
+.new-meeting-form > :is(.field, .source-chips, .state-stack, .switch, .analysis-missing),
+.dialog-footer {
+  transition:
+    opacity var(--duration-slow) var(--ease-out) var(--delay-3),
+    transform var(--duration-slow) var(--ease-out) var(--delay-3);
+}
+.new-meeting-form > .field {
+  transition-delay: var(--delay-1);
+}
+.new-meeting-form > .source-chips {
+  transition-delay: var(--delay-2);
+}
+@starting-style {
+  .new-meeting-form > :is(.field, .source-chips, .state-stack, .switch, .analysis-missing) {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .dialog-footer {
+    opacity: 0;
+  }
+  .source-panel {
+    opacity: 0;
+    transform: translateY(var(--motion-drop));
+  }
+  .source-tile-slot {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+}
+
+/* « Changer » unfolds the list under the source line and folds it back faster. */
+.source-panel {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+.source-panel[data-state='closing'] {
+  opacity: 0;
+  transform: translateY(var(--motion-drop));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+/* Opened or folded with the keyboard, or by a choice: no entrance, no exit. */
+.source-panel[data-instant] {
+  transition: none;
+}
+.source-panel[data-instant][data-state='closing'] {
+  display: none;
+}
+
+/* Tiles come in one after the other: the first three steps, the others with the third. */
+.source-tile-slot {
+  min-width: 0;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+.source-tile-slot:nth-child(2) {
+  transition-delay: var(--delay-1);
+}
+.source-tile-slot:nth-child(3) {
+  transition-delay: var(--delay-2);
+}
+.source-tile-slot:nth-child(n + 4) {
+  transition-delay: var(--delay-3);
+}
+
+/* The spinner leaves as it came, in a fade. */
+.button-spinner[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+}

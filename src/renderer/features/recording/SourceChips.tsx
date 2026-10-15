@@ -1,6 +1,6 @@
 import { Mic, MicOff, Monitor, MonitorOff, Volume2, VolumeX, type LucideIcon } from 'lucide-react';
 import type { SourceKey, SourceToggles } from '../../../shared/capture-selection';
-import { Chip } from '../../components/ui';
+import { Chip, IconSwap } from '../../components/ui';
 
 interface ChipSpec {
   key: SourceKey;
@@ -33,7 +33,8 @@ export function SourceChips(props: SourceChipsProps) {
       <legend className={props.legendHidden ? 'sr-only' : undefined}>Sources</legend>
       <div className="source-chips-row">
         {CHIPS.map(({ key, label, on, off }) => {
-          const Icon = selection[key] ? on : off;
+          const On = on;
+          const Off = off;
           return (
             <Chip
               key={key}
@@ -42,7 +43,7 @@ export function SourceChips(props: SourceChipsProps) {
               disabled={key === 'microphone' && microphoneBlocked}
               onClick={() => onToggle(key)}
             >
-              <Icon size={16} aria-hidden="true" />
+              <IconSwap active={selection[key]} on={<On size={16} />} off={<Off size={16} />} />
               {label}
             </Chip>
           );

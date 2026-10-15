@@ -1,3 +1,4 @@
+import { Presence } from '../../components/Presence';
 import type { PresenceBinding } from '../../components/use-presence';
 import { Button, Dialog, Notice, Skeleton } from '../../components/ui';
 import { SourcePicker } from './SourcePicker';
@@ -45,14 +46,26 @@ export function RecordingSourceDialog({ source, presence }: RecordingSourceDialo
       <div className="recording-source-dialog">
         <p className="caption">La réunion et le son continuent pendant le changement.</p>
         {source.error && <Notice>{source.error}</Notice>}
-        {source.loading && <SourcesLoading />}
-        {!source.loading && source.sources.length > 0 && (
-          <SourcePicker
-            sources={source.sources}
-            selectedId={source.selectedId}
-            onSelect={source.setSelectedId}
-          />
-        )}
+        <div className="state-stack">
+          <Presence open={source.loading}>
+            {({ ref, state }) => (
+              <div ref={ref} className="state-view" data-state={state}>
+                <SourcesLoading />
+              </div>
+            )}
+          </Presence>
+          <Presence open={!source.loading && source.sources.length > 0}>
+            {({ ref, state }) => (
+              <div ref={ref} className="state-view" data-state={state}>
+                <SourcePicker
+                  sources={source.sources}
+                  selectedId={source.selectedId}
+                  onSelect={source.setSelectedId}
+                />
+              </div>
+            )}
+          </Presence>
+        </div>
         {!source.loading && !source.sources.length && <p>Aucune source disponible.</p>}
       </div>
     </Dialog>
