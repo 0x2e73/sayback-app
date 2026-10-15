@@ -31,6 +31,7 @@ function workspace(selected: Meeting) {
       folders={[]}
       capture={null}
       stopping={false}
+      recordingFailed={false}
       onStop={vi.fn()}
       onUpdate={vi.fn()}
       onMove={vi.fn(async () => true)}

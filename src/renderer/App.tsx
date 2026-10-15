@@ -92,6 +92,7 @@ export function App({ api }: AppProps) {
           folders={folders.folders}
           capture={recording.capture}
           stopping={recording.stopping}
+          recordingFailed={recording.error !== ''}
           onStop={recording.stop}
           onUpdate={library.update}
           onMove={folders.move}

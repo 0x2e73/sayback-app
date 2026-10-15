@@ -1,49 +1,58 @@
-import { timeLabel } from '../../../shared/format';
-import { useEffect, useState } from 'react';
-import { Pause, Play, Square, AudioLines } from 'lucide-react';
+import { chronoLabel } from '../../../shared/format';
 import type { DesktopApi } from '../../../shared/contracts';
 import { Button, LevelMeter } from '../../components/ui';
 import type { CaptureSession } from './capture-session';
+import { RecordingActions } from './RecordingActions';
+import { RecordingFailure } from './RecordingFailure';
+import { RECORDING_LIMIT_NOTE } from './recording-limit';
 import { RecordingPreview } from './RecordingPreview';
 import { RecordingSourceDialog } from './RecordingSourceDialog';
+import { RecordingStatus, type RecordingPhase } from './RecordingStatus';
+import { SilenceNotice } from './SilenceNotice';
+import { useCapturePaused } from './use-capture-paused';
+import { useRecordingClock } from './use-recording-clock';
 import { useRecordingFeed } from './use-recording-feed';
 import { useRecordingSource } from './use-recording-source';
+
+interface RecordingViewProps {
+  capture: CaptureSession;
+  api: DesktopApi;
+  onStop(): void;
+  stopping: boolean;
+  failed?: boolean;
+}
+
+function phaseOf(failed: boolean, stopping: boolean, paused: boolean): RecordingPhase {
+  if (failed) return 'failed';
+  if (stopping) return 'stopping';
+  return paused ? 'paused' : 'recording';
+}
 
 export function RecordingView({
   capture,
   api,
   onStop,
   stopping,
-}: {
-  capture: CaptureSession;
-  api: DesktopApi;
-  onStop(): void;
-  stopping: boolean;
-}) {
-  const [elapsed, setElapsed] = useState(0);
-  const [paused, setPaused] = useState(capture.paused);
+  failed = false,
+}: RecordingViewProps) {
+  const paused = useCapturePaused(capture);
+  const elapsed = useRecordingClock(capture, onStop);
   const source = useRecordingSource(api, capture);
   const feed = useRecordingFeed(api, capture);
-  // A pause may come from the menu bar or the island: the label follows the session.
-  useEffect(() => {
-    setPaused(capture.paused);
-    return capture.onPauseChange(() => setPaused(capture.paused));
-  }, [capture]);
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsed(capture.elapsed);
-      if (capture.elapsed >= 7200) onStop();
-    }, 200);
-    return () => clearInterval(timer);
-  }, [capture, onStop]);
+  const phase = phaseOf(failed, stopping, paused);
   return (
     <div className="recording-view">
-      <span className={`recording-pill ${paused ? 'is-paused' : ''}`}>
-        <span />
-        {paused ? 'En pause' : 'Enregistrement en cours'}
-      </span>
-      <h1>{capture.meeting.title}</h1>
-      <p>Restez dans la conversation. On garde le fil.</p>
+      <header className="recording-header">
+        <RecordingStatus phase={phase} />
+        <h1>{capture.meeting.title}</h1>
+      </header>
+      <div className="recording-time" role="timer" aria-label="Durée de la réunion">
+        {chronoLabel(elapsed)}
+      </div>
+      <LevelMeter feed={feed} bars={24} className="level-meter-large" />
+      {phase === 'recording' && <SilenceNotice feed={feed} />}
+      {stopping && <div className="finalizing-line" aria-hidden="true" />}
+      {failed && <RecordingFailure opening={stopping} onOpen={onStop} />}
       {capture.displayStream && (
         <div className="recording-source">
           <RecordingPreview capture={capture} version={source.previewVersion} />
@@ -52,27 +61,15 @@ export function RecordingView({
           </Button>
         </div>
       )}
-      <LevelMeter feed={feed} bars={24} className="level-meter-large" />
-      <div className="recording-time">{timeLabel(elapsed)}</div>
-      <span className="caption">
-        <AudioLines size={14} />
-        Audio et écran sauvegardés ici. L’analyse ne démarre qu’après l’arrêt.
-      </span>
-      <div className="recording-actions">
-        <Button variant="secondary" disabled={stopping} onClick={() => capture.togglePause()}>
-          {paused ? <Play size={16} /> : <Pause size={16} />}
-          {paused ? 'Reprendre' : 'Pause'}
-        </Button>
-        <Button onClick={onStop} busy={stopping}>
-          <Square size={14} fill="currentColor" />
-          Terminer la réunion
-        </Button>
-      </div>
-      <p className="caption">
-        Vérifiez que le niveau audio réagit quand vous parlez.
-        <br />
-        Avec un casque, vous limitez l’écho entre le micro et le son système.
-      </p>
+      <footer className="recording-footer">
+        <RecordingActions
+          paused={paused}
+          stopping={stopping}
+          onTogglePause={() => capture.togglePause()}
+          onStop={onStop}
+        />
+        <p className="caption">{RECORDING_LIMIT_NOTE}</p>
+      </footer>
       {source.open && <RecordingSourceDialog source={source} />}
     </div>
   );
