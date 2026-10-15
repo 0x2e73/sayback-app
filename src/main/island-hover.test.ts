@@ -1,39 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Point } from './island-geometry';
 import {
+  hoverFor,
   nextHover,
   READY_HOVER,
+  RECORDING_HOVER,
   startIslandHover,
   type HoverArea,
   type HoverState,
 } from './island-hover';
 
+const compact = { x: 706, y: 0, width: 388, height: 38 };
 const area: HoverArea = {
-  compact: { x: 706, y: 0, width: 388, height: 38 },
   open: { x: 620, y: 0, width: 560, height: 240 },
+  reach: { x: 698, y: 0, width: 404, height: 46 },
 };
 const inCompact = { x: 900, y: 10 };
+const besideWing = { x: 700, y: 42 };
 const inOpenOnly = { x: 640, y: 200 };
 const away = { x: 100, y: 600 };
 
 describe('nextHover', () => {
-  it('opens after 120 ms in the compact shell', () => {
+  it('never opens on hover, even resting on the wings', () => {
     let state = nextHover({ expanded: false }, inCompact, area, 0);
-    state = nextHover(state, inCompact, area, 119);
-    expect(state.expanded).toBe(false);
-    expect(nextHover(state, inCompact, area, 120).expanded).toBe(true);
-  });
-
-  it('starts counting again when the cursor leaves the compact shell', () => {
-    let state = nextHover({ expanded: false }, inCompact, area, 0);
-    state = nextHover(state, away, area, 100);
-    state = nextHover(state, inCompact, area, 150);
-    expect(nextHover(state, inCompact, area, 200).expanded).toBe(false);
-  });
-
-  it('never opens from the open area alone', () => {
-    const state = nextHover({ expanded: false }, inOpenOnly, area, 0);
-    expect(nextHover(state, inOpenOnly, area, 1_000).expanded).toBe(false);
+    state = nextHover(state, inCompact, area, 10_000);
+    expect(nextHover(state, inOpenOnly, area, 20_000).expanded).toBe(false);
   });
 
   it('stays open anywhere in the open shell and closes 300 ms after leaving it', () => {
@@ -91,7 +82,7 @@ describe('startIslandHover', () => {
     });
   }
 
-  it('reads the cursor every 50 ms and reports each change once', () => {
+  it('reads the cursor every 50 ms, ignores the hover and opens on a click', () => {
     const read = vi.fn(() => cursor);
     const hover = startIslandHover({
       cursor: read,
@@ -102,15 +93,44 @@ describe('startIslandHover', () => {
     vi.advanceTimersByTime(500);
     expect(read).toHaveBeenCalledTimes(10);
     cursor = inCompact;
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(2_000);
     expect(changes).toEqual([]);
-    vi.advanceTimersByTime(100);
-    expect(changes).toEqual([true]);
+    hover.expand();
     vi.advanceTimersByTime(1_000);
     cursor = away;
     vi.advanceTimersByTime(250);
     expect(changes).toEqual([true]);
     vi.advanceTimersByTime(150);
+    expect(changes).toEqual([true, false]);
+    hover.stop();
+  });
+
+  it('says when the closed wings come within reach and when they leave it', () => {
+    const reach: boolean[] = [];
+    const hover = startIslandHover({
+      cursor: () => cursor,
+      area: () => area,
+      onChange: (expanded) => changes.push(expanded),
+      onReach: (reachable) => reach.push(reachable),
+      now: () => Date.now(),
+    });
+    cursor = besideWing;
+    vi.advanceTimersByTime(100);
+    cursor = inOpenOnly;
+    vi.advanceTimersByTime(100);
+    cursor = inCompact;
+    vi.advanceTimersByTime(100);
+    hover.expand();
+    vi.advanceTimersByTime(100);
+    expect(reach).toEqual([true, false, true, false]);
+    hover.stop();
+  });
+
+  it('closes at once when asked, once', () => {
+    const hover = start();
+    hover.expand();
+    hover.collapse();
+    hover.collapse();
     expect(changes).toEqual([true, false]);
     hover.stop();
   });
@@ -130,19 +150,22 @@ describe('startIslandHover', () => {
     expect(() => vi.advanceTimersByTime(50)).not.toThrow();
     expect(report).toHaveBeenCalledOnce();
     fail = false;
-    cursor = inCompact;
-    vi.advanceTimersByTime(250);
-    expect(changes).toEqual([true]);
+    hover.expand();
+    cursor = inOpenOnly;
+    vi.advanceTimersByTime(100);
+    cursor = away;
+    vi.advanceTimersByTime(400);
+    expect(changes).toEqual([true, false]);
     hover.stop();
     report.mockRestore();
   });
 
   it('stops reading the cursor once stopped', () => {
     const hover = start();
+    hover.expand();
     hover.stop();
-    cursor = inCompact;
-    vi.advanceTimersByTime(1_000);
-    expect(changes).toEqual([]);
+    vi.advanceTimersByTime(20_000);
+    expect(changes).toEqual([true]);
   });
 
   it('stays open while held, then counts the whole delay again', () => {
@@ -180,9 +203,27 @@ describe('startIslandHover', () => {
 
   it('waits while the island has no place on screen', () => {
     const hover = start(() => null);
-    cursor = inCompact;
-    vi.advanceTimersByTime(1_000);
-    expect(changes).toEqual([]);
+    hover.expand();
+    vi.advanceTimersByTime(20_000);
+    expect(changes).toEqual([true]);
     hover.stop();
+  });
+});
+
+describe('hoverFor', () => {
+  const wiring = {
+    shells: () => ({ open: area.open, compact }),
+    onChange: () => {},
+    onReach: () => {},
+    hold: () => false,
+  };
+
+  it('keeps the open shell and reaches the wings with their margin', () => {
+    expect(hoverFor('recording', { expanded: false }, wiring).area()).toEqual(area);
+  });
+
+  it('gives each mode its delays', () => {
+    expect(hoverFor('recording', { expanded: false }, wiring).delays).toBe(RECORDING_HOVER);
+    expect(hoverFor('ready', { expanded: true }, wiring).delays).toBe(READY_HOVER);
   });
 });

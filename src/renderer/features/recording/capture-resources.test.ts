@@ -1,14 +1,30 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { CaptureFailure, openCaptureResources } from './capture-resources';
+import { AUDIO_START_TIMEOUT, CaptureFailure, openCaptureResources } from './capture-resources';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 
-function stubAudio(track: { onended: (() => void) | null; stop(): void }) {
+interface AudioStart {
+  /** What the context reads after `resume()`. */
+  state?: AudioContextState;
+  /** `resume()` that never settles, as when the browser waits for a gesture. */
+  hangs?: boolean;
+  close?: () => Promise<void>;
+}
+
+function stubAudio(track: { onended: (() => void) | null; stop(): void }, start: AudioStart = {}) {
   const node = { connect: vi.fn(), disconnect: vi.fn() };
   class FakeContext {
-    resume = async () => undefined;
-    close = async () => undefined;
+    state: AudioContextState = 'suspended';
+    resume = () => {
+      if (start.hangs) return new Promise<void>(() => undefined);
+      this.state = start.state ?? 'running';
+      return Promise.resolve();
+    };
+    close = start.close ?? (async () => undefined);
     createMediaStreamDestination = () => ({ stream: { getTracks: () => [] } });
     createMediaStreamSource = () => node;
     createAnalyser = () => ({ fftSize: 0 });
@@ -93,4 +109,34 @@ it('reports a dead microphone track as a failure', async () => {
   expect(onFailure).not.toHaveBeenCalled();
   track.onended?.();
   expect(onFailure).toHaveBeenCalledWith(new Error('Le microphone s’est arrêté.'));
+});
+
+const microphoneOnly = {
+  screen: false,
+  microphone: true,
+  systemAudio: false,
+  onFailure: vi.fn(),
+  onEnded: vi.fn(),
+};
+const silentAudio = 'Le son ne peut pas être enregistré pour l’instant. Réessayez.';
+
+// The recorders take the mixed audio from this context: suspended, the meeting would be silent.
+it('refuses to record when the audio does not run', async () => {
+  const track = { onended: null, stop: vi.fn() };
+  const close = vi.fn(async () => undefined);
+  stubAudio(track, { state: 'suspended', close });
+  await expect(openCaptureResources(microphoneOnly)).rejects.toThrow(silentAudio);
+  expect(track.stop).toHaveBeenCalled();
+  expect(close).toHaveBeenCalled();
+});
+
+it('gives up when the audio never starts, instead of waiting for ever', async () => {
+  vi.useFakeTimers();
+  const track = { onended: null, stop: vi.fn() };
+  stubAudio(track, { hangs: true });
+  const opening = openCaptureResources(microphoneOnly);
+  const outcome = expect(opening).rejects.toThrow(silentAudio);
+  await vi.advanceTimersByTimeAsync(AUDIO_START_TIMEOUT);
+  await outcome;
+  expect(track.stop).toHaveBeenCalled();
 });

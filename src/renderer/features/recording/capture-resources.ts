@@ -88,6 +88,27 @@ async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
   return { display, microphone };
 }
 
+/** How long the audio may take to start before the opening gives up. */
+export const AUDIO_START_TIMEOUT = 3_000;
+const SILENT_AUDIO = 'Le son ne peut pas être enregistré pour l’instant. Réessayez.';
+
+/**
+ * The recorders take their audio from this context: left suspended, the meeting would be silent.
+ * A browser that waits for a gesture never settles `resume()`, which would hold the opening.
+ */
+async function startAudio(context: AudioContext): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, AUDIO_START_TIMEOUT);
+  });
+  try {
+    await Promise.race([context.resume(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+  if (context.state !== 'running') throw new Error(SILENT_AUDIO);
+}
+
 function mixAudio(context: AudioContext, streams: MediaStream[]) {
   const destination = context.createMediaStreamDestination();
   const sources = new Map<MediaStream, MediaStreamAudioSourceNode>();
@@ -117,7 +138,7 @@ export async function openCaptureResources(
     let display = acquired.display;
     const audioContext = new AudioContext();
     context = audioContext;
-    await audioContext.resume();
+    await startAudio(audioContext);
     const { audio, analyser, destination, sources } = mixAudio(audioContext, streams);
     const live = await openLiveTap(
       audioContext,
