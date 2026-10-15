@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { packagedChannelRoot } from '../src/shared/update-channel.ts';
+import { describeSigning, signingIdentityName } from './local-signing.ts';
 import {
   RELEASE_USAGE,
   ReleaseError,
@@ -72,12 +73,19 @@ try {
     options.channelRoot === undefined
       ? packagedChannelRoot(homedir())
       : resolve(options.channelRoot);
-  const context = { repoRoot: ROOT, channelRoot, io, signal: interruption.signal };
-  const { manifest, alreadyPublished } = await runRelease(options, context);
+  const context = {
+    repoRoot: ROOT,
+    channelRoot,
+    io,
+    signingIdentity: signingIdentityName(process.env),
+    signal: interruption.signal,
+  };
+  const { manifest, alreadyPublished, signing } = await runRelease(options, context);
+  const signature = `Signature : ${describeSigning(signing)}.`;
   process.stdout.write(
     alreadyPublished
-      ? `[update] ATTENTION — le commit ${manifest.commit.slice(0, 12)} était déjà publié : une app construite depuis ce commit ne proposera rien. Committez une modification, puis republiez.\n`
-      : '[update] OK — SayBack proposera la mise à jour à son prochain retour au premier plan.\n',
+      ? `[update] ATTENTION — le commit ${manifest.commit.slice(0, 12)} était déjà publié : une app construite depuis ce commit ne proposera rien. Committez une modification, puis republiez. ${signature}\n`
+      : `[update] OK — SayBack proposera la mise à jour à son prochain retour au premier plan. ${signature}\n`,
   );
 } catch (error) {
   process.stderr.write(`[update] ÉCHEC — ${describeFailure(error)}\n`);

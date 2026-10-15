@@ -73,7 +73,7 @@ npm run dist      # installateur
 
 ### Mettre à jour l’app installée (macOS)
 
-`npm run update:publish` construit le dernier commit dans une copie propre (le travail en cours n’y entre pas), passe `npm run check`, construit `SayBack.app` puis la dépose dans `~/Library/Application Support/SayBack/updates/` avec son manifeste `latest.json`, écrit en dernier. Options : `--notes "<une ligne>"`, `--allow-dirty` (publie le commit courant malgré des modifications non commitées), `--channel-root <dossier>` (essais ailleurs).
+`npm run update:publish` construit le dernier commit dans une copie propre (le travail en cours n’y entre pas), passe `npm run check`, construit `SayBack.app` puis la dépose dans `~/Library/Application Support/SayBack/updates/` avec son manifeste `latest.json`, écrit en dernier. Options : `--notes "<une ligne>"`, `--allow-dirty` (publie le commit courant malgré des modifications non commitées), `--adhoc` (publie sans certificat, voir plus bas), `--channel-root <dossier>` (essais ailleurs).
 
 **Première installation**, une seule fois :
 
@@ -88,6 +88,25 @@ Quittez SayBack avant la copie. Ne lancez pas l’app depuis le dossier `updates
 **Ensuite**, committez puis relancez `npm run update:publish`. L’app voit la nouvelle version au démarrage, au retour au premier plan ou dans les cinq minutes, et propose de l’installer. macOS demande confirmation (« Installer et redémarrer » ou « Plus tard ») ; l’app est alors remplacée et relancée. L’installation est refusée pendant un enregistrement. La version remplacée reste dans `/Applications/SayBack.previous.app`, et le déroulé est écrit dans `~/Library/Application Support/SayBack/logs/update.log`. Deux builds du même commit ne se remplacent pas.
 
 Seules les apps construites par `npm run update:publish` (qui pose `SAYBACK_LOCAL_UPDATE_CHANNEL=1`) portent ce canal : `npm run package` et `npm run dist` construisent une app sans lui. Une copie téléchargée, marquée en quarantaine par macOS, le garde fermé.
+
+**Garder les autorisations d’une mise à jour à l’autre.** Sans certificat, l’app est signée ad hoc : macOS la voit comme une nouvelle app à chaque build et oublie l’autorisation **Enregistrement de l’écran**. Avec un certificat de signature de code dans le trousseau de session (un certificat autosigné suffit, sans approbation), exportez son nom avant `npm run package` ou `npm run update:publish` :
+
+```bash
+export SAYBACK_SIGNING_IDENTITY="SayBack Local Signing"
+```
+
+L’app est alors signée avec ce certificat, sans runtime renforcé : une autorisation accordée une fois reste valable après les mises à jour, et la ligne « OK » de `npm run update:publish` dit avec quel certificat. Certificat introuvable, en double, expiré ou révoqué : la commande échoue en quelques secondes, avant tout build.
+
+- `npm run update:publish` refuse de publier sans `SAYBACK_SIGNING_IDENTITY`, sauf avec `--adhoc` ; et jamais une app ad hoc à la place d’une app signée par certificat.
+- `npm run package` sans la variable signe ad hoc, comme avant.
+- `npm run dist` ne signe pas avec le certificat : il remplace `dist/mac-arm64/SayBack.app` par une app ad hoc et construit un dmg ad hoc.
+- La première mise à jour signée redemande les autorisations une dernière fois, puisque l’app installée était ad hoc. Ensuite, elles tiennent.
+- Depuis macOS 15, le système redemande de temps en temps de confirmer **Enregistrement de l’écran**, signature ou pas.
+- Si codesign demande un jour l’accès à la clé, répondez « Toujours autoriser », ou autorisez les outils d’Apple une fois pour toutes (le mot de passe de session est demandé) :
+
+  ```bash
+  security set-key-partition-list -S apple-tool:,apple: -s -l "SayBack Local Signing" ~/Library/Keychains/login.keychain-db
+  ```
 
 ## Sous le capot
 

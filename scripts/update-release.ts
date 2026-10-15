@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -9,6 +9,9 @@ import {
   buildInfoSchema,
   type UpdateManifest,
 } from '../src/shared/update-channel.ts';
+import { findBuiltApp } from './built-app.ts';
+import type { Capture, SigningIdentity } from './local-signing.ts';
+import { checkBuiltSignature, chooseSigning } from './release-signing.ts';
 import { ReleaseError, publishToChannel, publishedCommit } from './update-publish.ts';
 
 // Builds the current commit in a frozen copy (detached git worktree, cloned node_modules), runs
@@ -22,15 +25,18 @@ const DIRTY_NOTE =
 
 export interface ReleaseOptions {
   allowDirty: boolean;
+  /** Publishes an ad-hoc build: without it, a signing identity is required. */
+  adhoc: boolean;
   notes?: string;
   /** Folder that receives `updates/`, instead of the packaged app's (trials). */
   channelRoot?: string;
 }
 
 export const RELEASE_USAGE = [
-  'npm run update:publish -- [--notes "<une ligne>"] [--allow-dirty] [--channel-root <dossier>]',
+  'npm run update:publish -- [--notes "<une ligne>"] [--allow-dirty] [--adhoc] [--channel-root <dossier>]',
   '  --notes         une ligne montrée avec la mise à jour',
   '  --allow-dirty   publie le commit courant malgré des modifications non commitées (elles ne partent pas dans le build)',
+  '  --adhoc        publie une app signée ad hoc, sans SAYBACK_SIGNING_IDENTITY (macOS redemandera les autorisations)',
   '  --channel-root  dossier qui reçoit updates/, à la place de ~/Library/Application Support/SayBack (essais)',
 ].join('\n');
 
@@ -42,7 +48,7 @@ function splitOption(arg: string): [string, string | undefined] {
 
 /** Reads the command line options. Throws `ReleaseError` on an unknown option or missing value. */
 export function parseReleaseArgs(argv: readonly string[]): ReleaseOptions {
-  const options: ReleaseOptions = { allowDirty: false };
+  const options: ReleaseOptions = { allowDirty: false, adhoc: false };
   const args = [...argv];
   const valueOf = (name: string, inline: string | undefined): string => {
     const value = inline ?? args.shift();
@@ -55,6 +61,7 @@ export function parseReleaseArgs(argv: readonly string[]): ReleaseOptions {
   for (let arg = args.shift(); arg !== undefined; arg = args.shift()) {
     const [name, inline] = splitOption(arg);
     if (name === '--allow-dirty' && inline === undefined) options.allowDirty = true;
+    else if (name === '--adhoc' && inline === undefined) options.adhoc = true;
     else if (name === '--notes') options.notes = valueOf(name, inline);
     else if (name === '--channel-root') options.channelRoot = valueOf(name, inline);
     else throw new ReleaseError(`option inconnue : ${arg}`);
@@ -62,11 +69,15 @@ export function parseReleaseArgs(argv: readonly string[]): ReleaseOptions {
   return options;
 }
 
-/** The checks, in order; the first that fails stops everything. `package` builds the `.app`. */
+/**
+ * The checks, in order; the first that fails stops everything. `package` builds the `.app`, `sign`
+ * re-signs it with the local identity when one is named (inherited environment), as `npm run package`.
+ */
 export const RELEASE_STEPS: readonly { label: string; command: string; args: readonly string[] }[] =
   [
     { label: 'check', command: 'npm', args: ['run', 'check'] },
     { label: 'package', command: 'npx', args: ['electron-builder', '--dir', '--publish', 'never'] },
+    { label: 'sign', command: 'node', args: ['scripts/local-signing-cli.ts'] },
   ];
 
 /** What `runRelease` asks of the system: replaceable in tests. */
@@ -88,6 +99,8 @@ export interface ReleaseContext {
   /** `appData/SayBack` of the packaged app. */
   channelRoot: string;
   io: ReleaseIo;
+  /** Name of the signing identity (`SAYBACK_SIGNING_IDENTITY`), `null` when unset. */
+  signingIdentity: string | null;
   /** Aborted on ⌃C, SIGTERM or SIGHUP: nothing more starts, the copy is removed. */
   signal?: AbortSignal;
 }
@@ -96,6 +109,16 @@ export interface ReleaseResult {
   manifest: UpdateManifest;
   /** The channel already offered this commit: an app built from it will not see an update. */
   alreadyPublished: boolean;
+  /** The certificate the published bundle is signed with, proven on it; `null`: ad hoc. */
+  signing: SigningIdentity | null;
+}
+
+/** What the frozen copy built, and the signature it must carry. */
+interface BuiltRelease {
+  tree: string;
+  commit: string;
+  notes: string | undefined;
+  signing: SigningIdentity | null;
 }
 
 /** The copy is built with the local channel explicitly open; nothing else ever opens it. */
@@ -104,28 +127,6 @@ const STEP_ENV = { [LOCAL_UPDATE_CHANNEL_ENV]: '1' };
 function assertNotAborted(context: ReleaseContext): void {
   if (context.signal?.aborted)
     throw new ReleaseError("publication interrompue : rien n'est publié");
-}
-
-/** Output folders to look in: this machine's architecture first, then any other `mac…`. */
-function outputOrder(outputs: readonly string[]): string[] {
-  const preferred = `mac-${process.arch}`;
-  const others = outputs.filter((name) => name.startsWith('mac') && name !== preferred).sort();
-  return outputs.includes(preferred) ? [preferred, ...others] : others;
-}
-
-/** The bundle electron-builder built in the copy: `SayBack.app` in `dist/mac-<arch>`. */
-async function findBuiltApp(tree: string): Promise<string> {
-  const distDir = join(tree, 'dist');
-  const outputs = await readdir(distDir).catch((): string[] => []);
-  for (const name of outputOrder(outputs)) {
-    const candidate = join(distDir, name, APP_BUNDLE_NAME);
-    const found = await stat(candidate).then(
-      (info) => info.isDirectory(),
-      () => false,
-    );
-    if (found) return candidate;
-  }
-  throw new ReleaseError(`aucun ${APP_BUNDLE_NAME} dans ${distDir}`);
 }
 
 async function buildAndCheck(tree: string, context: ReleaseContext): Promise<void> {
@@ -149,12 +150,12 @@ async function buildAndCheck(tree: string, context: ReleaseContext): Promise<voi
   }
 }
 
-async function publishBuilt(
-  tree: string,
-  commit: string,
-  notes: string | undefined,
-  context: ReleaseContext,
-): Promise<ReleaseResult> {
+function captureIn(context: ReleaseContext): Capture {
+  return (command, args) => context.io.capture(command, args, context.repoRoot);
+}
+
+async function publishBuilt(built: BuiltRelease, context: ReleaseContext): Promise<ReleaseResult> {
+  const { tree, commit, notes, signing } = built;
   const appPath = await findBuiltApp(tree);
   const infoText = await readFile(join(tree, 'out', BUILD_INFO_FILE_NAME), 'utf8');
   const info = buildInfoSchema.parse(JSON.parse(infoText));
@@ -162,11 +163,13 @@ async function publishBuilt(
     throw new ReleaseError(`le paquet construit dit venir de ${info.commit}, pas de ${commit}`);
   }
   const updatesDir = join(context.channelRoot, UPDATES_DIR_NAME);
+  const publishedApp = join(updatesDir, APP_BUNDLE_NAME);
+  await checkBuiltSignature(appPath, publishedApp, signing, captureIn(context));
   const alreadyPublished = (await publishedCommit(updatesDir)) === commit;
   assertNotAborted(context);
   const manifest = await publishToChannel({ appPath, updatesDir, info, notes });
   context.io.log(`publié : ${manifest.version} ${manifest.commit.slice(0, 12)} dans ${updatesDir}`);
-  return { manifest, alreadyPublished };
+  return { manifest, alreadyPublished, signing };
 }
 
 /** Builds the current commit in a frozen copy, checks it, publishes it. */
@@ -176,6 +179,8 @@ export async function runRelease(
 ): Promise<ReleaseResult> {
   const { repoRoot, io } = context;
   assertNotAborted(context);
+  // First: a missing or unusable certificate fails now, not after minutes of build.
+  const signing = await chooseSigning(options.adhoc, context.signingIdentity, captureIn(context));
   const status = await io.capture('git', ['status', '--porcelain'], repoRoot);
   const dirty = status.split('\n').filter((line) => line.trim() !== '');
   if (dirty.length > 0 && !options.allowDirty) {
@@ -197,7 +202,7 @@ export async function runRelease(
     if (added !== 0) throw new ReleaseError('étape « worktree » en échec');
     worktreeAdded = true;
     await buildAndCheck(tree, context);
-    return await publishBuilt(tree, commit, notes, context);
+    return await publishBuilt({ tree, commit, notes, signing }, context);
   } finally {
     if (worktreeAdded) {
       await io.run('git', ['worktree', 'remove', '--force', tree], repoRoot).catch(() => 1);

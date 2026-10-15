@@ -9,6 +9,8 @@ files:
 asar: true
 # Flipped in the Electron binary just before signing. Without a Developer ID the bundle is only
 # ad-hoc signed: flipping breaks that signature, so it is redone, or arm64 macOS kills the app.
+# `npm run package` and `update:publish` then re-sign it with SAYBACK_SIGNING_IDENTITY, if set
+# (scripts/local-signing.ts), so that macOS permissions survive updates.
 electronFuses:
   runAsNode: false
   enableNodeOptionsEnvironmentVariable: false
