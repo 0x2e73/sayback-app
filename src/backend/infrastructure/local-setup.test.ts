@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findWhisperModel, liveWhisperModel, LocalSetup } from './local-setup';
+import { findWhisperModel, isGgmlModel, liveWhisperModel, LocalSetup } from './local-setup';
 
 let root: string;
 
@@ -96,13 +96,35 @@ it('accepts an untagged notes model installed as latest', async () => {
   expect(await setup.check()).toMatchObject({ notesModel: true });
 });
 
+function ggmlFile(folder: string, name: string, head = 'lmgg'): string {
+  mkdirSync(join(root, folder), { recursive: true });
+  const path = join(root, folder, name);
+  writeFileSync(path, `${head}\u0000\u0000\u0000\u0000`);
+  return path;
+}
+
 it('gives the live the chosen model, else the first one found, else nothing', () => {
-  const chosen = modelFile('chosen', 'ggml-large-v3-turbo-q5_0.bin');
-  const found = modelFile('found', 'ggml-base.bin');
+  const chosen = ggmlFile('chosen', 'ggml-large-v3-turbo-q5_0.bin');
+  const found = ggmlFile('found', 'ggml-base.bin');
   const folders = [join(root, 'found')];
 
   expect(liveWhisperModel(chosen, folders)).toBe(chosen);
   expect(liveWhisperModel(join(root, 'renamed.bin'), folders)).toBe(found);
   expect(liveWhisperModel('', folders)).toBe(found);
   expect(liveWhisperModel(join(root, 'chosen'), [join(root, 'missing')])).toBe('');
+});
+
+it('accepts only an absolute ggml-*.bin file that starts like a whisper.cpp model', () => {
+  const valid = ggmlFile('models', 'ggml-base.bin');
+  const wrongHead = ggmlFile('models', 'ggml-fake.bin', 'MZ\u0090\u0000');
+  const wrongName = ggmlFile('models', 'base.bin');
+  const folder = join(root, 'models', 'ggml-folder.bin');
+  mkdirSync(folder);
+
+  expect(isGgmlModel(valid)).toBe(true);
+  expect(isGgmlModel(wrongHead)).toBe(false);
+  expect(isGgmlModel(wrongName)).toBe(false);
+  expect(isGgmlModel(folder)).toBe(false);
+  expect(isGgmlModel('models/ggml-base.bin')).toBe(false);
+  expect(liveWhisperModel(wrongHead, [join(root, 'empty')])).toBe('');
 });

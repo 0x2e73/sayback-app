@@ -1,8 +1,14 @@
-import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPidFile, reapOrphan, type ProcessTable } from './whisper-server-pid';
+import {
+  createPidFile,
+  createServerRecorder,
+  reapOrphan,
+  type ProcessTable,
+  type ServerRecord,
+} from './whisper-server-pid';
 
 let folder: string;
 let path: string;
@@ -13,15 +19,37 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(folder, { recursive: true, force: true }));
 
-/** One process that ignores SIGTERM when told to. */
-function table(command: string | null, ignoresTerm = false) {
-  let alive = true;
+const STARTED = 'Thu Oct 15 12:00:00 2026';
+const DEAD_APP = 999_991;
+const SERVER = 4_242;
+const record = (overrides: Partial<ServerRecord> = {}): ServerRecord => ({
+  serverPid: SERVER,
+  appPid: DEAD_APP,
+  startedAt: STARTED,
+  ...overrides,
+});
+
+interface TableOptions {
+  command?: string | null;
+  startedAt?: string | null;
+  ignoresTerm?: boolean;
+  appAlive?: boolean;
+}
+
+function table({
+  command = '/opt/homebrew/Cellar/whisper.cpp/1.9.4/bin/whisper-server',
+  startedAt = STARTED,
+  ignoresTerm = false,
+  appAlive = false,
+}: TableOptions = {}) {
+  let serverAlive = true;
   const kill = vi.fn((_pid: number, signal: NodeJS.Signals) => {
-    if (signal === 'SIGKILL' || !ignoresTerm) alive = false;
+    if (signal === 'SIGKILL' || !ignoresTerm) serverAlive = false;
   });
   const processes: ProcessTable = {
     command: async () => command,
-    alive: () => alive,
+    startedAt: async () => startedAt,
+    alive: (pid) => (pid === DEAD_APP ? appAlive : serverAlive),
     kill,
     wait: async () => undefined,
   };
@@ -29,78 +57,96 @@ function table(command: string | null, ignoresTerm = false) {
 }
 
 describe('whisper server pid file', () => {
-  it('keeps the PID for the owner only and gives it back once', () => {
+  it('keeps the record for the owner only and reads it back', () => {
     const pids = createPidFile(path);
 
-    pids.write(4242);
+    pids.write(record());
 
     expect(statSync(path).mode & 0o777).toBe(0o600);
-    expect(pids.take()).toBe(4242);
-    expect(existsSync(path)).toBe(false);
-    expect(pids.take()).toBeNull();
+    expect(readFileSync(path, 'utf8')).toBe(`4242 999991 ${STARTED}\n`);
+    expect(pids.read()).toEqual(record());
   });
 
   it('reads nothing from a missing, garbled or oversized file', () => {
     const pids = createPidFile(path);
 
-    expect(pids.take()).toBeNull();
+    expect(pids.read()).toBeNull();
     writeFileSync(path, 'pas un nombre');
-    expect(pids.take()).toBeNull();
-    writeFileSync(path, '1');
-    expect(pids.take()).toBeNull();
-    writeFileSync(path, '4'.repeat(64));
-    expect(pids.take()).toBeNull();
+    expect(pids.read()).toBeNull();
+    writeFileSync(path, '4242');
+    expect(pids.read()).toBeNull();
+    writeFileSync(path, `1 999991 ${STARTED}`);
+    expect(pids.read()).toBeNull();
+    writeFileSync(path, `4242 999991 ${'x'.repeat(200)}`);
+    expect(pids.read()).toBeNull();
   });
 
-  it('is cleared after a normal stop', () => {
+  it('records a server with its start date, unless it is gone by then', async () => {
     const pids = createPidFile(path);
-    pids.write(4242);
+    const { processes } = table();
+    const recorder = createServerRecorder(pids, processes, 777);
 
-    pids.clear();
+    recorder.write(SERVER);
+    await Promise.resolve();
+    expect(pids.read()).toEqual(record({ appPid: 777 }));
 
+    recorder.write(5_000);
+    recorder.clear();
+    await Promise.resolve();
     expect(existsSync(path)).toBe(false);
   });
 });
 
 describe('orphan reaping', () => {
-  it('ends a whisper-server left by a previous run', async () => {
+  it('ends a whisper-server left by a run that is gone', async () => {
     const pids = createPidFile(path);
-    pids.write(4242);
-    const { processes, kill } = table('/opt/homebrew/Cellar/whisper.cpp/1.9.4/bin/whisper-server');
+    pids.write(record());
+    const { processes, kill } = table();
 
     expect(await reapOrphan(pids, processes)).toBe(true);
-    expect(kill.mock.calls).toEqual([[4242, 'SIGTERM']]);
+    expect(kill.mock.calls).toEqual([[SERVER, 'SIGTERM']]);
+    expect(existsSync(path)).toBe(false);
   });
 
   it('escalates to SIGKILL when SIGTERM is ignored', async () => {
     const pids = createPidFile(path);
-    pids.write(4242);
-    const { processes, kill } = table('/opt/homebrew/bin/whisper-server', true);
+    pids.write(record());
+    const { processes, kill } = table({ ignoresTerm: true });
 
     await reapOrphan(pids, processes);
 
     expect(kill.mock.calls).toEqual([
-      [4242, 'SIGTERM'],
-      [4242, 'SIGKILL'],
+      [SERVER, 'SIGTERM'],
+      [SERVER, 'SIGKILL'],
     ]);
   });
 
-  it('leaves alone a PID reused by another program, or a process already gone', async () => {
-    const reused = createPidFile(path);
-    reused.write(4242);
-    const other = table('/Applications/Safari.app/Contents/MacOS/Safari');
-    const gone = table(null);
+  it('leaves the server and its record to an app that is still running', async () => {
+    const pids = createPidFile(path);
+    pids.write(record());
+    const { processes, kill } = table({ appAlive: true });
 
-    expect(await reapOrphan(reused, other.processes)).toBe(false);
-    reused.write(4243);
-    expect(await reapOrphan(reused, gone.processes)).toBe(false);
-    expect(other.kill).not.toHaveBeenCalled();
-    expect(gone.kill).not.toHaveBeenCalled();
+    expect(await reapOrphan(pids, processes)).toBe(false);
+    expect(kill).not.toHaveBeenCalled();
+    expect(existsSync(path)).toBe(true);
+  });
+
+  it.each<[string, TableOptions]>([
+    ['another program', { command: '/Applications/Safari.app/Contents/MacOS/Safari' }],
+    ['a whisper-server started at another date', { startedAt: 'Thu Oct 15 13:00:00 2026' }],
+    ['a process already gone', { command: null, startedAt: null }],
+  ])('leaves alone a PID reused by %s', async (_name, options) => {
+    const pids = createPidFile(path);
+    pids.write(record());
+    const { processes, kill } = table(options);
+
+    expect(await reapOrphan(pids, processes)).toBe(false);
+    expect(kill).not.toHaveBeenCalled();
     expect(existsSync(path)).toBe(false);
   });
 
   it('does nothing without a file', async () => {
-    const { processes, kill } = table('/opt/homebrew/bin/whisper-server');
+    const { processes, kill } = table();
 
     expect(await reapOrphan(createPidFile(path), processes)).toBe(false);
     expect(kill).not.toHaveBeenCalled();

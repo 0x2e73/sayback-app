@@ -34,7 +34,13 @@ export interface LiveSegment {
   revision: number;
 }
 
-export const LIVE_UNAVAILABLE_REASONS = ['no-model', 'no-binary', 'engine-failed'] as const;
+/** `port-conflict`: another process listened on the port of the server, or it could not be checked. */
+export const LIVE_UNAVAILABLE_REASONS = [
+  'no-model',
+  'no-binary',
+  'engine-failed',
+  'port-conflict',
+] as const;
 export type LiveUnavailableReason = (typeof LIVE_UNAVAILABLE_REASONS)[number];
 
 /** Independent of the recording: an unavailable live never stops it. */

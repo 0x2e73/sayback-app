@@ -2,15 +2,20 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { LiveTranscription } from '../backend/application/live-transcription';
 import { liveWhisperModel, whisperModelFolders } from '../backend/infrastructure/local-setup';
-import { locateBinary } from '../backend/infrastructure/local-whisper';
 import { WhisperServer } from '../backend/infrastructure/whisper-server';
 import {
   WhisperServerClient,
   whisperServerHealthy,
 } from '../backend/infrastructure/whisper-server-client';
-import { createPidFile, reapOrphan } from '../backend/infrastructure/whisper-server-pid';
+import { trustedWhisperServer } from '../backend/infrastructure/whisper-server-binary';
+import {
+  createPidFile,
+  createServerRecorder,
+  reapOrphan,
+} from '../backend/infrastructure/whisper-server-pid';
 import {
   freeLoopbackPort,
+  loopbackListeners,
   requestToken,
   spawnQuiet,
 } from '../backend/infrastructure/whisper-server-process';
@@ -32,27 +37,30 @@ export function composeLive(
   chosenModel: () => string,
 ): LiveComposition {
   const transcript = createLiveTranscriptHub();
-  const pids = createPidFile(join(dataRoot, 'live-engine.pid'));
+  const pidFile = createPidFile(join(dataRoot, 'live-engine.pid'));
   // Reads the file before any server of this run can write it.
-  reapOrphan(pids).catch(() => undefined);
+  reapOrphan(pidFile).catch(() => undefined);
   const server = new WhisperServer({
     spawn: spawnQuiet,
     freePort: freeLoopbackPort,
     token: requestToken,
     healthy: (baseUrl, signal) => whisperServerHealthy(baseUrl, signal),
-    pids,
+    listeners: loopbackListeners,
+    pids: createServerRecorder(pidFile),
     wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     now: () => performance.now(),
     onAvailability: (availability) => transcript.setAvailability(availability),
   });
-  const engine = new WhisperServerClient(() => server.baseUrl());
+  // Whatever ends the process, the server goes with it; a crash is left to the PID file.
+  process.once('exit', () => server.killNow());
+  const engine = new WhisperServerClient(() => server.verifiedBaseUrl());
   const live = createLiveServices({
     recording,
     transcript,
     transcription: new LiveTranscription(engine, transcript),
     server,
     gate: createPcmGate(),
-    binary: () => locateBinary('whisper-server'),
+    binary: () => trustedWhisperServer(),
     model: () => liveWhisperModel(chosenModel(), whisperModelFolders(homedir())),
   });
   return { live, transcript };

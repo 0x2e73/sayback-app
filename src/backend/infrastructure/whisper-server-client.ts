@@ -2,12 +2,34 @@ import { z } from 'zod';
 import { LIVE_SAMPLE_RATE } from '../../shared/live';
 import type { LiveEngine } from '../application/ports';
 
-// Every byte read from the server is bounded: a text of fifteen seconds is far below.
-export const MAX_INFERENCE_BYTES = 64 * 1024;
+// Every byte read from the server is bounded: fifteen seconds with word timings is about 10 KB.
+export const MAX_INFERENCE_BYTES = 128 * 1024;
 const MAX_HEALTH_BYTES = 1024;
 export const DECODE_TIMEOUT = 30_000;
+/** Above this, Whisper thinks a segment holds no speech: usually invented text on noise. */
+export const MAX_NO_SPEECH = 0.6;
 
-const inferenceSchema = z.object({ text: z.string().max(10_000) });
+const inferenceSchema = z.object({
+  text: z.string().max(10_000),
+  segments: z
+    .array(
+      z.object({
+        text: z.string().max(10_000),
+        no_speech_prob: z.number().min(0).max(1).optional(),
+      }),
+    )
+    .max(1_000)
+    .optional(),
+});
+
+/** The text of the segments Whisper believes are speech. */
+export function speechOf(answer: z.infer<typeof inferenceSchema>): string {
+  if (!answer.segments) return answer.text;
+  return answer.segments
+    .filter((segment) => (segment.no_speech_prob ?? 0) <= MAX_NO_SPEECH)
+    .map((segment) => segment.text)
+    .join('');
+}
 const healthSchema = z.object({ status: z.literal('ok') });
 
 /** 16-bit mono WAV in memory: the live path writes no audio to disk. */
@@ -64,17 +86,19 @@ export async function readBounded(response: Response, maxBytes: number): Promise
  * message to a window.
  */
 export class WhisperServerClient implements LiveEngine {
+  /** `baseUrl` checks again, before each request, that the port is held by our server alone. */
   constructor(
-    private readonly baseUrl: () => string | null,
+    private readonly baseUrl: () => Promise<string | null>,
     private readonly request: typeof fetch = fetch,
   ) {}
 
   async transcribe(samples: Int16Array, signal: AbortSignal): Promise<string> {
-    const base = this.baseUrl();
+    const base = await this.baseUrl();
     if (!base) throw new Error('Le moteur live n’est pas prêt.');
+    if (signal.aborted) throw new Error('Énoncé abandonné.');
     const form = new FormData();
     form.append('file', new Blob([wavFromPcm(samples)], { type: 'audio/wav' }), 'live.wav');
-    form.append('response_format', 'json');
+    form.append('response_format', 'verbose_json');
     form.append('temperature', '0');
     const response = await this.send(`${base}/inference`, {
       method: 'POST',
@@ -86,7 +110,7 @@ export class WhisperServerClient implements LiveEngine {
       throw new Error('Le moteur live a refusé l’énoncé.');
     }
     const body = await readBounded(response, MAX_INFERENCE_BYTES);
-    return inferenceSchema.parse(JSON.parse(body)).text;
+    return speechOf(inferenceSchema.parse(JSON.parse(body)));
   }
 
   private async send(url: string, init: RequestInit): Promise<Response> {

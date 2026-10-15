@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { closeSync, existsSync, openSync, readSync, readdirSync, statSync } from 'node:fs';
+import { basename, isAbsolute, join } from 'node:path';
 import { z } from 'zod';
 import type { LocalSetupStatus } from '../../shared/contracts';
 
@@ -35,9 +35,35 @@ function isFile(path: string): boolean {
   return Boolean(path) && existsSync(path) && statSync(path).isFile();
 }
 
-/** The live always runs locally: the chosen model, else the first one found, else ''. */
+// The first field of a whisper.cpp model: "ggml" read as a little-endian 32-bit number.
+const GGML_MAGIC = [0x6c, 0x6d, 0x67, 0x67];
+
+function startsWithMagic(path: string): boolean {
+  const head = new Uint8Array(GGML_MAGIC.length);
+  const descriptor = openSync(path, 'r');
+  try {
+    readSync(descriptor, head, 0, head.length, 0);
+  } finally {
+    closeSync(descriptor);
+  }
+  return GGML_MAGIC.every((byte, index) => head[index] === byte);
+}
+
+/** An absolute `ggml-*.bin` regular file that starts like a whisper.cpp model. */
+export function isGgmlModel(path: string): boolean {
+  if (!isAbsolute(path) || !/^ggml-.+\.bin$/.test(basename(path))) return false;
+  try {
+    return isFile(path) && startsWithMagic(path);
+  } catch {
+    return false;
+  }
+}
+
+/** The live always runs locally: the chosen model, else the first one found, if it is valid. */
 export function liveWhisperModel(chosen: string, folders: string[]): string {
-  return isFile(chosen) ? chosen : findWhisperModel(folders);
+  if (isGgmlModel(chosen)) return chosen;
+  const found = findWhisperModel(folders);
+  return isGgmlModel(found) ? found : '';
 }
 
 interface LocalSetupDependencies {

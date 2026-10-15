@@ -49,7 +49,7 @@ describe('wav from pcm', () => {
 describe('whisper server client', () => {
   it('posts the utterance as a WAV file and returns the text', async () => {
     const request = answering(Response.json({ text: ' Bonjour.\n' }));
-    const client = new WhisperServerClient(() => BASE, request);
+    const client = new WhisperServerClient(async () => BASE, request);
 
     const text = await client.transcribe(Int16Array.of(1, 2), never);
 
@@ -60,14 +60,28 @@ describe('whisper server client', () => {
     expect(url).toBe(`${BASE}/inference`);
     expect(init?.method).toBe('POST');
     expect(init?.redirect).toBe('error');
-    expect(form.get('response_format')).toBe('json');
+    expect(form.get('response_format')).toBe('verbose_json');
     expect(file.type).toBe('audio/wav');
     expect(file.size).toBe(48);
   });
 
+  it('drops the segments Whisper believes hold no speech', async () => {
+    const answer = {
+      text: ' Bonjour. Merci de votre attention.',
+      segments: [
+        { text: ' Bonjour.', no_speech_prob: 0.02 },
+        { text: ' Merci de votre attention.', no_speech_prob: 0.91 },
+        { text: ' À bientôt.' },
+      ],
+    };
+    const client = new WhisperServerClient(async () => BASE, answering(Response.json(answer)));
+
+    expect(await client.transcribe(Int16Array.of(1), never)).toBe(' Bonjour. À bientôt.');
+  });
+
   it('refuses to send while the server is not ready', async () => {
     const request = answering(Response.json({ text: '' }));
-    const client = new WhisperServerClient(() => null, request);
+    const client = new WhisperServerClient(async () => null, request);
 
     await expect(client.transcribe(Int16Array.of(1), never)).rejects.toThrow('pas prêt');
     expect(request).not.toHaveBeenCalled();
@@ -75,7 +89,7 @@ describe('whisper server client', () => {
 
   it('rejects an error status', async () => {
     const client = new WhisperServerClient(
-      () => BASE,
+      async () => BASE,
       answering(new Response('{"error":"bad"}', { status: 500 })),
     );
 
@@ -83,7 +97,10 @@ describe('whisper server client', () => {
   });
 
   it('rejects an answer of an unexpected shape', async () => {
-    const client = new WhisperServerClient(() => BASE, answering(Response.json({ segments: [] })));
+    const client = new WhisperServerClient(
+      async () => BASE,
+      answering(Response.json({ segments: [] })),
+    );
 
     await expect(client.transcribe(Int16Array.of(1), never)).rejects.toThrow();
   });
@@ -92,14 +109,14 @@ describe('whisper server client', () => {
     const response = new Response('{}', {
       headers: { 'content-length': String(MAX_INFERENCE_BYTES + 1) },
     });
-    const client = new WhisperServerClient(() => BASE, answering(response));
+    const client = new WhisperServerClient(async () => BASE, answering(response));
 
     await expect(client.transcribe(Int16Array.of(1), never)).rejects.toThrow('trop longue');
   });
 
   it('stops reading a streamed body as soon as it passes the bound', async () => {
     const response = streamed(1_000, 16 * 1024);
-    const client = new WhisperServerClient(() => BASE, answering(response));
+    const client = new WhisperServerClient(async () => BASE, answering(response));
 
     await expect(client.transcribe(Int16Array.of(1), never)).rejects.toThrow('trop longue');
     expect(response.cancelled).toHaveBeenCalled();
@@ -109,7 +126,7 @@ describe('whisper server client', () => {
     const request = vi.fn<typeof fetch>(async (url) => {
       throw new TypeError(`fetch failed: ${String(url)}`);
     });
-    const client = new WhisperServerClient(() => BASE, request);
+    const client = new WhisperServerClient(async () => BASE, request);
 
     const error = await client.transcribe(Int16Array.of(1), never).catch((caught: Error) => caught);
 
@@ -125,12 +142,25 @@ describe('whisper server client', () => {
           init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
         }),
     );
-    const client = new WhisperServerClient(() => BASE, request);
+    const client = new WhisperServerClient(async () => BASE, request);
 
     const pending = client.transcribe(Int16Array.of(1), controller.signal);
+    await vi.waitFor(() => expect(request).toHaveBeenCalled());
     controller.abort();
 
     await expect(pending).rejects.toThrow('ne répond pas');
+  });
+
+  it('sends nothing once aborted while the port was being checked', async () => {
+    const controller = new AbortController();
+    const request = answering(Response.json({ text: '' }));
+    const client = new WhisperServerClient(async () => {
+      controller.abort();
+      return BASE;
+    }, request);
+
+    await expect(client.transcribe(Int16Array.of(1), controller.signal)).rejects.toThrow();
+    expect(request).not.toHaveBeenCalled();
   });
 });
 
