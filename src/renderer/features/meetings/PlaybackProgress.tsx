@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { timeLabel } from '../../../shared/format';
+import { chronoLabel } from '../../../shared/format';
 
 interface PlaybackProgressProps {
   at: number;
@@ -28,7 +28,7 @@ export function PlaybackProgress({ at, duration, disabled, onSeek }: PlaybackPro
 
   return (
     <>
-      <span className="playback-time">{timeLabel(shown)}</span>
+      <span className="playback-time">{chronoLabel(shown)}</span>
       <span className="playback-progress" data-dragging={dragged !== null || undefined}>
         <span
           className="playback-progress-fill"
@@ -44,7 +44,7 @@ export function PlaybackProgress({ at, duration, disabled, onSeek }: PlaybackPro
           type="range"
           className="playback-progress-input"
           aria-label="Position de lecture"
-          aria-valuetext={`${timeLabel(shown)} sur ${timeLabel(duration)}`}
+          aria-valuetext={`${chronoLabel(shown)} sur ${chronoLabel(duration)}`}
           min={0}
           max={duration}
           step="any"

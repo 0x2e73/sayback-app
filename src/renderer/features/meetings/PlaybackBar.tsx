@@ -1,6 +1,7 @@
 import { Pause, Play } from 'lucide-react';
-import { timeLabel } from '../../../shared/format';
+import { chronoLabel } from '../../../shared/format';
 import { Button, IconSwap } from '../../components/ui';
+import { usePlaybackTime } from './playback-clock';
 import { PlaybackProgress } from './PlaybackProgress';
 import type { Playback } from './use-media-playback';
 
@@ -9,7 +10,8 @@ interface PlaybackBarProps {
 }
 
 export function PlaybackBar({ playback }: PlaybackBarProps) {
-  const { at, duration, playing, available, failed } = playback;
+  const { duration, playing, available, failed } = playback;
+  const at = usePlaybackTime(playback.clock);
   const label = playing ? 'Mettre en pause' : 'Lire';
 
   return (
@@ -27,7 +29,7 @@ export function PlaybackBar({ playback }: PlaybackBarProps) {
         <IconSwap active={playing} on={<Pause size={16} />} off={<Play size={16} />} />
       </Button>
       <PlaybackProgress at={at} duration={duration} disabled={!available} onSeek={playback.seek} />
-      <span className="playback-time">{timeLabel(duration)}</span>
+      <span className="playback-time">{chronoLabel(duration)}</span>
       <p className="playback-error" role="status">
         {failed ? 'Ce passage ne peut pas être lu.' : ''}
       </p>

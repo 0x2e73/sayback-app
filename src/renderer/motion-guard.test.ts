@@ -125,6 +125,7 @@ describe('motion guard', () => {
     'transition: opacity var(--duration-exit) var(--ease-out) var(--delay-wait)',
     'animation: skeleton-pulse var(--duration-ambient) var(--ease-ambient) infinite alternate',
     'transition-delay: var(--delay-2)',
+    'animation: turn-target var(--duration-ambient) var(--ease-out)',
   ])('lets %s through', (declaration) => {
     expect(motionViolations(`.x { ${declaration}; }`)).toEqual([]);
   });

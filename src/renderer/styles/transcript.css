@@ -1,0 +1,168 @@
+.transcript {
+  display: grid;
+  gap: var(--space-4);
+}
+/* Sticks under the tab bar: the counter and the arrows stay at hand while reading. */
+.transcript-search {
+  position: sticky;
+  top: var(--detail-tabs-height);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--transcript-bar-height);
+  background: var(--color-pane);
+}
+.transcript-search .search {
+  flex: 1;
+  width: auto;
+}
+.transcript-search-count {
+  min-width: 12ch;
+  text-align: right;
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.transcript-turns {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+}
+/* No card per turn: only the active one gets a ground. */
+.transcript-turn {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: var(--transcript-time-width) minmax(0, 1fr);
+  align-items: start;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  border-radius: var(--radius-md);
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--transcript-turn-estimate);
+}
+.transcript-turn[aria-current='time'] {
+  background-color: var(--color-surface);
+}
+/* The same voice cut at 900 characters: 4 px from the text before it. */
+.transcript-turn.is-continuation {
+  margin-top: calc(-1 * var(--space-2));
+  padding-top: 0;
+}
+.transcript-turn-flash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius-md);
+  animation: turn-target var(--duration-ambient) var(--ease-out);
+}
+.transcript-time {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--control-xs);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  user-select: none;
+  white-space: nowrap;
+}
+.transcript-time svg {
+  display: none;
+}
+.transcript-time:focus-visible {
+  color: var(--color-accent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .transcript-turn:hover .transcript-time {
+    color: var(--color-accent);
+  }
+}
+.transcript-time:focus-visible time {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .transcript-turn:hover .transcript-time time {
+    display: none;
+  }
+}
+.transcript-time:focus-visible svg {
+  display: block;
+}
+@media (hover: hover) and (pointer: fine) {
+  .transcript-turn:hover .transcript-time svg {
+    display: block;
+  }
+}
+.transcript-body {
+  min-width: 0;
+}
+.transcript-body > .speaker-label {
+  display: flex;
+}
+.transcript-text {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  user-select: text;
+  cursor: text;
+}
+.transcript-text mark {
+  background-color: var(--color-highlight);
+  color: inherit;
+}
+.transcript-text mark[aria-current='true'] {
+  background-color: var(--color-highlight-strong);
+}
+/* A brief reply holds on one line: label and text side by side. */
+.transcript-turn.is-brief .transcript-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.transcript-turn.is-brief .transcript-body > .speaker-label {
+  display: inline-flex;
+}
+.transcript-part {
+  margin-top: var(--space-2);
+  padding: var(--space-4) 0 var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+.transcript-part-title {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.transcript-part .caption {
+  margin: var(--space-1) 0 0;
+}
+.transcript-pills {
+  position: sticky;
+  bottom: var(--space-4);
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+.transcript-pills:empty {
+  display: none;
+}
+.transcript-pills > * {
+  pointer-events: auto;
+}
+.transcript-waiting {
+  display: grid;
+  gap: var(--space-3);
+}

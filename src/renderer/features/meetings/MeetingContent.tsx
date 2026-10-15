@@ -1,9 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Segmented, tabId, type SegmentedOption } from '../../components/ui';
-import type { TranscriptSearch } from './Transcript';
-import { useTabScroll } from './use-tab-scroll';
-
-type DetailTab = 'notes' | 'transcript';
+import type { DetailTab, DetailView } from './use-detail-view';
 
 const NOTES_PANEL = 'meeting-notes';
 const TRANSCRIPT_PANEL = 'meeting-transcript';
@@ -15,7 +12,8 @@ const tabs: readonly SegmentedOption<DetailTab>[] = [
 interface MeetingContentProps {
   header: ReactNode;
   notes: ReactNode;
-  transcript(search: TranscriptSearch): ReactNode;
+  transcript: ReactNode;
+  view: Pick<DetailView, 'tab' | 'selectTab' | 'scrollerRef' | 'anchorRef'>;
 }
 
 interface DetailPanelProps {
@@ -59,28 +57,36 @@ function DetailPanel({ id, active, direction, keepMounted = false, children }: D
 }
 
 /** The one scroll of the card: the header scrolls away, the tab bar sticks, each tab keeps its place. */
-export function MeetingContent({ header, notes, transcript }: MeetingContentProps) {
-  const { tab, select, scrollerRef, anchorRef } = useTabScroll<DetailTab>('notes');
-  const [search, setSearch] = useState('');
+export function MeetingContent({ header, notes, transcript, view }: MeetingContentProps) {
   const [direction, setDirection] = useState<'forward' | 'back'>();
   function change(next: DetailTab): void {
     const order = tabs.map((option) => option.value);
-    setDirection(order.indexOf(next) > order.indexOf(tab) ? 'forward' : 'back');
-    select(next);
+    setDirection(order.indexOf(next) > order.indexOf(view.tab) ? 'forward' : 'back');
+    view.selectTab(next);
   }
   return (
-    <div className="detail-scroll" ref={scrollerRef}>
+    <div className="detail-scroll" ref={view.scrollerRef}>
       <div className="detail-column">
         {header}
-        <div ref={anchorRef} />
+        <div ref={view.anchorRef} />
         <div className="detail-tabs">
-          <Segmented label="Contenu de la réunion" options={tabs} value={tab} onChange={change} />
+          <Segmented
+            label="Contenu de la réunion"
+            options={tabs}
+            value={view.tab}
+            onChange={change}
+          />
         </div>
-        <DetailPanel id={NOTES_PANEL} active={tab === 'notes'} direction={direction} keepMounted>
+        <DetailPanel
+          id={NOTES_PANEL}
+          active={view.tab === 'notes'}
+          direction={direction}
+          keepMounted
+        >
           {notes}
         </DetailPanel>
-        <DetailPanel id={TRANSCRIPT_PANEL} active={tab === 'transcript'} direction={direction}>
-          {transcript({ search, onSearch: setSearch })}
+        <DetailPanel id={TRANSCRIPT_PANEL} active={view.tab === 'transcript'} direction={direction}>
+          {transcript}
         </DetailPanel>
       </div>
     </div>

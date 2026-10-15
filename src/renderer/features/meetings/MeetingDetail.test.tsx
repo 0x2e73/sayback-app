@@ -88,7 +88,7 @@ it('opens on the notes, with the transcript one arrow away', async () => {
   screen.getByRole('tab', { name: 'Notes' }).focus();
   await user.keyboard('{ArrowRight}');
   const panel = screen.getByRole('tabpanel', { name: 'Transcription' });
-  expect(within(panel).getByRole('button', { name: /Le budget/ })).toBeInTheDocument();
+  expect(within(panel).getByText('Le budget.')).toBeInTheDocument();
   expect(screen.queryByRole('tabpanel', { name: 'Notes' })).toBeNull();
 });
 
@@ -97,6 +97,10 @@ it('plays a note from its timestamp, in the extract that holds it', async () => 
   const play = vi.spyOn(HTMLMediaElement.prototype, 'play');
   render(detail(analysed));
   await user.click(screen.getByRole('button', { name: 'Écouter à 1:01' }));
+  expect(screen.getByRole('tab', { name: 'Transcription' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   const audio = document.querySelector('audio');
   if (!audio) throw new Error('no audio element');
   expect(audio).toHaveAttribute('src', 'meeting-media://local/m1/audio/1');

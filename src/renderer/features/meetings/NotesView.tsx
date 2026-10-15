@@ -7,7 +7,7 @@ import { NoteSection } from './NoteSection';
 
 interface NotesViewProps {
   meeting: Meeting;
-  at: number;
+  currentTime(): number;
   analyzing: boolean;
   saving: boolean;
   clarifyError: string;
@@ -74,7 +74,7 @@ export function NotesView(props: NotesViewProps) {
       <NotesBody {...props} />
       <Clarifications
         meeting={props.meeting}
-        at={props.at}
+        currentTime={props.currentTime}
         disabled={props.analyzing}
         saving={props.saving}
         submitError={props.clarifyError}

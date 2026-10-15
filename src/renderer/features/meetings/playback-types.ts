@@ -1,4 +1,5 @@
 import type { SyntheticEvent } from 'react';
+import type { PlaybackClock } from './playback-clock';
 
 export interface MediaElementProps {
   ref(element: HTMLMediaElement | null): void;
@@ -29,8 +30,8 @@ export interface Playback {
   available: boolean;
   playing: boolean;
   failed: boolean;
-  /** Seconds from the start of the meeting. */
-  at: number;
+  /** Seconds from the start of the meeting, read with `usePlaybackTime` by the bar and the transcript only. */
+  clock: PlaybackClock;
   duration: number;
   /** Which element carries the timeline: the <audio> of the bar, or the <video> alone. */
   timeline: 'audio' | 'video';

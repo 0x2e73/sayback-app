@@ -1,13 +1,18 @@
 import { timeLabel } from '../../../shared/format';
 import type { Meeting, NoteItem, Segment } from '../../../shared/contracts';
+import { partOf } from './speaker-turns';
 
-// Accepte un segment comme un tour de parole : les deux portent l'id d'un segment,
-// dont le préfixe nomme l'extrait audio où l'intervenant a été identifié.
+export function speakerName(speaker: string): string {
+  return `Intervenant ${speaker}`;
+}
+
+// Les intervenants sont nommés extrait par extrait : l'export précise la partie, l'écran la
+// montre par un séparateur.
 export function speakerLabel(spoken: Pick<Segment, 'id' | 'speaker'>): string | undefined {
   if (!spoken.speaker) return undefined;
-  const chunk = Number(spoken.id.split('-')[0]);
-  if (!Number.isInteger(chunk) || chunk < 0) return `Intervenant ${spoken.speaker}`;
-  return `Intervenant ${spoken.speaker} · extrait ${chunk + 1}`;
+  const part = partOf(spoken.id);
+  const name = speakerName(spoken.speaker);
+  return part === null ? name : `${name} (partie ${part + 1})`;
 }
 
 export function sourceTime(meeting: Meeting, sourceId: string): number | undefined {

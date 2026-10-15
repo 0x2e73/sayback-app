@@ -80,3 +80,31 @@ describe('useFindShortcut', () => {
     expect(screen.getByRole('searchbox', { name: 'Rechercher une réunion' })).toHaveFocus();
   });
 });
+
+function BothSearches({ transcript }: { transcript: boolean }) {
+  const list = useRef<HTMLInputElement>(null);
+  useFindShortcut(list, 'mac');
+  return (
+    <>
+      <input ref={list} type="search" aria-label="Rechercher une réunion" />
+      {transcript && <TranscriptField />}
+    </>
+  );
+}
+
+function TranscriptField() {
+  const field = useRef<HTMLInputElement>(null);
+  useFindShortcut(field, 'mac', { first: true });
+  return <input ref={field} type="search" aria-label="Chercher dans la transcription" />;
+}
+
+describe('two searches on screen', () => {
+  it('gives Cmd+F to the transcript while it is shown, to the list otherwise', () => {
+    const { rerender } = render(<BothSearches transcript />);
+    fireEvent.keyDown(window, { key: 'f', metaKey: true });
+    expect(screen.getByRole('searchbox', { name: 'Chercher dans la transcription' })).toHaveFocus();
+    rerender(<BothSearches transcript={false} />);
+    fireEvent.keyDown(window, { key: 'f', metaKey: true });
+    expect(screen.getByRole('searchbox', { name: 'Rechercher une réunion' })).toHaveFocus();
+  });
+});

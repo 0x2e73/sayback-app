@@ -1,4 +1,5 @@
 import type { Folder, Meeting } from '../../../shared/contracts';
+import { normalizeSearch } from '../../search-text';
 
 export type FolderScope = { kind: 'all' } | { kind: 'unfiled' } | { kind: 'folder'; id: string };
 
@@ -17,27 +18,6 @@ interface EmptyListInput {
   scope: FolderScope;
   query: string;
   folders: readonly Folder[];
-}
-
-const APOSTROPHES = /[’‘ʼ`´]/g;
-// Hyphen, non-breaking hyphen and en dash read as a space.
-const DASHES = /[-\u2011–]/g;
-const MARKS_AND_VARIATION_SELECTORS = /[\u0300-\u036f\ufe0f]/g;
-
-/** Case, accent, ligature, apostrophe and dash insensitive, with whitespace collapsed. */
-export function normalizeSearch(text: string): string {
-  return text
-    .replace(APOSTROPHES, "'")
-    .replace(DASHES, ' ')
-    .normalize('NFKD')
-    .replace(MARKS_AND_VARIATION_SELECTORS, '')
-    .toLocaleLowerCase('fr-CH')
-    .replace(/œ/g, 'oe')
-    .replace(/æ/g, 'ae')
-    .replace(/ß/g, 'ss')
-    .replace(/ø/g, 'o')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function inScope(meeting: Filterable, scope: FolderScope): boolean {

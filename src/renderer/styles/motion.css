@@ -480,3 +480,42 @@
     opacity: 0;
   }
 }
+
+/* Transcript: its states share one cell and cross-fade, the pills slide in from below. */
+.state-stack {
+  display: grid;
+}
+.state-view {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.state-view[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.follow-pill-slot {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .state-view {
+    opacity: 0;
+  }
+  .follow-pill-slot {
+    opacity: 0;
+    transform: translateY(var(--motion-slide));
+  }
+}
+.follow-pill-slot[data-state='closing'] {
+  opacity: 0;
+  transform: translateY(var(--motion-slide));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+/* The active turn's ground moves at the pace of a state change, not of a hover. */
+.transcript-turn {
+  transition: background-color var(--duration-base) var(--ease-out);
+}
