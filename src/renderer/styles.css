@@ -63,6 +63,11 @@
   --space-5: 24px;
   --space-6: 32px;
   --control-xs: 24px;
+  --control-sm: 32px;
+  --source-tile-min: 140px;
+  --source-row-height: 40px;
+  --source-thumb-width: 48px;
+  --source-list-max: 240px;
 
   --radius-sm: 8px;
   --radius-md: 12px;

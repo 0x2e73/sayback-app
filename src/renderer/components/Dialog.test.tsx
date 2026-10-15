@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
+import { useRef } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Dialog } from './Dialog';
@@ -112,4 +113,29 @@ it('renders a footer when given one', () => {
     </Dialog>,
   );
   expect(screen.getByRole('button', { name: 'Valider' }).closest('.dialog-footer')).not.toBeNull();
+});
+
+it('keeps the heading and the footer out of the scrolling body', () => {
+  render(
+    <Dialog title="Titre" footer={<button type="button">Valider</button>} onClose={() => {}}>
+      <p>Contenu</p>
+    </Dialog>,
+  );
+  const body = screen.getByText('Contenu').closest('.dialog-body');
+  expect(body).not.toBeNull();
+  expect(body).not.toContainElement(screen.getByRole('heading', { name: 'Titre' }));
+  expect(body).not.toContainElement(screen.getByRole('button', { name: 'Valider' }));
+});
+
+it('puts the focus on the element it is told to', () => {
+  function Harness() {
+    const field = useRef<HTMLInputElement>(null);
+    return (
+      <Dialog title="Titre" initialFocus={field} onClose={() => {}}>
+        <input aria-label="Champ" ref={field} />
+      </Dialog>
+    );
+  }
+  render(<Harness />);
+  expect(screen.getByLabelText('Champ')).toHaveFocus();
 });

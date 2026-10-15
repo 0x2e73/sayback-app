@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
 
@@ -7,10 +7,19 @@ interface DialogProps {
   children: ReactNode;
   footer?: ReactNode;
   busy?: boolean;
+  /** Where the focus lands on opening; the browser would pick the close button. */
+  initialFocus?: RefObject<HTMLElement | null>;
   onClose(): void;
 }
 
-export function Dialog({ title, children, footer, busy = false, onClose }: DialogProps) {
+export function Dialog({
+  title,
+  children,
+  footer,
+  busy = false,
+  initialFocus,
+  onClose,
+}: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const pressTarget = useRef<EventTarget | null>(null);
   // Read during the first render, before autoFocus moves the focus into the dialog.
@@ -18,11 +27,12 @@ export function Dialog({ title, children, footer, busy = false, onClose }: Dialo
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
+    initialFocus?.current?.focus();
     return () => {
       dialog?.close();
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
-  }, [opener]);
+  }, [opener, initialFocus]);
   const close = () => {
     if (!busy) onClose();
   };
@@ -61,14 +71,14 @@ export function Dialog({ title, children, footer, busy = false, onClose }: Dialo
       }}
     >
       <div className="dialog-inner">
-        <div className="dialog-heading">
+        <header className="dialog-heading">
           <h2>{title}</h2>
           <Button variant="ghost" onClick={close} disabled={busy} aria-label="Fermer">
             <X size={18} />
           </Button>
-        </div>
-        {children}
-        {footer && <div className="dialog-footer">{footer}</div>}
+        </header>
+        <div className="dialog-body">{children}</div>
+        {footer && <footer className="dialog-footer">{footer}</footer>}
       </div>
     </dialog>
   );
