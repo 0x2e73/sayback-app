@@ -25,6 +25,8 @@ import { createElectronMenuBar } from './menu-bar-electron';
 import type { MenuBar } from './menu-bar';
 import { createRecordingStateHub, registerRecordingState } from './recording-state-hub';
 import { createRecordingPower } from './recording-power';
+import { registerIslandHandlers, type Island } from './island-handlers';
+import { createElectronIsland } from './island-window';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
@@ -51,10 +53,14 @@ const rendererPath = join(import.meta.dirname, '../renderer/index.html');
 // The development server URL is never honoured by a packaged app.
 const devRendererUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
 const rendererUrl = devRendererUrl ?? pathToFileURL(rendererPath).href;
+const islandUrl = devRendererUrl
+  ? `${devRendererUrl}/island.html`
+  : pathToFileURL(join(import.meta.dirname, '../renderer/island.html')).href;
 let window: BrowserWindow | null = null;
 let services: DesktopServices | undefined;
 let updates: UpdateService | undefined;
 let menuBar: MenuBar | null = null;
+let island: Island | null = null;
 const recordingState = createRecordingStateHub();
 
 function isRecording(): boolean {
@@ -90,9 +96,10 @@ void app.whenReady().then(() => {
   services = desktop;
   // One switch: the CSS, the vibrancy, the scrollbars, the menus and the system dialogs follow it.
   applyAppearance(desktop.credentials.settings().appearance);
-  const { handle } = createIpcRegistrar(
-    createWindowRoles({ main: () => window, island: () => null }),
+  const registrar = createIpcRegistrar(
+    createWindowRoles({ main: () => window, island: () => island?.window() ?? null }),
   );
+  const { handle } = registrar;
   registerMeetingHandlers(handle, desktop);
   registerFolderHandlers(handle, desktop);
   registerSettingsHandlers(handle, desktop, root, applyAppearance);
@@ -115,6 +122,14 @@ void app.whenReady().then(() => {
   recordingState.subscribe((snapshot) => menuBar?.announce(snapshot));
   recordingState.subscribe(createRecordingPower({ page: livePage, blocker: powerSaveBlocker }));
   registerRecordingState(handle, recordingState, menuBarActions.rendererReady);
+  island = createElectronIsland({
+    hub: recordingState,
+    url: islandUrl,
+    preload: join(import.meta.dirname, '../preload/island.cjs'),
+    openApp: menuBarActions.open,
+    request: menuBarActions.request,
+  });
+  if (island) registerIslandHandlers(registrar, island);
   openWindow();
 });
 
@@ -127,6 +142,7 @@ app.on('window-all-closed', () => {
 // Back in the foreground: the update channel is re-read.
 app.on('browser-window-focus', () => updates?.windowFocused());
 app.on('will-quit', () => {
+  island?.close();
   menuBar?.destroy();
   void updates?.stop();
   services?.close();
