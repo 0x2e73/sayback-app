@@ -141,3 +141,19 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+/* Bars stand at full height and are scaled from the level, ten times a second. */
+.level-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 12px;
+  color: var(--color-accent);
+}
+.level-meter-bar {
+  width: 3px;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+  transform: scaleY(0.15);
+  transition: transform var(--duration-fast) var(--ease-linear);
+}

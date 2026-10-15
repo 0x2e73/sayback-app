@@ -101,6 +101,8 @@ export interface DesktopApi {
   announceRecordingState(state: RecordingState): Promise<Result<void>>;
   /** Menu bar « Nouvel enregistrement… ». Returns the unsubscribe function. */
   onMenuBarNewRecording(listener: () => void): () => void;
+  /** Audio level of the recording, 0 to 1, ten times a second; the island draws it. */
+  sendLevel(level: number): void;
   /** Pause, resume or stop asked from the menu bar or the island. Returns the unsubscribe function. */
   onRecordingRequest(listener: (request: RecordingRequest) => void): () => void;
   /** Last known update state; the first call waits for the startup read of the channel. */

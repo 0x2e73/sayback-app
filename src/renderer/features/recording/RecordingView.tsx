@@ -2,26 +2,12 @@ import { timeLabel } from '../../../shared/format';
 import { useEffect, useState } from 'react';
 import { Pause, Play, Square, AudioLines } from 'lucide-react';
 import type { DesktopApi } from '../../../shared/contracts';
-import { Button } from '../../components/ui';
+import { Button, LevelMeter } from '../../components/ui';
 import type { CaptureSession } from './capture-session';
 import { RecordingPreview } from './RecordingPreview';
 import { RecordingSourceDialog } from './RecordingSourceDialog';
+import { useRecordingFeed } from './use-recording-feed';
 import { useRecordingSource } from './use-recording-source';
-
-function AudioWaveform({ level }: { level: number }) {
-  return (
-    <div className="waveform" aria-label="Niveau audio">
-      {Array.from({ length: 37 }, (_, index) => (
-        <span
-          key={index}
-          style={{
-            height: `${8 + level * 160 * (0.35 + Math.abs(Math.sin(index * 1.8)) * 0.65)}px`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 export function RecordingView({
   capture,
@@ -36,21 +22,16 @@ export function RecordingView({
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(capture.paused);
-  const [level, setLevel] = useState(0);
   const source = useRecordingSource(api, capture);
+  const feed = useRecordingFeed(api, capture);
   // A pause may come from the menu bar or the island: the label follows the session.
   useEffect(() => {
     setPaused(capture.paused);
     return capture.onPauseChange(() => setPaused(capture.paused));
   }, [capture]);
   useEffect(() => {
-    const data = new Uint8Array(capture.analyser.frequencyBinCount);
     const timer = setInterval(() => {
       setElapsed(capture.elapsed);
-      capture.analyser.getByteFrequencyData(data);
-      setLevel(
-        capture.paused ? 0 : data.reduce((sum, value) => sum + value, 0) / data.length / 255,
-      );
       if (capture.elapsed >= 7200) onStop();
     }, 200);
     return () => clearInterval(timer);
@@ -71,7 +52,7 @@ export function RecordingView({
           </Button>
         </div>
       )}
-      <AudioWaveform level={level} />
+      <LevelMeter feed={feed} bars={24} className="level-meter-large" />
       <div className="recording-time">{timeLabel(elapsed)}</div>
       <span className="caption">
         <AudioLines size={14} />

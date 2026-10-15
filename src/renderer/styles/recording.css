@@ -79,12 +79,11 @@
   gap: var(--space-3);
   flex-wrap: wrap;
 }
-.waveform {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  min-height: 68px;
+.level-meter-large {
+  height: 68px;
+}
+.level-meter-large .level-meter-bar {
+  width: 4px;
 }
 .source-toggle {
   display: flex;

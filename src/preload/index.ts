@@ -53,6 +53,7 @@ const api: DesktopApi = {
   },
   announceRecordingState: (state) => ipcRenderer.invoke('recording:state', state),
   onMenuBarNewRecording: (listener) => listenTo('menu-bar:new-recording', listener),
+  sendLevel: (level) => ipcRenderer.send('live:level', level),
   onRecordingRequest: (listener) => {
     const relay = (_event: IpcRendererEvent, request: unknown) => {
       if (isRecordingRequest(request)) listener(request);

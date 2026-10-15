@@ -4,12 +4,14 @@ import type { DesktopApi } from '../shared/contracts';
 const electron = vi.hoisted(() => ({
   exposeInMainWorld: vi.fn<(key: string, api: DesktopApi) => void>(),
   listeners: new Map<string, (event: unknown, value: unknown) => void>(),
+  send: vi.fn(),
 }));
 
 vi.mock('electron', () => ({
   contextBridge: { exposeInMainWorld: electron.exposeInMainWorld },
   ipcRenderer: {
     invoke: vi.fn(),
+    send: electron.send,
     on: (channel: string, listener: (event: unknown, value: unknown) => void) => {
       electron.listeners.set(channel, listener);
     },
@@ -72,4 +74,11 @@ it('sends the chosen appearance on its own channel', async () => {
   if (!api) throw new Error('the preload exposed nothing');
   await api.setAppearance('light');
   expect(ipcRenderer.invoke).toHaveBeenCalledWith('settings:set-appearance', 'light');
+});
+
+it('sends the audio level to the main process without waiting for an answer', () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  api.sendLevel(0.25);
+  expect(electron.send).toHaveBeenCalledWith('live:level', 0.25);
 });

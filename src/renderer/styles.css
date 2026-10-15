@@ -315,7 +315,8 @@ p {
 
 @media (prefers-reduced-motion: reduce) {
   .row-progress-bar,
-  .analysis-line-bar {
+  .analysis-line-bar,
+  .level-meter-bar {
     transition: none;
   }
   @keyframes state-enter {
