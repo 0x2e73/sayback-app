@@ -31,3 +31,33 @@ it('leaves the find shortcut alone by default', () => {
   fireEvent.keyDown(window, { key: 'f', code: 'KeyF', ctrlKey: true });
   expect(screen.getByRole('searchbox')).not.toHaveFocus();
 });
+
+it('hands its own keys and its focus to the owner', async () => {
+  const keys: string[] = [];
+  const focused = vi.fn();
+  const user = userEvent.setup();
+  render(
+    <SearchField
+      label="Rechercher"
+      query=""
+      onQuery={() => {}}
+      onFocus={focused}
+      onKeyDown={(event) => keys.push(event.key)}
+    />,
+  );
+  await user.click(screen.getByRole('searchbox'));
+  await user.keyboard('{Enter}{Escape}');
+  expect(focused).toHaveBeenCalledOnce();
+  expect(keys).toEqual(['Enter', 'Escape']);
+});
+
+it('takes the find shortcut before another field when it asks to come first', () => {
+  render(
+    <>
+      <SearchField label="Liste" query="" findShortcut onQuery={() => {}} />
+      <SearchField label="Transcription" query="" findShortcut="first" onQuery={() => {}} />
+    </>,
+  );
+  fireEvent.keyDown(window, { key: 'f', code: 'KeyF', ctrlKey: true });
+  expect(screen.getByRole('searchbox', { name: 'Transcription' })).toHaveFocus();
+});

@@ -1,4 +1,5 @@
 import type { MediaDriver } from './media-driver';
+import type { PlaybackClock } from './playback-clock';
 import { locate, resumePoint, timelineTime, type PlaybackSource } from './playback-timeline';
 import type { VideoFollower } from './video-follower';
 
@@ -10,6 +11,19 @@ export interface PlaybackView {
 }
 
 export const INITIAL_VIEW: PlaybackView = { position: 0, at: 0, playing: false, failed: false };
+
+/** What React renders from; the time goes through the clock. */
+export type PlaybackState = Omit<PlaybackView, 'at'>;
+
+export const INITIAL_STATE: PlaybackState = { position: 0, playing: false, failed: false };
+
+function stateOf({ position, playing, failed }: PlaybackView): PlaybackState {
+  return { position, playing, failed };
+}
+
+function sameState(a: PlaybackView, b: PlaybackView): boolean {
+  return a.position === b.position && a.playing === b.playing && a.failed === b.failed;
+}
 
 /**
  * The playback decisions, outside React: the position and the intent are read synchronously,
@@ -25,7 +39,8 @@ export class PlaybackController {
   constructor(
     readonly driver: MediaDriver,
     readonly follower: VideoFollower,
-    private readonly publish: (view: PlaybackView) => void,
+    private readonly clock: PlaybackClock,
+    private readonly publish: (state: PlaybackState) => void,
   ) {}
 
   setSources(sources: readonly PlaybackSource[], duration: number): void {
@@ -146,8 +161,10 @@ export class PlaybackController {
   }
 
   private commit(patch: Partial<PlaybackView>): void {
+    const before = this.view;
     this.view = { ...this.view, ...patch };
     if (patch.playing !== undefined) this.follower.setPlaying(patch.playing);
-    this.publish(this.view);
+    this.clock.set(this.view.at);
+    if (!sameState(before, this.view)) this.publish(stateOf(this.view));
   }
 }

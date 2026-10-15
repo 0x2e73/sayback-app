@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { DesktopApi, Folder, Meeting } from '../../../shared/contracts';
 import { AnalysisLine } from './AnalysisStatus';
-import type { TimestampHandler } from './Clarifications';
 import { DeleteMeetingDialog } from './DeleteMeetingDialog';
 import { DetailNotices } from './DetailNotices';
 import { detailNotices } from './detail-notices';
@@ -11,6 +10,7 @@ import { MeetingHeader } from './MeetingHeader';
 import { NotesView } from './NotesView';
 import { PlaybackBar } from './PlaybackBar';
 import { Transcript } from './Transcript';
+import { useDetailView } from './use-detail-view';
 import { useMediaPlayback } from './use-media-playback';
 import { VideoBlock } from './VideoBlock';
 import { useMeetingActions } from './use-meeting-actions';
@@ -30,10 +30,9 @@ export function MeetingDetail(props: MeetingDetailProps) {
   const { meeting, api, onUpdate, onDeleted } = props;
   const actions = useMeetingActions({ api, meeting, onUpdate, onDeleted });
   const playback = useMediaPlayback(meeting);
+  const view = useDetailView(playback.playAt);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const analyze = () => void actions.analyze();
-  // Lot 6 also switches to the transcript and highlights the source; lot 5 plays it.
-  const playSource: TimestampHandler = (at) => playback.playAt(at);
 
   const header = (
     <>
@@ -58,22 +57,29 @@ export function MeetingDetail(props: MeetingDetailProps) {
       {actions.analyzing && <AnalysisLine meeting={meeting} />}
       <MeetingContent
         header={header}
+        view={view}
         notes={
           <NotesView
             meeting={meeting}
-            at={playback.at}
+            currentTime={playback.clock.now}
             analyzing={actions.analyzing}
             saving={actions.saving}
             clarifyError={actions.clarifyError}
             onAnalyze={analyze}
             onSettings={props.onSettings}
-            onTimestamp={playSource}
+            onTimestamp={view.openPassage}
             onClarify={actions.clarify}
           />
         }
-        transcript={(search) => (
-          <Transcript meeting={meeting} at={playback.at} onSeek={playback.playAt} {...search} />
-        )}
+        transcript={
+          <Transcript
+            meeting={meeting}
+            analyzing={actions.analyzing}
+            clock={playback.clock}
+            view={view.transcript}
+            onAnalyze={analyze}
+          />
+        }
       />
       <footer className="playback-bar">
         <PlaybackBar playback={playback} />

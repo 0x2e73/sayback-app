@@ -1,0 +1,113 @@
+.page-content > .settings-page {
+  display: grid;
+  gap: var(--space-6);
+  width: min(100%, var(--reading-width));
+}
+.settings-page h1 {
+  margin: 0;
+}
+.settings-group {
+  display: grid;
+  gap: var(--space-2);
+}
+.settings-group h2 {
+  margin: 0;
+}
+.settings-group-description {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--text-control);
+}
+.settings-rows {
+  display: grid;
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+.setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.setting-text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.setting-label {
+  color: var(--color-text);
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+.setting-hint {
+  color: var(--color-text-subtle);
+  font-size: var(--text-caption);
+  line-height: 1.45;
+}
+.setting-control {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  min-width: 0;
+}
+.setting-control input,
+.setting-control .segmented {
+  width: 100%;
+}
+.setting-control input {
+  min-height: var(--control-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.setting-control .button {
+  min-height: var(--control-sm);
+}
+.setting-key-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  color: var(--color-ready);
+  font-size: var(--text-caption);
+}
+.setting-key-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.setting-hint .button {
+  min-height: var(--control-xs);
+  padding-block: 0;
+}
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+}
+/* Reserved even when empty, so the save button stays where it is. */
+.settings-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-sm);
+  color: var(--color-ready);
+  font-size: var(--text-control);
+}
+.settings-group .local-setup {
+  margin-top: 0;
+  padding-block: var(--space-4);
+  max-width: none;
+}
+@media (max-width: 640px) {
+  .setting-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+}

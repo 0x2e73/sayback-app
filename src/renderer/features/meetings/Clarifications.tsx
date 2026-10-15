@@ -10,7 +10,8 @@ export type TimestampHandler = (at: number, sourceId: string) => void;
 
 interface ClarificationsProps {
   meeting: Meeting;
-  at: number;
+  /** Read when the form opens, to prefill « Moment » : the section never follows the time. */
+  currentTime(): number;
   disabled: boolean;
   saving: boolean;
   submitError: string;
@@ -19,8 +20,8 @@ interface ClarificationsProps {
 }
 
 export function Clarifications(props: ClarificationsProps) {
-  const { meeting, at, disabled, saving, submitError, onTimestamp, onSubmit } = props;
-  const [open, setOpen] = useState(false);
+  const { meeting, currentTime, disabled, saving, submitError, onTimestamp, onSubmit } = props;
+  const [openedAt, setOpenedAt] = useState<number | null>(null);
 
   return (
     <section className="note-section">
@@ -42,17 +43,17 @@ export function Clarifications(props: ClarificationsProps) {
           ))}
         </ul>
       )}
-      {open ? (
+      {openedAt !== null ? (
         <ClarificationForm
           duration={meeting.duration}
-          at={at}
+          at={openedAt}
           saving={saving}
           submitError={submitError}
-          onClose={() => setOpen(false)}
+          onClose={() => setOpenedAt(null)}
           onSubmit={onSubmit}
         />
       ) : (
-        <Button variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>
+        <Button variant="secondary" disabled={disabled} onClick={() => setOpenedAt(currentTime())}>
           <MessageSquarePlus size={16} aria-hidden="true" />
           Ajouter une précision
         </Button>

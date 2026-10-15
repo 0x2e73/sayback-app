@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PlaybackBar } from './PlaybackBar';
+import { createPlaybackClock } from './playback-clock';
 import type { MediaElementProps, Playback } from './use-media-playback';
 
 afterEach(cleanup);
@@ -26,7 +27,7 @@ function playbackOf(extra: Partial<Playback> = {}): Playback {
     videoProps: null,
     playing: false,
     failed: false,
-    at: 252,
+    clock: createPlaybackClock(252),
     duration: 3130,
     mediaProps,
     toggle: vi.fn(),
@@ -101,15 +102,21 @@ it('seeks once, on release, however far the thumb travels', () => {
 
 it('goes back to the playback position after a release', () => {
   const playback = playbackOf();
-  const { rerender } = render(<PlaybackBar playback={playback} />);
+  render(<PlaybackBar playback={playback} />);
   fireEvent.pointerDown(slider());
   fireEvent.change(slider(), { target: { value: '600' } });
   fireEvent.pointerUp(slider());
-  rerender(<PlaybackBar playback={{ ...playback, at: 600 }} />);
+  act(() => playback.clock.set(600));
   expect(screen.getByText('10:00')).toBeInTheDocument();
 });
 
 it('moves in fractions of a second', () => {
   render(<PlaybackBar playback={playbackOf()} />);
   expect(slider()).toHaveAttribute('step', 'any');
+});
+
+it('writes hours from the first hour on', () => {
+  render(<PlaybackBar playback={playbackOf({ duration: 3700 })} />);
+  expect(screen.getByText('1:01:40')).toBeInTheDocument();
+  expect(slider()).toHaveAttribute('aria-valuetext', '04:12 sur 1:01:40');
 });

@@ -15,12 +15,16 @@ import './styles/meeting-list.css';
 import './styles/folder-filter.css';
 import './styles/list-pane.css';
 import './styles/meetings.css';
+import './styles/transcript.css';
+import './styles/speaker-label.css';
+import './styles/follow-pill.css';
 import './styles/segmented.css';
 import './styles/meeting-detail.css';
 import './styles/meeting-notes.css';
 import './styles/playback-bar.css';
 import './styles/recording.css';
-import './styles/model-select.css';
+import './styles/select.css';
+import './styles/settings.css';
 import './styles/onboarding.css';
 
 declare global {

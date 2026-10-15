@@ -1,0 +1,4 @@
+/* Floats over the reading column: the one shadow for what floats in the DOM. */
+.follow-pill {
+  box-shadow: var(--shadow-float);
+}

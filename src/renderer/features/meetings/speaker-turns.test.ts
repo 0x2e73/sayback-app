@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Segment } from '../../../shared/contracts';
-import { speakerTurns } from './speaker-turns';
+import { partOf, speakerTurns } from './speaker-turns';
 
 describe('speakerTurns', () => {
   it('réunit les paroles suivies d’un même intervenant sous le premier segment', () => {
@@ -78,5 +78,59 @@ describe('speakerTurns', () => {
 
   it('renvoie une liste vide sans transcription', () => {
     expect(speakerTurns([])).toEqual([]);
+  });
+
+  it('marks the turn cut at 900 characters as the same voice continuing', () => {
+    const long: Segment[] = Array.from({ length: 12 }, (_segment, index) => ({
+      id: `0-${index}`,
+      start: index * 10,
+      end: index * 10 + 10,
+      text: 'x'.repeat(100),
+      speaker: 'A',
+    }));
+
+    const turns = speakerTurns(long);
+
+    expect(turns.map((turn) => [turn.id, turn.text.length, turn.continuation])).toEqual([
+      ['0-0', 807, false],
+      ['0-8', 403, true],
+    ]);
+    expect(turns[1]?.segmentIds).toEqual(['0-8', '0-9', '0-10', '0-11']);
+  });
+
+  it('never calls a new part or a new voice a continuation', () => {
+    const turns = speakerTurns([
+      { id: '0-0', start: 1, end: 3, text: 'Un.', speaker: 'A' },
+      { id: '0-1', start: 3, end: 5, text: 'Deux.', speaker: 'B' },
+      { id: '1-0', start: 60, end: 62, text: 'Trois.', speaker: 'B' },
+    ]);
+
+    expect(turns.map((turn) => [turn.part, turn.continuation])).toEqual([
+      [0, false],
+      [0, false],
+      [1, false],
+    ]);
+  });
+
+  it('keeps the ids of the segments a turn gathers', () => {
+    const turns = speakerTurns([
+      { id: '0-0', start: 1, end: 3, text: 'Gardons mardi.', speaker: 'A' },
+      { id: '0-1', start: 3, end: 8, text: 'C’est plus sûr.', speaker: 'A' },
+    ]);
+
+    expect(turns[0]?.segmentIds).toEqual(['0-0', '0-1']);
+  });
+});
+
+describe('partOf', () => {
+  it.each([
+    ['12-3', 12],
+    ['0-0', 0],
+    ['abc', null],
+    ['', null],
+    ['-1-0', null],
+    ['1e2-0', null],
+  ])('reads the part of %j as %j', (id, part) => {
+    expect(partOf(id)).toBe(part);
   });
 });
