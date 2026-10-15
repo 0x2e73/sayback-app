@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Meeting } from '../../../shared/contracts';
 import { Button, Skeleton } from '../../components/ui';
 import { AnalysisPrompt } from './AnalysisPrompt';
@@ -65,8 +66,11 @@ function NotesBody({ meeting, analyzing, onAnalyze, onSettings, onTimestamp }: N
 }
 
 export function NotesView(props: NotesViewProps) {
+  // Notes that appear while the view is open come in one section after the other.
+  const [emptyAtMount] = useState(props.meeting.notes === null);
+  const arrived = emptyAtMount && props.meeting.notes !== null;
   return (
-    <div className="notes-view">
+    <div className="notes-view" data-arrived={arrived || undefined}>
       <NotesBody {...props} />
       <Clarifications
         meeting={props.meeting}

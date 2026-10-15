@@ -21,6 +21,8 @@ interface MeetingContentProps {
 interface DetailPanelProps {
   id: string;
   active: boolean;
+  /** Which way the indicator went: the panel arrives from the same side. */
+  direction?: 'forward' | 'back';
   /** Stays mounted while hidden: the clarification draft must survive a tab change. */
   keepMounted?: boolean;
   children: ReactNode;
@@ -30,7 +32,7 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // Both panels exist for aria-controls; the transcript only renders while it is shown.
-function DetailPanel({ id, active, keepMounted = false, children }: DetailPanelProps) {
+function DetailPanel({ id, active, direction, keepMounted = false, children }: DetailPanelProps) {
   const panel = useRef<HTMLDivElement>(null);
 
   // A panel with nothing to focus is itself reachable, so the keyboard can scroll it.
@@ -49,6 +51,7 @@ function DetailPanel({ id, active, keepMounted = false, children }: DetailPanelP
       aria-labelledby={tabId(id)}
       hidden={!active}
       className="detail-panel"
+      data-direction={direction}
     >
       {(active || keepMounted) && children}
     </div>
@@ -59,18 +62,24 @@ function DetailPanel({ id, active, keepMounted = false, children }: DetailPanelP
 export function MeetingContent({ header, notes, transcript }: MeetingContentProps) {
   const { tab, select, scrollerRef, anchorRef } = useTabScroll<DetailTab>('notes');
   const [search, setSearch] = useState('');
+  const [direction, setDirection] = useState<'forward' | 'back'>();
+  function change(next: DetailTab): void {
+    const order = tabs.map((option) => option.value);
+    setDirection(order.indexOf(next) > order.indexOf(tab) ? 'forward' : 'back');
+    select(next);
+  }
   return (
     <div className="detail-scroll" ref={scrollerRef}>
       <div className="detail-column">
         {header}
         <div ref={anchorRef} />
         <div className="detail-tabs">
-          <Segmented label="Contenu de la réunion" options={tabs} value={tab} onChange={select} />
+          <Segmented label="Contenu de la réunion" options={tabs} value={tab} onChange={change} />
         </div>
-        <DetailPanel id={NOTES_PANEL} active={tab === 'notes'} keepMounted>
+        <DetailPanel id={NOTES_PANEL} active={tab === 'notes'} direction={direction} keepMounted>
           {notes}
         </DetailPanel>
-        <DetailPanel id={TRANSCRIPT_PANEL} active={tab === 'transcript'}>
+        <DetailPanel id={TRANSCRIPT_PANEL} active={tab === 'transcript'} direction={direction}>
           {transcript({ search, onSearch: setSearch })}
         </DetailPanel>
       </div>

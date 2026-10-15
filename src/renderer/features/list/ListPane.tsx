@@ -7,6 +7,7 @@ import { ListBody } from './ListBody';
 import { ListFooter } from './ListFooter';
 import { ALL_MEETINGS, type FolderScope } from './list-filter';
 import type { UpdateLineProps } from '../updates/UpdateLine';
+import { useArrivals } from './use-arrivals';
 import { useCurrentDate } from './use-current-date';
 import type { FolderActions } from './use-folders';
 
@@ -24,7 +25,7 @@ export interface ListPaneProps {
   settingsOpen: boolean;
   recording: { readonly elapsed: number } | null;
   update: UpdateLineProps;
-  onSelect(id: string): void;
+  onSelect(id: string, by?: 'keyboard'): void;
   onToggleSettings(): void;
   onNew(): void;
   onShowRecording(): void;
@@ -38,6 +39,10 @@ export function ListPane(props: ListPaneProps) {
     [props.visibleMeetings, now],
   );
   const locked = recording !== null;
+  const arrivedIds = useArrivals(
+    meetings.map((meeting) => meeting.id),
+    !props.loading,
+  );
 
   return (
     <aside className="list-pane" aria-label="Liste des réunions">
@@ -71,6 +76,7 @@ export function ListPane(props: ListPaneProps) {
           selectedId={props.selectedId}
           now={now}
           locked={locked}
+          arrivedIds={arrivedIds}
           onSelect={props.onSelect}
           onSearchEverywhere={() => props.onScope(ALL_MEETINGS)}
         />

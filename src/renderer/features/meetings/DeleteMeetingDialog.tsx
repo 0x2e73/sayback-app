@@ -1,12 +1,13 @@
 import { ConfirmDialog } from '../../components/ui';
 
 interface DeleteMeetingDialogProps {
+  open?: boolean;
   busy: boolean;
   onClose(): void;
   onDelete(): Promise<boolean>;
 }
 
-export function DeleteMeetingDialog({ busy, onClose, onDelete }: DeleteMeetingDialogProps) {
+export function DeleteMeetingDialog({ open, busy, onClose, onDelete }: DeleteMeetingDialogProps) {
   async function remove(): Promise<boolean> {
     const deleted = await onDelete();
     if (deleted) onClose();
@@ -15,6 +16,7 @@ export function DeleteMeetingDialog({ busy, onClose, onDelete }: DeleteMeetingDi
 
   return (
     <ConfirmDialog
+      open={open}
       title="Supprimer cette réunion ?"
       confirmLabel="Supprimer"
       busy={busy}

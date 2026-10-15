@@ -27,6 +27,9 @@
 .meeting-row:hover {
   background: var(--color-surface);
 }
+.meeting-row[aria-selected='true']:hover {
+  background: transparent;
+}
 .meeting-row[aria-disabled='true'] {
   opacity: 0.55;
 }

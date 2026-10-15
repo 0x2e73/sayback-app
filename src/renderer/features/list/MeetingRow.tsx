@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { formatRowDate } from './date-groups';
+import { useChanged } from '../../components/use-changed';
 import { RowStatus } from './RowStatus';
 import { MEETING_DRAG_TYPE } from './useFolderDrop';
 
@@ -9,13 +10,16 @@ interface MeetingRowProps {
   folder?: Folder;
   selected: boolean;
   focusable: boolean;
+  /** Added since the list loaded: it enters instead of being there. */
+  arrived: boolean;
   locked: boolean;
   now: Date;
-  onSelect(id: string): void;
+  onSelect(id: string, by?: 'keyboard'): void;
 }
 
 export function MeetingRow(props: MeetingRowProps) {
-  const { meeting, folder, selected, focusable, locked, now, onSelect } = props;
+  const { meeting, folder, selected, focusable, arrived, locked, now, onSelect } = props;
+  const folderChanged = useChanged(meeting.folderId ?? null);
   const [dragging, setDragging] = useState(false);
   // A move while recording or analysing would be overwritten by the final save.
   const settled = meeting.status !== 'recording' && meeting.status !== 'processing';
@@ -37,6 +41,7 @@ export function MeetingRow(props: MeetingRowProps) {
       aria-disabled={locked || undefined}
       tabIndex={focusable ? 0 : -1}
       data-meeting-id={meeting.id}
+      data-new={arrived || undefined}
       className={`meeting-row${dragging ? ' is-dragging' : ''}`}
       draggable={!locked && settled}
       onClick={select}
@@ -50,7 +55,11 @@ export function MeetingRow(props: MeetingRowProps) {
         </time>
       </span>
       <RowStatus meeting={meeting} />
-      {folder && <span className="chip chip-static">{folder.name}</span>}
+      {folder && (
+        <span className="chip chip-static" data-changed={folderChanged || undefined}>
+          {folder.name}
+        </span>
+      )}
     </div>
   );
 }

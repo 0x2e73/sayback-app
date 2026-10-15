@@ -14,7 +14,8 @@ interface ListBodyProps {
   selectedId: string | null;
   now: Date;
   locked: boolean;
-  onSelect(id: string): void;
+  arrivedIds: ReadonlySet<string>;
+  onSelect(id: string, by?: 'keyboard'): void;
   onSearchEverywhere(): void;
 }
 
@@ -57,6 +58,7 @@ export function ListBody(props: ListBodyProps) {
       selectedId={props.selectedId}
       now={props.now}
       locked={props.locked}
+      arrivedIds={props.arrivedIds}
       onSelect={props.onSelect}
     />
   );

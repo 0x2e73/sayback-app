@@ -22,6 +22,8 @@ function dropAnnouncement(folderId: string | null, folders: Folder[]): string {
 
 export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) {
   const [dragTarget, setDragTarget] = useState<string | null>(null);
+  // The chip that took a meeting flashes once; the animation clears the mark when it ends.
+  const [accepted, setAccepted] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   // The folder may be deleted while the move is pending, so read the latest list afterwards.
   const latestFolders = useRef(folders);
@@ -36,6 +38,7 @@ export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) 
     const meeting = meetings.find((item) => item.id === meetingId);
     if (!meetingId || (meeting && (meeting.folderId ?? null) === id)) return;
     if (!(await onMove(meetingId, id))) return;
+    setAccepted(id ?? 'all');
     const text = dropAnnouncement(id, latestFolders.current);
     setAnnouncement((previous) => ({ id: (previous?.id ?? 0) + 1, text }));
   }
@@ -58,6 +61,8 @@ export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) 
       },
       onDrop: (event: DragEvent<HTMLElement>) => void drop(event, id),
       'data-drag-over': dragTarget === key,
+      'data-accepted': accepted === key || undefined,
+      onAnimationEnd: () => setAccepted(null),
     };
   }
 

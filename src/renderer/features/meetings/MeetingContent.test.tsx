@@ -57,3 +57,16 @@ it('ignores a disabled control when looking for something to focus', () => {
   );
   expect(screen.getByRole('tabpanel', { name: 'Notes' })).toHaveAttribute('tabindex', '0');
 });
+
+it('makes the panel arrive from the side the indicator went to', async () => {
+  const user = userEvent.setup();
+  renderContent(<p>Notes</p>);
+  expect(document.querySelector('.detail-panel')).not.toHaveAttribute('data-direction');
+  await user.click(screen.getByRole('tab', { name: 'Transcription' }));
+  expect(screen.getByRole('tabpanel', { name: 'Transcription' })).toHaveAttribute(
+    'data-direction',
+    'forward',
+  );
+  await user.click(screen.getByRole('tab', { name: 'Notes' }));
+  expect(screen.getByRole('tabpanel', { name: 'Notes' })).toHaveAttribute('data-direction', 'back');
+});

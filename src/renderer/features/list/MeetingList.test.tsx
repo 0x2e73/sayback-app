@@ -47,6 +47,7 @@ function renderList(overrides: Partial<ComponentProps<typeof MeetingList>> = {})
     groups: groupByDate(meetings, now),
     folders: [{ id: 'f1', name: 'Acme', createdAt: '' }],
     selectedId: null,
+    arrivedIds: new Set(),
     now,
     locked: false,
     onSelect: vi.fn(),
@@ -106,7 +107,7 @@ it('selects with a click and marks the selection', () => {
 it('moves the selection with the arrow keys across groups, and the focus follows', () => {
   const onSelect = renderList({ selectedId: 'a' });
   fireEvent.keyDown(screen.getByRole('listbox', { name: 'Réunions' }), { key: 'ArrowDown' });
-  expect(onSelect).toHaveBeenCalledWith('b');
+  expect(onSelect).toHaveBeenCalledWith('b', 'keyboard');
   expect(row(/Point hebdo/)).toHaveFocus();
 });
 
@@ -124,7 +125,7 @@ it('starts from the top when the selection is filtered out', () => {
   const onSelect = renderList({ selectedId: 'hidden' });
   expect(row(/Appel en cours/)).toHaveAttribute('tabindex', '0');
   fireEvent.keyDown(screen.getByRole('listbox'), { key: 'ArrowDown' });
-  expect(onSelect).toHaveBeenCalledWith('e');
+  expect(onSelect).toHaveBeenCalledWith('e', 'keyboard');
 });
 
 it('stays still while a recording locks the list', () => {
@@ -162,17 +163,17 @@ it.each([
   const target = row(/Démo client/);
   target.focus();
   const passedOn = fireEvent.keyDown(target, { key });
-  expect(onSelect).toHaveBeenCalledWith(expected);
+  expect(onSelect).toHaveBeenCalledWith(expected, 'keyboard');
   expect(passedOn).toBe(false);
 });
 
 it('goes to the first and the last row with Home and End', () => {
   const onSelect = renderList({ selectedId: 'b' });
   fireEvent.keyDown(screen.getByRole('listbox'), { key: 'End' });
-  expect(onSelect).toHaveBeenLastCalledWith('d');
+  expect(onSelect).toHaveBeenLastCalledWith('d', 'keyboard');
   expect(row(/Démo client/)).toHaveFocus();
   fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Home' });
-  expect(onSelect).toHaveBeenLastCalledWith('e');
+  expect(onSelect).toHaveBeenLastCalledWith('e', 'keyboard');
 });
 
 it.each([

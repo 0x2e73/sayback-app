@@ -1,4 +1,5 @@
 import type { Folder, Meeting } from '../../../shared/contracts';
+import { useHeld } from '../../components/use-held';
 import { FolderChips } from './FolderChips';
 import { FolderDeletionDialog } from './FolderDeletionDialog';
 import { FolderMenu } from './FolderMenu';
@@ -27,6 +28,11 @@ export function FolderFilter(props: FolderFilterProps) {
   const menu = useFolderMenu();
   const selected =
     scope.kind === 'folder' ? folders.find((folder) => folder.id === scope.id) : undefined;
+  // Both overlays keep their content while they play the exit.
+  const menuOpen = menu.left !== null && selected !== undefined;
+  const menuFolder = useHeld(menuOpen ? selected : null);
+  const menuLeft = useHeld(menu.left);
+  const deletionShown = useHeld(deletion.confirming);
 
   function choose(next: FolderScope): void {
     menu.close();
@@ -58,11 +64,12 @@ export function FolderFilter(props: FolderFilterProps) {
         onToggleMenu={menu.toggle}
         onCreate={editor.startCreate}
       />
-      {menu.left !== null && selected && (
+      {menuFolder && menuLeft !== null && (
         <FolderMenu
-          folder={selected}
+          open={menuOpen}
+          folder={menuFolder}
           anchor={menu.anchor}
-          left={menu.left}
+          left={menuLeft}
           onRename={rename}
           onDelete={requestDeletion}
           onClose={menu.close}
@@ -82,9 +89,10 @@ export function FolderFilter(props: FolderFilterProps) {
       <p className="sr-only" role="status" aria-live="polite">
         {announcement && <span key={announcement.id}>{announcement.text}</span>}
       </p>
-      {deletion.confirming && (
+      {deletionShown && (
         <FolderDeletionDialog
-          folder={deletion.confirming}
+          open={deletion.confirming !== null}
+          folder={deletionShown}
           busy={deletion.deleting}
           onConfirm={deletion.confirm}
           onClose={deletion.cancel}
