@@ -46,12 +46,11 @@ const meeting = meetingWith([
 it('shows distinct voices within each audio chunk in transcript and export', () => {
   render(<Transcript meeting={meeting} at={0} onSeek={vi.fn()} />);
 
-  expect(screen.getByRole('button', { name: /Intervenant A · extrait 1.*Bonjour/ })).toBeVisible();
-  expect(screen.getByRole('button', { name: /Intervenant B · extrait 1.*Salut/ })).toBeVisible();
-  expect(
-    screen.getByRole('button', { name: /Intervenant A · extrait 2.*Encore moi/ }),
-  ).toBeVisible();
-  expect(meetingMarkdown(meeting)).toContain('[01:01] Intervenant A · extrait 2 : Encore moi.');
+  expect(screen.getByRole('button', { name: /Intervenant A.*Bonjour/ })).toBeVisible();
+  expect(screen.getByRole('button', { name: /Intervenant B.*Salut/ })).toBeVisible();
+  expect(screen.getByRole('button', { name: /Intervenant A.*Encore moi/ })).toBeVisible();
+  expect(screen.queryByText(/extrait/)).toBeNull();
+  expect(meetingMarkdown(meeting)).toContain('[01:01] Intervenant A (partie 2) : Encore moi.');
 });
 
 it('réunit les paroles suivies d’un même intervenant en un seul passage', () => {

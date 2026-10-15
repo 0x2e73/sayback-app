@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
 import { timeLabel } from '../../../shared/format';
-import { speakerLabel } from './meeting-format';
+import { speakerName } from './meeting-format';
 import type { Turn } from './speaker-turns';
 
 interface TranscriptTurnProps {
@@ -11,7 +11,7 @@ interface TranscriptTurnProps {
 }
 
 export function TranscriptTurn({ turn, active, onSeek, ref }: TranscriptTurnProps) {
-  const label = speakerLabel(turn);
+  const label = turn.speaker ? speakerName(turn.speaker) : undefined;
   const classes = ['transcript-turn', turn.brief ? 'brief' : '', active ? 'active' : ''];
 
   return (

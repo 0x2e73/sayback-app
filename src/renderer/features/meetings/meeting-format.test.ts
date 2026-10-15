@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { meetingFixture } from '../../test-api';
-import { meetingMarkdown, noteSources, notesMarkdown } from './meeting-format';
+import { meetingMarkdown, noteSources, notesMarkdown, speakerLabel } from './meeting-format';
 
 const ids = ['1-0', '0-0', '0-1', 'clarification:c1', 'inconnu'];
 const meeting = meetingFixture('m1', 'Revue produit', '2026-10-14T08:00:00Z', {
@@ -42,7 +42,7 @@ describe('notesMarkdown', () => {
       ].join('\n\n'),
     );
     expect(meetingMarkdown(meeting)).toBe(
-      `${notes}\n\n## Transcription\n\n[00:04] Intervenant A · extrait 1 : Bonjour.\n\n[00:04] Intervenant B · extrait 1 : Salut.\n\n[01:01] Intervenant A · extrait 2 : Le budget.`,
+      `${notes}\n\n## Transcription\n\n[00:04] Intervenant A (partie 1) : Bonjour.\n\n[00:04] Intervenant B (partie 1) : Salut.\n\n[01:01] Intervenant A (partie 2) : Le budget.`,
     );
   });
 
@@ -66,5 +66,18 @@ describe('notesMarkdown', () => {
 
   it('has no « Précisions » section without a clarification', () => {
     expect(notesMarkdown(meetingFixture('m3', 'Vide', '2026-10-14T08:00:00Z'))).toBe('# Vide');
+  });
+});
+
+describe('speakerLabel', () => {
+  it.each([
+    [{ id: '0-0', speaker: 'A' }, 'Intervenant A (partie 1)'],
+    [{ id: '1-3', speaker: 'B' }, 'Intervenant B (partie 2)'],
+    [{ id: 'x', speaker: 'A' }, 'Intervenant A'],
+    [{ id: '-1-0', speaker: 'A' }, 'Intervenant A'],
+    [{ id: '0-0' }, undefined],
+    [{ id: '0-0', speaker: '' }, undefined],
+  ])('names %j « %s »', (spoken, label) => {
+    expect(speakerLabel(spoken)).toBe(label);
   });
 });
