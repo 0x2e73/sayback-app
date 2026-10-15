@@ -159,3 +159,13 @@ Sacrifié par rapport à la spec complète : la vérité de la session reste dan
 ## Question au propriétaire
 
 Forme compacte : ailes de part et d'autre de l'encoche (comme Boring Notch, choix par défaut) ou pastille qui pend sous l'encoche. Un seul paramètre dans la géométrie.
+
+## Prototype PC, fait le 2026-10-15
+
+`osascript -l JavaScript` avec `ObjC.import('AppKit')` répond en 0,13 s. Sur la machine du propriétaire :
+
+- « Écran Retina intégré » : `frame` 1800×1169 à (0, 0), `visibleFrame` y 62, `safeAreaInsets.top` 38, `auxiliaryTopLeftArea` (0, 1131, 790×38), `auxiliaryTopRightArea` (1010, 1131, 790×38). Encoche = 1010 − 790 = 220 pt de large, 38 pt de haut, centrée (x 790 à 1010).
+- « HP 524pf » : `frame` 1920×1080 à (−61, 1169), `safeAreaInsets.top` 0, zones auxiliaires vides → sans encoche.
+- Origine AppKit en bas à gauche : y d'AppKit = hauteur de l'écran principal − (y d'Electron + hauteur). Le script de sonde est dans le dépôt de travail de la session ; l'implémentation le réécrit dans `notch-probe.ts` avec ces valeurs comme cas de test.
+
+Forme retenue (le propriétaire a cité Boring Notch) : ailes de part et d'autre de l'encoche.
