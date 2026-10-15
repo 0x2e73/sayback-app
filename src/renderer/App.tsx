@@ -4,6 +4,7 @@ import { AppShell, focusCardContent } from './components/AppShell';
 import { useHeld } from './components/use-held';
 import { ErrorBoundary, FloatingNotice } from './components/ui';
 import { ListPane } from './features/list/ListPane';
+import { DeleteMeetingDialog } from './features/meetings/DeleteMeetingDialog';
 import { Onboarding } from './features/onboarding/Onboarding';
 import { useOnboarding } from './features/onboarding/use-onboarding';
 import { NewMeetingDialog } from './features/recording/NewMeetingDialog';
@@ -85,6 +86,7 @@ export function App({ api }: AppProps) {
         recording={recording.capture}
         update={workspace.update}
         onSelect={workspace.select}
+        onRowMenu={(meeting, at) => void workspace.rowMenu.open(meeting, at)}
         onToggleSettings={workspace.toggleSettings}
         onNew={workspace.openNewMeeting}
         onShowRecording={focusCardContent}
@@ -117,6 +119,12 @@ export function App({ api }: AppProps) {
           onShowOnboarding={onboarding.reopen}
         />
       </ErrorBoundary>
+      <DeleteMeetingDialog
+        open={workspace.rowMenu.deletion.open}
+        busy={workspace.rowMenu.deletion.busy}
+        onClose={workspace.rowMenu.deletion.cancel}
+        onDelete={workspace.rowMenu.deletion.confirm}
+      />
       <NewMeetingDialog
         open={workspace.newMeeting}
         api={api}

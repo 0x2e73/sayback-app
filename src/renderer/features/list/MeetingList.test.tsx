@@ -54,6 +54,7 @@ function renderList(overrides: Partial<ComponentProps<typeof MeetingList>> = {})
     now,
     locked: false,
     onSelect: vi.fn(),
+    onMenu: vi.fn(),
     ...overrides,
   };
   render(<MeetingList {...props} />);

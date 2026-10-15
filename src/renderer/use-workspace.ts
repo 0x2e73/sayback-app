@@ -1,15 +1,15 @@
 import { useCallback, useState } from 'react';
 import type { DesktopApi, Meeting } from '../shared/contracts';
-import { sortNewestFirst } from './features/list/date-groups';
-import { neighbourAfter, resolveSelection } from './features/list/selection';
 import { useListFilter } from './features/list/use-list-filter';
 import { useFolders } from './features/list/use-folders';
 import { useMeetings } from './features/list/use-meetings';
+import { useRowMenu } from './features/list/use-row-menu';
 import { useAutoAnalysis } from './features/meetings/use-auto-analysis';
 import { useRecording } from './features/recording/use-recording';
 import { useUpdateInstall } from './features/updates/use-update-install';
 import { useUpdateStatus } from './features/updates/use-update-status';
 import { useRecordingEntry } from './use-recording-entry';
+import { useSelection } from './use-selection';
 import { workspaceNotice } from './workspace-notice';
 
 export type CardView = 'meeting' | 'settings';
@@ -23,46 +23,41 @@ export function useWorkspace(api: DesktopApi, onboarded: boolean) {
   const updateInstall = useUpdateInstall(api, updateStatus);
   const filter = useListFilter(library.meetings, folders.folders);
   const [card, setCard] = useState<CardView>('meeting');
-  const [chosenId, setChosenId] = useState<string | null>(null);
-  // An arrow key, the first selection or a deletion change the card without an entrance.
-  const [instant, setInstant] = useState(false);
+  const selection = useSelection(filter.visible, library.remove);
   const { run: runAutoAnalysis } = analysis;
   const updateMeeting = library.update;
   const { clear: clearFilter } = filter;
+  const { choose, deleted } = selection;
   const onFinished = useCallback(
     (meeting: Meeting, autoAnalyze: boolean) => {
       updateMeeting(meeting);
       // A new meeting must be listed: the filter that would hide it is dropped.
       clearFilter();
-      setChosenId(meeting.id);
-      setInstant(false);
+      choose(meeting.id, false);
       setCard('meeting');
       if (autoAnalyze) runAutoAnalysis(meeting);
     },
-    [clearFilter, runAutoAnalysis, updateMeeting],
+    [choose, clearFilter, runAutoAnalysis, updateMeeting],
   );
   const recording = useRecording(api, onFinished);
   const entry = useRecordingEntry(api, recording, analysis.clearError, onboarded);
 
-  const selected = resolveSelection(filter.visible, chosenId);
-
-  // Leaves the card on the row that takes the deleted one's place in the list.
-  function deleted(id: string): void {
-    const shown = sortNewestFirst(filter.visible).map((meeting) => meeting.id);
-    setChosenId(neighbourAfter(shown, id));
-    setInstant(true);
-    library.remove(id);
-  }
+  const rowMenu = useRowMenu({
+    api,
+    folders: folders.folders,
+    onMove: folders.move,
+    onDeleted: deleted,
+  });
 
   function select(id: string, by?: 'keyboard'): void {
-    setChosenId(id);
-    setInstant(by === 'keyboard');
+    choose(id, by === 'keyboard');
     setCard('meeting');
   }
 
   return {
     library,
     folders,
+    rowMenu,
     filter,
     recording,
     update: {
@@ -72,13 +67,14 @@ export function useWorkspace(api: DesktopApi, onboarded: boolean) {
     },
     card,
     newMeeting: entry.newMeeting,
-    selected,
-    instantCard: instant || chosenId === null,
+    selected: selection.selected,
+    instantCard: selection.instantCard,
     notice: workspaceNotice({
       recording: recording.interrupted ? '' : recording.error,
       analysis: analysis.error,
       library: library.error,
       folders: folders.error,
+      rowMenu: rowMenu.error,
       update: updateInstall.error,
     }),
     start: entry.start,

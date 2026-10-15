@@ -34,7 +34,13 @@
     transform var(--duration-fast) var(--ease-out),
     opacity var(--duration-base) var(--ease-out);
 }
+.chip[data-drop-ready] {
+  border-color: var(--color-accent-soft);
+  border-style: dashed;
+  color: var(--color-text);
+}
 .chip[data-drag-over='true'] {
+  border-style: solid;
   border-color: var(--color-accent);
   background: var(--color-accent-tint);
   color: var(--color-text);

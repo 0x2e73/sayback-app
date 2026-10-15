@@ -20,16 +20,35 @@ function dropAnnouncement(folderId: string | null, folders: Folder[]): string {
   return folder ? `Réunion déplacée dans « ${folder.name} ».` : 'Réunion déplacée.';
 }
 
+function startsMeetingDrag(event: Event): boolean {
+  return event.target instanceof Element && event.target.closest('[data-meeting-id]') !== null;
+}
+
 export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) {
   const [dragTarget, setDragTarget] = useState<string | null>(null);
   // The chip that took a meeting flashes once; the animation clears the mark when it ends.
   const [accepted, setAccepted] = useState<string | null>(null);
+  // From the moment a row is picked up until it lands or is let go: every chip that can take it shows it.
+  const [dragging, setDragging] = useState(false);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   // The folder may be deleted while the move is pending, so read the latest list afterwards.
   const latestFolders = useRef(folders);
   useEffect(() => {
     latestFolders.current = folders;
   }, [folders]);
+
+  useEffect(() => {
+    const pickUp = (event: Event) => setDragging(startsMeetingDrag(event));
+    const letGo = () => setDragging(false);
+    document.addEventListener('dragstart', pickUp);
+    document.addEventListener('dragend', letGo);
+    document.addEventListener('drop', letGo);
+    return () => {
+      document.removeEventListener('dragstart', pickUp);
+      document.removeEventListener('dragend', letGo);
+      document.removeEventListener('drop', letGo);
+    };
+  }, []);
 
   async function drop(event: DragEvent<HTMLElement>, id: string | null): Promise<void> {
     event.preventDefault();
@@ -61,6 +80,7 @@ export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) 
       },
       onDrop: (event: DragEvent<HTMLElement>) => void drop(event, id),
       'data-drag-over': dragTarget === key,
+      'data-drop-ready': dragging || undefined,
       'data-accepted': accepted === key || undefined,
       onAnimationEnd: () => setAccepted(null),
     };
