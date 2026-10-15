@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { DesktopApi } from '../../../shared/contracts';
 import { Presence } from '../../components/Presence';
 import type { PresenceBinding } from '../../components/use-presence';
@@ -34,9 +34,16 @@ function useFocusWhenReady(ready: boolean, field: RefObject<HTMLInputElement | n
 }
 
 export function NewMeetingDialog({ open = true, ...props }: NewMeetingDialogProps) {
+  // Each opening is a generation: reopening during the exit starts a clean form, not the old one.
+  const [wasOpen, setWasOpen] = useState(open);
+  const [generation, setGeneration] = useState(0);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setGeneration(generation + 1);
+  }
   return (
     <Presence open={open}>
-      {(presence) => <NewMeetingBody {...props} presence={presence} />}
+      {(presence) => <NewMeetingBody key={generation} {...props} presence={presence} />}
     </Presence>
   );
 }

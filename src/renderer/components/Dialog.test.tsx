@@ -3,10 +3,12 @@ import '@testing-library/jest-dom/vitest';
 import { useRef } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { slowTransitions } from '../slow-transitions';
 import { Dialog } from './Dialog';
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -154,24 +156,40 @@ it('lets Escape undo something before it closes', () => {
   expect(close).toHaveBeenCalledOnce();
 });
 
-it('plays its exit before it leaves, then hands the focus back', () => {
+function Harness({ open }: { open: boolean }) {
+  return (
+    <>
+      <button type="button">Ouvrir</button>
+      <Dialog title="Nouvelle réunion" open={open} onClose={vi.fn()}>
+        <p>Contenu</p>
+      </Dialog>
+    </>
+  );
+}
+
+function slowExit(): void {
   vi.useFakeTimers();
-  vi.spyOn(window, 'getComputedStyle').mockReturnValue({
-    transitionDuration: '0.15s',
-  } as CSSStyleDeclaration);
-  const view = render(
-    <Dialog title="Nouvelle réunion" open onClose={vi.fn()}>
-      <p>Contenu</p>
-    </Dialog>,
-  );
+  slowTransitions();
+}
+
+it('plays its exit before it leaves, then hands the focus back to the opener', () => {
+  slowExit();
+  const view = render(<Harness open={false} />);
+  const opener = screen.getByRole('button', { name: 'Ouvrir' });
+  opener.focus();
+  view.rerender(<Harness open />);
   expect(dialogElement()).toHaveAttribute('data-state', 'open');
-  view.rerender(
-    <Dialog title="Nouvelle réunion" open={false} onClose={vi.fn()}>
-      <p>Contenu</p>
-    </Dialog>,
-  );
+  view.rerender(<Harness open={false} />);
   expect(dialogElement()).toHaveAttribute('data-state', 'closing');
   fireEvent.transitionEnd(dialogElement(), { propertyName: 'opacity' });
   expect(document.querySelector('dialog')).toBeNull();
-  vi.useRealTimers();
+  expect(opener).toHaveFocus();
+});
+
+it('answers nothing while it leaves: Enter on a confirm button cannot fire twice', () => {
+  slowExit();
+  const view = render(<Harness open />);
+  expect(dialogElement()).not.toHaveAttribute('inert');
+  view.rerender(<Harness open={false} />);
+  expect(dialogElement()).toHaveAttribute('inert');
 });

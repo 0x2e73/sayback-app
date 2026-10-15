@@ -80,6 +80,8 @@ function DialogSurface({
       ref={attach}
       className="dialog"
       data-state={presence.state}
+      // Nothing answers during the exit: no second Enter on the confirm button, no second Escape.
+      inert={presence.state === 'closing'}
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();
