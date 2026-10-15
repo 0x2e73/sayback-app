@@ -26,6 +26,9 @@ const start = {
 
 const shownWindow: IslandWindowPort = {
   webContents: { mainFrame: {}, send: vi.fn(), isDestroyed: () => false, on: vi.fn() },
+  on: vi.fn(),
+  setFocusable: vi.fn(),
+  focus: vi.fn(),
   showInactive: vi.fn(),
   getMediaSourceId: () => 'window:99:0',
   setBounds: vi.fn(),

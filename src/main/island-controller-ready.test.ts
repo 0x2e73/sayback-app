@@ -183,16 +183,14 @@ describe('starting from the ready island', () => {
     expect(first.sent.some(([channel]) => channel === 'island:start-result')).toBe(false);
   });
 
-  it('becomes the recording island in the same window once the recording starts', async () => {
+  it('becomes the recording island in the same window, folded into wings', async () => {
     const { hub, island, ports, hover, opened: current } = await opened();
     hub.publish(running);
     await vi.advanceTimersByTimeAsync(1_000);
     expect(ports.openWindow).toHaveBeenCalledOnce();
     expect(lastState(current().sent)?.mode).toBe('recording');
-    expect(hover.options).toMatchObject({
-      delays: RECORDING_HOVER,
-      initial: { expanded: true, entered: true },
-    });
+    expect(hover.options).toMatchObject({ delays: RECORDING_HOVER, initial: { expanded: false } });
+    expect(current().sent).toContainEqual(['island:expanded', false]);
     island.request('close');
     expect(island.window()).not.toBeNull();
   });

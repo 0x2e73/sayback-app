@@ -75,6 +75,20 @@ describe('IslandApp', () => {
     expect(island.request).toHaveBeenLastCalledWith('stop');
   });
 
+  it('asks to open when its closed wings are clicked, and not once open', async () => {
+    const island = await shown({
+      recording: recording(),
+      expanded: false,
+      shape,
+      mode: 'recording',
+    });
+    fireEvent.click(screen.getByRole('main', { name: 'SayBack' }));
+    expect(island.request).toHaveBeenCalledExactlyOnceWith('expand');
+    island.expand(true);
+    fireEvent.click(screen.getByRole('main', { name: 'SayBack' }));
+    expect(island.request).toHaveBeenCalledOnce();
+  });
+
   it('asks for a second click within 3 s before stopping', async () => {
     const island = await shown({
       recording: recording(),

@@ -5,7 +5,7 @@ import type { RecordingState } from '../shared/recording-state';
 import type { IslandStart, RecordingStartOutcome } from '../shared/recording-start';
 import { createIsland, ISLAND_SETTLE } from './island-controller';
 import type { IslandLayout } from './island-geometry';
-import type { HoverOptions, IslandWindowPort } from './island-ports';
+import type { HoverOptions, IslandWindowPort, KeyInput } from './island-ports';
 import type { ListedScreen } from './island-ready';
 import { createRecordingStateHub } from './recording-state-hub';
 
@@ -44,14 +44,19 @@ export const prefs: CapturePrefs = {
 export function fakeWindow() {
   let destroyed = false;
   const sent: [string, unknown][] = [];
-  const crash = { listener: () => {} };
+  const listeners = new Map<string, (event?: unknown, input?: KeyInput) => void>();
+  const listen = (event: string, listener: (event?: unknown, input?: KeyInput) => void) =>
+    listeners.set(event, listener);
   const window = {
     webContents: {
       mainFrame: {},
       send: (channel: string, payload: unknown) => sent.push([channel, payload]),
       isDestroyed: () => destroyed,
-      on: (_event: 'render-process-gone', listener: () => void) => (crash.listener = listener),
+      on: listen as IslandWindowPort['webContents']['on'],
     },
+    on: listen as IslandWindowPort['on'],
+    setFocusable: vi.fn(),
+    focus: vi.fn(),
     showInactive: vi.fn(),
     getMediaSourceId: () => 'window:99:0',
     setBounds: vi.fn(),
@@ -61,7 +66,14 @@ export function fakeWindow() {
       destroyed = true;
     }),
   } satisfies IslandWindowPort;
-  return { window, sent, crash: () => crash.listener() };
+  const fire = (event: string, input?: KeyInput) => listeners.get(event)?.({}, input);
+  return {
+    window,
+    sent,
+    crash: () => fire('render-process-gone'),
+    blur: () => fire('blur'),
+    key: (key: string, type = 'keyDown') => fire('before-input-event', { key, type }),
+  };
 }
 
 function fakeHover() {
@@ -69,7 +81,9 @@ function fakeHover() {
     options: null as HoverOptions | null,
     stop: vi.fn(),
     expand: vi.fn(),
+    collapse: vi.fn(),
     area: () => hover.options?.area() ?? null,
+    reach: (reachable: boolean) => hover.options?.onReach?.(reachable),
     change: (open: boolean) => hover.options?.onChange(open),
     held: () => hover.options?.hold?.() ?? false,
   };
@@ -100,7 +114,7 @@ export function fixture(nextLayout: IslandLayout | null = layout) {
     }),
     startHover: vi.fn((options: HoverOptions) => {
       hover.options = options;
-      return { stop: hover.stop, expand: hover.expand };
+      return { stop: hover.stop, expand: hover.expand, collapse: hover.collapse };
     }),
     ready: readyPorts(),
     openApp: vi.fn(),

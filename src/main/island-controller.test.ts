@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLICK_GUARD } from './island-controller';
 import { fixture, layout, running } from './island-controller.fixture';
-import type { IslandLayout } from './island-geometry';
+import { reachOf, type IslandLayout } from './island-geometry';
 import { RECORDING_HOVER } from './island-hover';
 
 beforeEach(() => vi.useFakeTimers());
@@ -63,9 +63,9 @@ describe('createIsland', () => {
     await start();
     expect(hover.options).toMatchObject({
       delays: RECORDING_HOVER,
-      initial: { expanded: false, entered: false },
+      initial: { expanded: false },
     });
-    expect(hover.area()).toEqual({ compact: layout.compact, open: layout.open });
+    expect(hover.area()).toEqual({ open: layout.open, reach: reachOf(layout.compact) });
     expect(hover.area()?.open).not.toEqual(layout.window);
   });
 

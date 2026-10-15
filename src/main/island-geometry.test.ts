@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { contains, islandLayout, type DisplayInfo, type NotchArea } from './island-geometry';
+import {
+  contains,
+  islandLayout,
+  reachOf,
+  type DisplayInfo,
+  type NotchArea,
+} from './island-geometry';
 
 // Measured on the owner's Mac (prototype PC), in Electron coordinates.
 const retina: DisplayInfo = {
@@ -129,4 +135,15 @@ it('tells whether a point lies in a rectangle, edges included', () => {
   expect(contains(rect, { x: 30, y: 10 })).toBe(true);
   expect(contains(rect, { x: 31, y: 5 })).toBe(false);
   expect(contains(rect, { x: 15, y: -1 })).toBe(false);
+});
+
+describe('reachOf', () => {
+  it('takes the wings and 8 pt to the sides and below, never more', () => {
+    const compact = { x: 706, y: 0, width: 388, height: 38 };
+    const reach = reachOf(compact);
+    expect(reach).toEqual({ x: 698, y: 0, width: 404, height: 46 });
+    expect(contains(reach, { x: 699, y: 45 })).toBe(true);
+    expect(contains(reach, { x: 697, y: 10 })).toBe(false);
+    expect(contains(reach, { x: 900, y: 47 })).toBe(false);
+  });
 });

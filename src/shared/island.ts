@@ -7,12 +7,22 @@ import { islandStartSchema, type RecordingStartError } from './recording-start';
 export const liveLevelSchema = z.number().finite().min(0).max(1);
 
 /**
- * What the island may ask. Recording: pause, resume, stop, and `open` brings SayBack forward.
+ * What the island may ask. Recording: pause, resume, stop, `expand` (a click on the closed wings),
+ * and `open` brings SayBack forward.
  * Ready: `open` opens the dialog instead, `close` is the ×, `open-privacy-settings` opens the
  * screen recording pane, `cycle-screen` moves to the next screen, `{ type: 'start' }` starts.
  */
 export const islandRequestSchema = z.union([
-  z.enum(['pause', 'resume', 'stop', 'open', 'close', 'open-privacy-settings', 'cycle-screen']),
+  z.enum([
+    'pause',
+    'resume',
+    'stop',
+    'open',
+    'expand',
+    'close',
+    'open-privacy-settings',
+    'cycle-screen',
+  ]),
   islandStartSchema,
 ]);
 export type IslandRequest = z.infer<typeof islandRequestSchema>;

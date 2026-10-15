@@ -26,6 +26,12 @@ function shapeStyle(shape: IslandShape): ShapeStyle {
   };
 }
 
+// Closed, the recording window only takes clicks near the wings: any click there opens it.
+function expandOnClick(view: IslandView, onRequest: (request: IslandRequest) => void) {
+  if (view.snapshot.mode !== 'recording' || view.expanded) return undefined;
+  return () => onRequest('expand');
+}
+
 interface IslandShellProps {
   api: IslandApi;
   view: IslandView;
@@ -57,6 +63,7 @@ function IslandShell({ api, view, now, onRequest }: IslandShellProps) {
       data-expanded={view.expanded || undefined}
       data-paused={(recording.recording && recording.paused) || undefined}
       data-arriving={arriving || undefined}
+      onClick={expandOnClick(view, onRequest)}
     >
       <div className="island-shell" style={shapeStyle(shape)}>
         {ready && !(recordingMode && handedOver) && (
