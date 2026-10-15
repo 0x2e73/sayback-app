@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServices, type DesktopServices } from './services';
 import { createIpcRegistrar } from './ipc';
+import { registerMeetingMenu } from './meeting-menu';
 import { createWindowRoles } from './window-roles';
 import {
   openPrivacyPane,
@@ -113,6 +114,7 @@ void app.whenReady().then(() => {
   const { handle } = registrar;
   registerMeetingHandlers(handle, desktop);
   registerFolderHandlers(handle, desktop);
+  registerMeetingMenu(handle, liveWindow);
   registerSettingsHandlers(handle, desktop, root, applyAppearance);
   registerCapture(
     handle,

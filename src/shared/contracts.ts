@@ -83,6 +83,20 @@ export interface MediaUpload {
   duration: number;
   bytes: ArrayBuffer;
 }
+/** What the native menu of a meeting row is built from; only the main process draws it. */
+export interface MeetingMenuRequest {
+  meetingId: string;
+  folders: Pick<Folder, 'id' | 'name'>[];
+  /** The folder the meeting is in now; the menu checks it. */
+  folderId: string | null;
+  /** Recording or analysing: both actions are shown but cannot be chosen. */
+  disabled: boolean;
+  /** Where the menu opens, in window coordinates; the pointer's place when absent. */
+  at?: { x: number; y: number };
+}
+/** What was chosen; null when the menu was dismissed. Nothing is changed by the menu itself. */
+export type MeetingMenuChoice =
+  { kind: 'move'; folderId: string | null } | { kind: 'delete' } | null;
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export interface DesktopApi {
   listMeetings(): Promise<Result<Meeting[]>>;
@@ -97,6 +111,8 @@ export interface DesktopApi {
   processMeeting(id: string): Promise<Result<Meeting>>;
   clarify(id: string, at: number, text: string): Promise<Result<Meeting>>;
   deleteMeeting(id: string): Promise<Result<void>>;
+  /** Pops up the native context menu of a meeting row and resolves with the choice. */
+  openMeetingMenu(request: MeetingMenuRequest): Promise<Result<MeetingMenuChoice>>;
   saveMedia(upload: MediaUpload): Promise<Result<void>>;
   getSettings(): Promise<Result<Settings>>;
   completeOnboarding(): Promise<Result<void>>;

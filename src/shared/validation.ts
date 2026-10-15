@@ -75,3 +75,12 @@ const mediaSchema = z
 export function validateMedia(input: unknown): MediaUpload {
   return mediaSchema.parse(input);
 }
+
+const coordinateSchema = z.number().int().min(0).max(20_000);
+export const meetingMenuRequestSchema = z.object({
+  meetingId: idSchema,
+  folders: z.array(z.object({ id: idSchema, name: z.string().max(80) })).max(200),
+  folderId: idSchema.nullable(),
+  disabled: z.boolean(),
+  at: z.object({ x: coordinateSchema, y: coordinateSchema }).optional(),
+});
