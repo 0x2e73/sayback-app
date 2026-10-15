@@ -143,7 +143,7 @@ describe('Meeting workspace', () => {
     await user.click(dropdown);
     expect(screen.getByRole('option', { name: 'whisper-1' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'gpt-4o' })).toBeInTheDocument();
-    await user.type(await screen.findByRole('searchbox', { name: 'Rechercher un modèle' }), '4o');
+    await user.type(await screen.findByRole('combobox', { name: 'Rechercher un modèle' }), '4o');
     expect(screen.queryByRole('option', { name: 'whisper-1' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('option', { name: 'gpt-4o' }));
     expect(dropdown).toHaveTextContent('gpt-4o');

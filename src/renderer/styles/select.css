@@ -48,6 +48,10 @@
   box-shadow: var(--shadow-float);
   animation: menu-enter var(--duration-fast) var(--ease-out);
 }
+.select-popover[data-upward] {
+  top: auto;
+  bottom: calc(100% + var(--space-1));
+}
 .select-search {
   width: 100%;
   min-height: var(--control-sm);
