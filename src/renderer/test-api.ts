@@ -19,6 +19,7 @@ export const settings: Settings = {
   model: 'gpt-4.1-mini',
   onboardingCompleted: true,
   appearance: 'system',
+  islandLiveText: true,
 };
 
 export const readySetup: LocalSetupStatus = {
@@ -91,6 +92,10 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     announceRecordingState: () => ok(undefined),
     onMenuBarNewRecording: () => () => {},
     sendLevel: () => undefined,
+    sendPcm: () => undefined,
+    sendPreview: () => undefined,
+    onScreenSwitchRequest: () => () => {},
+    answerScreenSwitch: () => ok(undefined),
     onRecordingRequest: () => () => {},
     onStartRequest: () => () => {},
     acknowledgeStartRequest: () => undefined,
@@ -100,6 +105,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     installUpdate: () => ok('started'),
     onUpdateStatus: () => () => undefined,
     setAppearance: () => ok(undefined),
+    setIslandLiveText: () => ok(undefined),
   };
 }
 

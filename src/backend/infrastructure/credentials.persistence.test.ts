@@ -80,3 +80,26 @@ it('does not forget a key whose removal could not be written', () => {
   expect(credentials.settings().hasOpenAiKey).toBe(true);
   expect(credentials.key('openai')).toBe('sk-kept');
 });
+
+it('shows the live text in the island until the user turns it off, across restarts', () => {
+  const file = join(root, 'settings.json');
+  const credentials = new Credentials(file, encryption);
+  expect(credentials.settings().islandLiveText).toBe(true);
+  credentials.setIslandLiveText(false);
+  expect(new Credentials(file, encryption).settings().islandLiveText).toBe(false);
+  expect(credentials.save(input).islandLiveText).toBe(false);
+});
+
+it('opens settings from an earlier version, or with a garbled value, with the live text on', () => {
+  const file = join(root, 'settings.json');
+  writeFileSync(file, JSON.stringify({ encryptedKeys: {}, model: 'gpt-4.1-mini' }));
+  expect(new Credentials(file, encryption).settings().islandLiveText).toBe(true);
+  writeFileSync(file, JSON.stringify({ encryptedKeys: {}, islandLiveText: 'non' }));
+  expect(new Credentials(file, encryption).settings().islandLiveText).toBe(true);
+});
+
+it('refuses anything but a boolean for the live text', () => {
+  const credentials = new Credentials(join(root, 'settings.json'), encryption);
+  expect(() => credentials.setIslandLiveText('false' as unknown as boolean)).toThrow();
+  expect(credentials.settings().islandLiveText).toBe(true);
+});

@@ -3,8 +3,10 @@ import { X } from 'lucide-react';
 import type { IslandApi } from '../../shared/contracts';
 import type { IslandReadyState, IslandRequest } from '../../shared/island';
 import { Button } from '../components/ui';
-import { SourceChips } from '../features/recording/SourceChips';
-import { ReadyScreenLine } from './ReadyScreenLine';
+import { PickerSwap } from './PickerSwap';
+import { ReadySources } from './ReadySources';
+import { ScreenPicker } from './ScreenPicker';
+import { usePickedScreen, useReadyPicker } from './use-ready-picker';
 import { useReadyStart } from './use-ready-start';
 
 interface IslandReadyProps {
@@ -26,8 +28,10 @@ export function IslandReady({
   onLeft,
   onRequest,
 }: IslandReadyProps) {
-  const start = useReadyStart(api, ready, onRequest);
   const reachable = expanded && !leaving;
+  const choice = usePickedScreen(ready);
+  const start = useReadyStart(api, ready, choice.screen, onRequest);
+  const { picker, change } = useReadyPicker({ ready, start, ...choice, reachable, onRequest });
 
   // Ended or cancelled, the fade is over; IslandApp also has a timer if neither comes.
   function faded(event: TransitionEvent<HTMLDivElement>): void {
@@ -57,20 +61,29 @@ export function IslandReady({
           <X size={16} aria-hidden="true" />
         </Button>
       </header>
-      <SourceChips
-        selection={start.selection}
-        microphoneBlocked={false}
-        disabled={start.busy}
-        legendHidden
-        onToggle={start.toggle}
-      />
-      <ReadyScreenLine
-        screen={ready.screen}
-        screenCount={ready.screenCount}
-        screenOn={start.selection.screen}
-        error={start.error}
-        busy={start.busy}
-        onRequest={start.request}
+      <PickerSwap
+        open={picker.open}
+        instant={picker.instant}
+        base={
+          <ReadySources
+            ready={ready}
+            screen={choice.screen}
+            start={start}
+            onChange={picker.toggle}
+            changeRef={change}
+          />
+        }
+        picker={
+          <ScreenPicker
+            api={api}
+            screens={ready.screens}
+            checked={picker.checked}
+            disabled={start.busy}
+            keyboard
+            onPick={picker.pick}
+            onBack={picker.close}
+          />
+        }
       />
       <div className="island-actions island-ready-actions">
         <Button

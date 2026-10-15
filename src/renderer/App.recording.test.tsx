@@ -23,10 +23,12 @@ class FakeSession {
   audioSources = { microphone: true, systemAudio: false };
   source = undefined;
   meeting = { ...finished, status: 'recording' as const };
-  analyser = { frequencyBinCount: 4, getByteFrequencyData: () => {} };
+  analyser = { fftSize: 4, getFloatTimeDomainData: () => {} };
   stop = vi.fn(async () => finished);
   togglePause = vi.fn();
   onPauseChange = () => () => false;
+  onSourceChange = () => () => false;
+  sourceVersion = 0;
 }
 
 let session: FakeSession;

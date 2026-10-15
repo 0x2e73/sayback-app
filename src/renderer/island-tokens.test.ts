@@ -56,3 +56,15 @@ it('keeps inline styles out of island.html and draws it dark', () => {
   expect(page).not.toMatch(/<style[\s>]/i);
   expect(page).toContain('<meta name="color-scheme" content="dark" />');
 });
+
+// The picker replaces a layer in the same cell (frontend.md): it never animates a size.
+it('swaps the picker on opacity and the motion offsets, instantly from the keyboard', () => {
+  const css = read('styles/island.css');
+  expect(css).toMatch(/\.island-swap-base\[data-state='closing'\]\s*\{[^}]*var\(--motion-drop\)/);
+  expect(css).toMatch(/@starting-style\s*\{\s*\.island-swap-picker\s*\{[^}]*var\(--motion-rise\)/);
+  expect(css).toMatch(/\.island-swap\[data-instant\][^{]*\{\s*transition: none;/);
+  expect(css).toMatch(/\.island-tile:active[^{]*\{[^}]*scale\(var\(--motion-press-soft\)\)/);
+  expect(css).not.toMatch(
+    /\.island-(?:swap|tile|picker)[^{]*\{[^}]*transition[^;]*\b(?:height|width)\b/,
+  );
+});

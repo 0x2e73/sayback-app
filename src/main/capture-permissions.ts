@@ -8,6 +8,7 @@ import {
 } from 'electron';
 import { z } from 'zod';
 import type { CaptureSource } from '../shared/contracts';
+import { ISLAND_THUMBNAIL, type IslandThumbnail } from '../shared/island';
 import { captureKindSchema } from '../shared/validation';
 import { capturePermission, ownSourceIds, presentSources, type OwnWindow } from './capture-sources';
 import type { RegisterHandler } from './ipc';
@@ -56,6 +57,22 @@ export async function listScreens(): Promise<Pick<CaptureSource, 'id' | 'name' |
     // The island shows no thumbnail: none is drawn.
     const sources = await listCaptureSources([], ['screen'], { width: 0, height: 0 });
     return sources.map(({ id, name, primary }) => (primary ? { id, name, primary } : { id, name }));
+  } catch {
+    return [];
+  }
+}
+
+/** The thumbnails of the island picker, read when it opens; empty when nothing can be listed. */
+export async function listScreenThumbnails(): Promise<IslandThumbnail[]> {
+  const { width, height, quality } = ISLAND_THUMBNAIL;
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width, height },
+    });
+    return sources
+      .filter((source) => !source.thumbnail.isEmpty())
+      .map((source) => ({ id: source.id, jpeg: source.thumbnail.toJPEG(quality) }));
   } catch {
     return [];
   }

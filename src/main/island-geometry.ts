@@ -61,6 +61,19 @@ export function contains(rect: Rect, point: Point): boolean {
   );
 }
 
+// A few points around the wings: a click that just misses them still opens the island.
+export const REACH_MARGIN = 8;
+
+/** The closed island's clickable area: its wings and a margin to the sides and below. */
+export function reachOf(compact: Rect): Rect {
+  return {
+    x: compact.x - REACH_MARGIN,
+    y: compact.y,
+    width: compact.width + 2 * REACH_MARGIN,
+    height: compact.height + REACH_MARGIN,
+  };
+}
+
 function topCentred(centreX: number, top: number, width: number, height: number): Rect {
   return { x: Math.round(centreX - width / 2), y: top, width, height };
 }

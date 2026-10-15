@@ -45,6 +45,8 @@ export function startRequest(selection: SourceToggles, screen: IslandScreen | nu
 export function useReadyStart(
   api: IslandApi,
   ready: IslandReadyState,
+  /** The screen checked in the picker, or main's while it says nothing newer. */
+  screen: IslandScreen | null,
   onRequest: (request: IslandRequest) => void,
 ) {
   const [selection, setSelection] = useState(() => normalizeSelection(ready.remembered));
@@ -69,7 +71,7 @@ export function useReadyStart(
     [api, fail],
   );
 
-  const canStart = hasAudioSource(selection) && (!selection.screen || ready.screen !== null);
+  const canStart = hasAudioSource(selection) && (!selection.screen || screen !== null);
 
   function toggle(key: SourceKey): void {
     setSelection((current) => normalizeSelection({ ...current, [key]: !current[key] }, key));
@@ -79,7 +81,7 @@ export function useReadyStart(
     if (sending.current || !canStart) return;
     sending.current = true;
     setBusy(true);
-    api.request(startRequest(selection, ready.screen)).then(
+    api.request(startRequest(selection, screen)).then(
       (result) => {
         if (!result.ok) fail('failed');
       },
@@ -87,9 +89,10 @@ export function useReadyStart(
     );
   }
 
-  /** « Changer » and « Réessayer » are a new attempt: main reports what it finds. */
+  /** A picked screen and « Réessayer » are a new attempt: main reports what it finds. */
   function request(wanted: IslandRequest): void {
-    if (wanted === 'cycle-screen') setFailure(null);
+    if (wanted === 'refresh-screens') setFailure(null);
+    if (typeof wanted === 'object' && wanted.type === 'select-screen') setFailure(null);
     onRequest(wanted);
   }
 
@@ -98,9 +101,11 @@ export function useReadyStart(
     busy,
     canStart,
     // Busy, nothing from before is shown: the answer will say.
-    error: busy ? null : readyLineError(selection, ready.screen, failure ?? ready.error),
+    error: busy ? null : readyLineError(selection, screen, failure ?? ready.error),
     toggle,
     start,
     request,
   };
 }
+
+export type ReadyStart = ReturnType<typeof useReadyStart>;

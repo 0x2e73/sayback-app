@@ -1,3 +1,5 @@
+import type { Ref } from 'react';
+import { fromKeyboard } from './ScreenPicker';
 import { Monitor, TriangleAlert } from 'lucide-react';
 import type { IslandRequest, IslandScreen } from '../../shared/island';
 import type { RecordingStartError } from '../../shared/recording-start';
@@ -16,7 +18,7 @@ const ERRORS: Record<RecordingStartError, ErrorCopy> = {
   'no-audio-source': { text: 'Activez le microphone ou le son du système.' },
   'no-screen': {
     text: 'Aucun écran détecté.',
-    action: { label: 'Réessayer', request: 'cycle-screen' },
+    action: { label: 'Réessayer', request: 'refresh-screens' },
   },
   interrupted: {
     text: 'Un enregistrement interrompu attend dans SayBack.',
@@ -27,12 +29,16 @@ const ERRORS: Record<RecordingStartError, ErrorCopy> = {
 
 interface ReadyScreenLineProps {
   screen: IslandScreen | null;
+  /** « Changer d'écran » is offered from two screens. */
   screenCount: number;
   /** The screen chip: off, the line stays as a reminder, dimmed. */
   screenOn: boolean;
   error: RecordingStartError | null;
   busy: boolean;
   onRequest(request: IslandRequest): void;
+  /** `instantly`: opened from the keyboard. */
+  onChange(instantly: boolean): void;
+  changeRef: Ref<HTMLButtonElement>;
 }
 
 interface ReadyErrorLineProps {
@@ -71,14 +77,18 @@ export function ReadyScreenLine(props: ReadyScreenLineProps) {
         <Monitor size={14} aria-hidden="true" />
         {screen?.name}
       </span>
+      <span className="sr-only" aria-live="polite">
+        {screen && `${screen.name} sélectionné`}
+      </span>
       {props.screenCount >= 2 && (
         <Button
+          ref={props.changeRef}
           variant="ghost"
           className="island-line-action"
           disabled={props.busy || !screenOn}
-          onClick={() => onRequest('cycle-screen')}
+          onClick={(event) => props.onChange(fromKeyboard(event))}
         >
-          Changer
+          Changer d’écran
         </Button>
       )}
     </div>

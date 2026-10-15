@@ -1,4 +1,6 @@
-import type { CaptureSource } from '../../../shared/contracts';
+import type { CaptureSource, DesktopApi } from '../../../shared/contracts';
+import { openLiveTap, type LiveTap } from './live-tap';
+import { PCM_WORKLET_URL } from './pcm-worklet-url';
 
 export interface CaptureOptions {
   screen: boolean;
@@ -13,6 +15,7 @@ export interface CaptureResources {
   display?: MediaStream;
   audio: MediaStream;
   analyser: AnalyserNode;
+  live: LiveTap;
   replaceDisplay(display: MediaStream): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -53,6 +56,7 @@ function stopTracks(streams: MediaStream[]): void {
 
 async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
   let display: MediaStream | undefined;
+  let microphone: MediaStream | undefined;
   if (options.screen) {
     display = await captureOf('screen', () =>
       navigator.mediaDevices.getDisplayMedia({
@@ -68,7 +72,7 @@ async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
     }
   }
   if (options.microphone) {
-    const microphone = await captureOf('microphone', () =>
+    microphone = await captureOf('microphone', () =>
       navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
         video: false,
@@ -81,7 +85,28 @@ async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
       track.onended = () => options.onFailure(new Error('Le microphone s’est arrêté.'));
     }
   }
-  return display;
+  return { display, microphone };
+}
+
+/** How long the audio may take to start before the opening gives up. */
+export const AUDIO_START_TIMEOUT = 3_000;
+const SILENT_AUDIO = 'Le son ne peut pas être enregistré pour l’instant. Réessayez.';
+
+/**
+ * The recorders take their audio from this context: left suspended, the meeting would be silent.
+ * A browser that waits for a gesture never settles `resume()`, which would hold the opening.
+ */
+async function startAudio(context: AudioContext): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, AUDIO_START_TIMEOUT);
+  });
+  try {
+    await Promise.race([context.resume(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+  if (context.state !== 'running') throw new Error(SILENT_AUDIO);
 }
 
 function mixAudio(context: AudioContext, streams: MediaStream[]) {
@@ -94,27 +119,41 @@ function mixAudio(context: AudioContext, streams: MediaStream[]) {
     sources.set(stream, source);
   }
   const analyser = context.createAnalyser();
-  analyser.fftSize = 256;
+  // About 43 ms of sound at 48 kHz: a steady reading of the level ten times a second.
+  analyser.fftSize = 2048;
   context.createMediaStreamSource(destination.stream).connect(analyser);
   return { audio: destination.stream, analyser, destination, sources };
 }
 
-export async function openCaptureResources(options: CaptureOptions): Promise<CaptureResources> {
+export async function openCaptureResources(
+  options: CaptureOptions,
+  api?: Pick<DesktopApi, 'sendPcm'>,
+): Promise<CaptureResources> {
   const streams: MediaStream[] = [];
   let context: AudioContext | undefined;
   try {
     if (!options.microphone && !(options.screen && options.systemAudio)) {
       throw new Error('Choisissez au moins une source audio.');
     }
-    let display = await acquireStreams(options, streams);
+    const acquired = await acquireStreams(options, streams);
+    let display = acquired.display;
     const audioContext = new AudioContext();
     context = audioContext;
-    await audioContext.resume();
+    await startAudio(audioContext);
     const { audio, analyser, destination, sources } = mixAudio(audioContext, streams);
+    const live = await openLiveTap(
+      audioContext,
+      api && ((track, samples, offset) => api.sendPcm(track, samples, offset)),
+      PCM_WORKLET_URL,
+    );
+    // A track the user turned off is never attached, so nothing is sent for it.
+    if (acquired.microphone) live.attach('microphone', acquired.microphone);
+    if (display && options.systemAudio) live.attach('system', display);
     const captureResources: CaptureResources = {
       display,
       audio,
       analyser,
+      live,
       async replaceDisplay(next) {
         if (options.systemAudio && !next.getAudioTracks().length) {
           throw new Error(
@@ -134,8 +173,10 @@ export async function openCaptureResources(options: CaptureOptions): Promise<Cap
         streams.push(next);
         if (nextSource) sources.set(next, nextSource);
         captureResources.display = next;
+        if (nextSource) live.attach('system', next);
       },
       async dispose() {
+        live.dispose();
         stopTracks([...streams, audio]);
         await audioContext.close();
       },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 import { errorMessage } from '../../../shared/format';
 import { unwrap, type CaptureSource, type DesktopApi } from '../../../shared/contracts';
 import type { CaptureSession } from './capture-session';
@@ -9,8 +9,13 @@ export function useRecordingSource(api: DesktopApi, capture: CaptureSession) {
   const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const [previewVersion, setPreviewVersion] = useState(0);
   const [error, setError] = useState('');
+  // A switch asked from the island moves the preview too.
+  const subscribe = useCallback(
+    (listener: () => void) => capture.onSourceChange(listener),
+    [capture],
+  );
+  const previewVersion = useSyncExternalStore(subscribe, () => capture.sourceVersion);
 
   async function openPicker() {
     setOpen(true);
@@ -41,7 +46,6 @@ export function useRecordingSource(api: DesktopApi, capture: CaptureSession) {
     setError('');
     try {
       await capture.switchSource(api, source);
-      setPreviewVersion((version) => version + 1);
       setOpen(false);
     } catch (failure) {
       setError(errorMessage(failure));

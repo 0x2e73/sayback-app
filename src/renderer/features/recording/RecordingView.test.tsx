@@ -16,10 +16,12 @@ function fakeCapture(changes: Partial<Record<'paused' | 'elapsed', number | bool
     displayStream: null,
     source: undefined,
     meeting: { title: 'Revue du vendredi' },
-    analyser: { frequencyBinCount: 4, getByteFrequencyData: () => {} },
+    analyser: { fftSize: 4, getFloatTimeDomainData: () => {} },
     audioSources: { microphone: true, systemAudio: false },
     togglePause: vi.fn(),
     onPauseChange: () => () => {},
+    onSourceChange: () => () => {},
+    sourceVersion: 0,
     ...changes,
   } as unknown as CaptureSession;
 }

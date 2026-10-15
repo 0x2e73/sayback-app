@@ -104,6 +104,14 @@
   --island-open-height: 240px;
   --radius-island: 10px;
   --radius-island-open: 24px;
+  /* The picker takes the place of what it replaces: the island never grows. */
+  --island-picker-height: 76px;
+  --island-tile-width: 88px;
+  --island-tile-thumb: 55px;
+  --island-preview-width: 138px;
+  --island-preview-height: 86px;
+  /* One line of live text; the fade at the top of the text is one line high too. */
+  --island-live-line: 20px;
 
   --shadow-float:
     0 1px 3px rgb(0 0 0 / 0.08), 0 12px 32px rgb(0 0 0 / 0.14), 0 0 0 1px var(--color-border);
@@ -479,7 +487,8 @@ button.chip:active:not(:disabled) {
     opacity: 1;
   }
   :root .spin,
-  :root .skeleton {
+  :root .skeleton,
+  :root .island .skeleton {
     animation: none;
   }
   :root .finalizing-line::before {

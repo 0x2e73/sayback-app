@@ -131,12 +131,13 @@ body {
 }
 .island-open {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto var(--island-preview-height) auto;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-5) var(--space-4);
 }
 .island-open-header {
   display: flex;
+  height: var(--control-xs);
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -157,33 +158,25 @@ body {
   font-size: var(--text-title);
 }
 
-/* Room kept for the preview (left) and the live text (right) of the next steps. */
-.island-stage {
-  display: grid;
-  grid-template-columns: 2fr 3fr;
-  gap: var(--space-4);
-  min-height: 0;
-}
-.island-preview-slot {
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-.island-live-slot {
-  align-self: center;
-  margin: 0;
-  color: var(--color-text-subtle);
-  font-size: var(--text-body);
-}
 .island-actions {
   display: flex;
   justify-content: flex-end;
+  gap: var(--space-2);
+}
+/* Recording: « Changer d'écran » on the left, Pause and Terminer on the right. */
+.island-open-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+.island-actions-end {
+  display: flex;
   gap: var(--space-2);
 }
 
 /* Ready: title, sources, screen, actions; the last row takes what is left. */
 .island-ready {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto var(--island-picker-height) minmax(0, 1fr);
   gap: var(--space-3);
   padding: var(--space-2) var(--space-5) var(--space-4);
 }
@@ -244,6 +237,30 @@ body {
   margin-inline-end: calc(var(--space-3) * -1);
   padding: 0 var(--space-3);
 }
+.island-ready-sources {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.island-ghost {
+  min-height: var(--control-sm);
+  margin-inline-start: calc(var(--space-3) * -1);
+  padding: 0 var(--space-3);
+}
+.island-switch {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.island-switch-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-danger);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
 .island-open-app {
   margin-inline-start: calc(var(--space-3) * -1);
   padding-inline: var(--space-3);
@@ -251,4 +268,246 @@ body {
 .island-ready-actions {
   align-self: end;
   justify-content: space-between;
+}
+
+/* The picker and what it replaces share one cell; the hidden layer is inert. */
+.island-swap {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+.island-swap-base,
+.island-swap-picker {
+  grid-area: 1 / 1;
+  min-width: 0;
+  min-height: 0;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+.island-swap-base[data-state='closing'] {
+  opacity: 0;
+  transform: translateY(var(--motion-drop));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+@starting-style {
+  .island-swap-picker {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .island-tile-body {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .island-tile-check {
+    opacity: 0;
+    transform: scale(var(--motion-scale-in));
+  }
+}
+.island-swap-picker[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+/* Opened or closed from the keyboard: the layers swap at once. */
+.island-swap[data-instant] .island-swap-base,
+.island-swap[data-instant] .island-swap-picker,
+.island-swap[data-instant] .island-tile-body {
+  transition: none;
+}
+
+/* Back button, then the tiles from 40 pt; the button sits level with the thumbnails. */
+.island-picker {
+  display: grid;
+  grid-template-columns: var(--control-sm) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  height: var(--island-picker-height);
+}
+.island-picker-back {
+  width: var(--control-sm);
+  min-height: var(--control-sm);
+  height: var(--control-sm);
+  margin-top: calc((var(--island-tile-thumb) - var(--control-sm)) / 2);
+  color: var(--color-text-muted);
+}
+.island-tiles {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+/* Six screens and more: the row scrolls, faded on its right edge. */
+.island-tiles[data-scrolling] {
+  mask-image: linear-gradient(
+    to right,
+    var(--color-island) calc(100% - var(--space-4)),
+    transparent
+  );
+}
+.island-tile {
+  flex: none;
+  width: var(--island-tile-width);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  text-align: start;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.island-tile:active:not(:disabled) {
+  transform: scale(var(--motion-press-soft));
+}
+.island-tile-body {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+/* Three levels of stagger at most. */
+.island-tile:nth-child(2) .island-tile-body {
+  transition-delay: var(--delay-1);
+}
+.island-tile:nth-child(3) .island-tile-body {
+  transition-delay: var(--delay-2);
+}
+.island-tile:nth-child(n + 4) .island-tile-body {
+  transition-delay: var(--delay-3);
+}
+.island-tile-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--island-tile-width);
+  height: var(--island-tile-thumb);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.island-tile-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (hover: hover) and (pointer: fine) {
+  .island-tile:hover:not(:disabled) .island-tile-thumb {
+    border-color: var(--color-border-strong);
+  }
+}
+/* The screen in use: an inner ring and a check, never the accent. */
+.island-tile[data-checked] .island-tile-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 2px var(--color-action);
+}
+.island-tile-check {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  display: grid;
+  place-items: center;
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-action);
+  color: var(--color-on-action);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.island-tile-name {
+  overflow: hidden;
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.island-tile[data-checked] .island-tile-name {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.island .skeleton {
+  background: var(--color-surface);
+  animation: skeleton-pulse var(--duration-ambient) var(--ease-ambient) infinite alternate;
+}
+
+/* The preview on the left, the live text on the right; either takes the room the other leaves. */
+.island-scene {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  height: var(--island-preview-height);
+}
+.island-scene[data-preview][data-text] {
+  grid-template-columns: var(--island-preview-width) minmax(0, 1fr);
+}
+.island-scene[data-preview]:not([data-text]) {
+  grid-template-columns: var(--island-preview-width);
+}
+.island-preview {
+  display: grid;
+  place-items: center;
+  width: var(--island-preview-width);
+  height: var(--island-preview-height);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-media);
+  color: var(--color-text-subtle);
+}
+.island-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* Paused, the last frame stays, dimmed. */
+.island[data-paused] .island-preview img {
+  opacity: 0.5;
+}
+.island-live,
+.island-live-waiting,
+.island-live-status {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-control);
+  line-height: var(--island-live-line);
+}
+/* The latest words sit at the bottom; the older ones overflow the top, fading out. */
+.island-live {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: var(--island-preview-height);
+  overflow: hidden;
+  color: var(--color-text);
+  mask-image: linear-gradient(to bottom, transparent, var(--color-island) var(--island-live-line));
+}
+.island-live-turns {
+  display: grid;
+}
+.island-live-turn {
+  margin: 0;
+  line-height: var(--island-live-line);
+}
+.island-live-track {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+.island-live-waiting {
+  align-self: center;
+  color: var(--color-text-subtle);
+}
+.island-live-status {
+  align-self: center;
+  color: var(--color-paused);
 }

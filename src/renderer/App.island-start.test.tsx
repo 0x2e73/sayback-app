@@ -23,9 +23,11 @@ const fakeSession = () => ({
   source: main,
   audioSources: { microphone: true, systemAudio: true },
   meeting: { ...finished, status: 'recording' as const },
-  analyser: { frequencyBinCount: 4, getByteFrequencyData: () => {} },
+  analyser: { fftSize: 4, getFloatTimeDomainData: () => {} },
   stop: vi.fn(async () => finished),
   onPauseChange: () => () => {},
+  onSourceChange: () => () => {},
+  sourceVersion: 0,
 });
 
 const request: RecordingStartRequest = {

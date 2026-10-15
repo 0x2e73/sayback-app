@@ -2,16 +2,16 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { LevelFeed } from '../../components/ui';
 import {
   MISSING_SIGNAL_DELAY,
   MissingSignalNotice,
   missingSignalText,
+  type SignalFeed,
 } from './MissingSignalNotice';
 
-let emit: (level: number) => void;
-const feed: LevelFeed = {
-  onLevel(listener) {
+let emit: (present: boolean) => void;
+const feed: SignalFeed = {
+  onSignal(listener) {
     emit = listener;
     return () => {};
   },
@@ -36,7 +36,7 @@ it('announces politely that no signal arrives after ten seconds', () => {
 it('waits again when a signal comes back', () => {
   render(<MissingSignalNotice feed={feed} sources={microphone} />);
   act(() => vi.advanceTimersByTime(MISSING_SIGNAL_DELAY));
-  act(() => emit(0.2));
+  act(() => emit(true));
   expect(screen.queryByRole('status')).toBeNull();
   act(() => vi.advanceTimersByTime(MISSING_SIGNAL_DELAY - 1));
   expect(screen.queryByRole('status')).toBeNull();
@@ -44,10 +44,19 @@ it('waits again when a signal comes back', () => {
   expect(screen.getByRole('status')).toBeInTheDocument();
 });
 
+it('counts digital silence as no signal', () => {
+  render(<MissingSignalNotice feed={feed} sources={microphone} />);
+  for (let second = 0; second < 10; second += 1) {
+    act(() => emit(false));
+    act(() => vi.advanceTimersByTime(1000));
+  }
+  expect(screen.getByRole('status')).toBeInTheDocument();
+});
+
 it('stays quiet while a signal keeps coming', () => {
   render(<MissingSignalNotice feed={feed} sources={microphone} />);
   for (let second = 0; second < 30; second += 1) {
-    act(() => emit(0.2));
+    act(() => emit(true));
     act(() => vi.advanceTimersByTime(1000));
   }
   expect(screen.queryByRole('status')).toBeNull();

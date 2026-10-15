@@ -1,7 +1,13 @@
 import { act, render } from '@testing-library/react';
 import { vi } from 'vitest';
 import type { IslandApi } from '../../shared/contracts';
-import type { IslandReadyState, IslandSnapshot } from '../../shared/island';
+import type {
+  IslandReadyState,
+  IslandScreen,
+  IslandSnapshot,
+  IslandThumbnail,
+} from '../../shared/island';
+import type { IslandLiveSnapshot, LiveSegment } from '../../shared/live';
 import type { RecordingStartOutcome } from '../../shared/recording-start';
 import type { RecordingState } from '../../shared/recording-state';
 import { IslandApp } from './IslandApp';
@@ -18,11 +24,29 @@ export const shape: IslandSnapshot['shape'] = {
 export const recording = (extra: Partial<RecordingState> = {}): RecordingState =>
   ({ recording: true, elapsed: 12, paused: false, stopping: false, ...extra }) as RecordingState;
 
+export const twoScreens: IslandScreen[] = [
+  { id: 'screen:1:0', name: 'Écran 1' },
+  { id: 'screen:2:0', name: 'Écran 2' },
+];
+
+/** A recording island, its capture on the first screen unless told otherwise. */
+export const recordingSnapshot = (
+  extra: Partial<RecordingState> = {},
+  screens: IslandScreen[] = twoScreens,
+  expanded = true,
+): IslandSnapshot => ({
+  mode: 'recording',
+  recording: recording({ sourceId: 'screen:1:0', ...extra }),
+  screens,
+  expanded,
+  shape,
+});
+
 export const readyState = (extra: Partial<IslandReadyState> = {}): IslandReadyState => ({
   title: 'Réunion du 15 octobre, 11 h 00',
   remembered: { microphone: true, systemAudio: true, screen: true },
   screen: { id: 'screen:1:0', name: 'Écran 1' },
-  screenCount: 2,
+  screens: twoScreens,
   error: null,
   ...extra,
 });
@@ -40,16 +64,30 @@ interface Listeners {
   expanded(expanded: boolean): void;
   level: Set<(level: number) => void>;
   startResult(outcome: RecordingStartOutcome): void;
+  preview(jpeg: Uint8Array): void;
+  live(snapshot: IslandLiveSnapshot): void;
+  segment(segment: LiveSegment): void;
 }
 
-export function fakeIsland(first: IslandSnapshot) {
+const noThumbnails: IslandThumbnail[] = [];
+
+/** `live`: what `liveSnapshot` answers, the text turned off unless given. */
+export function fakeIsland(first: IslandSnapshot, live: IslandLiveSnapshot = { enabled: false }) {
   const listeners: Listeners = {
     state: () => {},
     expanded: () => {},
     level: new Set(),
     startResult: () => {},
+    preview: () => {},
+    live: () => {},
+    segment: () => {},
   };
   const request = vi.fn<IslandApi['request']>(async () => ({ ok: true, value: undefined }));
+  const screenThumbnails = vi.fn<IslandApi['screenThumbnails']>(async () => ({
+    ok: true,
+    value: noThumbnails,
+  }));
+  const liveSnapshot = vi.fn<IslandApi['liveSnapshot']>(async () => ({ ok: true, value: live }));
   const api: IslandApi = {
     ready: async () => ({ ok: true, value: first }),
     request,
@@ -69,10 +107,29 @@ export function fakeIsland(first: IslandSnapshot) {
       listeners.startResult = listener;
       return () => {};
     },
+    screenThumbnails,
+    onPreview: (listener) => {
+      listeners.preview = listener;
+      return () => {};
+    },
+    liveSnapshot,
+    onLive: (listener) => {
+      listeners.live = listener;
+      return () => {};
+    },
+    onLiveSegment: (listener) => {
+      listeners.segment = listener;
+      return () => {};
+    },
   };
   return {
     api,
     request,
+    screenThumbnails,
+    liveSnapshot,
+    preview: (jpeg: Uint8Array) => act(() => listeners.preview(jpeg)),
+    live: (snapshot: IslandLiveSnapshot) => act(() => listeners.live(snapshot)),
+    segment: (segment: LiveSegment) => act(() => listeners.segment(segment)),
     push: (snapshot: IslandSnapshot) => act(() => listeners.state(snapshot)),
     expand: (expanded: boolean) => act(() => listeners.expanded(expanded)),
     level: (value: number) => act(() => listeners.level.forEach((listener) => listener(value))),
@@ -80,8 +137,8 @@ export function fakeIsland(first: IslandSnapshot) {
   };
 }
 
-export async function shown(snapshot: IslandSnapshot) {
-  const island = fakeIsland(snapshot);
+export async function shown(snapshot: IslandSnapshot, live?: IslandLiveSnapshot) {
+  const island = fakeIsland(snapshot, live);
   render(<IslandApp api={island.api} now={() => Date.now()} />);
   await act(async () => {});
   return island;

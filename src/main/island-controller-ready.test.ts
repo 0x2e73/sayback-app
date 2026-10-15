@@ -30,7 +30,10 @@ describe('the ready island', () => {
         title: 'Réunion du 15 octobre, 11 h 00',
         remembered: { microphone: true, systemAudio: true, screen: true },
         screen: { id: 'screen:1:0', name: 'Écran 1' },
-        screenCount: 2,
+        screens: [
+          { id: 'screen:1:0', name: 'Écran 1' },
+          { id: 'screen:2:0', name: 'Écran 2' },
+        ],
         error: null,
       },
     });
@@ -102,18 +105,49 @@ describe('the ready island', () => {
     expect(ports.openPrivacySettings).toHaveBeenCalledOnce();
   });
 
-  it('moves to the next screen and back to the first, listing them again', async () => {
+  it('takes the screen picked in its picker, listing the screens again', async () => {
     const { island, ports, opened: current } = await opened();
-    island.request('cycle-screen');
-    await vi.advanceTimersByTimeAsync(0);
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
     expect(readyOf(lastState(current().sent)).screen).toEqual({
       id: 'screen:2:0',
       name: 'Écran 2',
     });
-    island.request('cycle-screen');
-    await vi.advanceTimersByTimeAsync(0);
+    expect(ports.ready.screens).toHaveBeenCalledTimes(2);
+    expect(ports.switchScreen).not.toHaveBeenCalled();
+  });
+
+  it('lands the latest of two picks whose listings cross', async () => {
+    const { island, ports, opened: current } = await opened();
+    let slow: (listed: typeof screens) => void = () => {};
+    ports.ready.screens.mockReturnValueOnce(new Promise((resolve) => (slow = resolve)));
+    const first = island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    await island.request({ type: 'select-screen', screenId: 'screen:1:0' });
+    slow(screens);
+    await first;
     expect(readyOf(lastState(current().sent)).screen?.id).toBe('screen:1:0');
-    expect(ports.ready.screens).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps the screen of a start under way when a pick lands', async () => {
+    const { island, ports } = await opened();
+    let listed: (value: typeof screens) => void = () => {};
+    ports.ready.screens.mockReturnValueOnce(new Promise((resolve) => (listed = resolve)));
+    const picked = island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    ports.ready.start.mockReturnValueOnce(new Promise(() => {}));
+    island.request(start);
+    listed(screens);
+    await picked;
+    expect(readyOf(island.ready()).screen?.id).toBe('screen:1:0');
+  });
+
+  it('falls back to the main screen when the picked one is gone', async () => {
+    const { island, ports, opened: current } = await opened();
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    ports.ready.screens.mockResolvedValueOnce([screens[0]!]);
+    await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    expect(readyOf(lastState(current().sent))).toMatchObject({
+      screen: { id: 'screen:1:0' },
+      screens: [{ id: 'screen:1:0', name: 'Écran 1' }],
+    });
   });
 });
 
@@ -183,16 +217,14 @@ describe('starting from the ready island', () => {
     expect(first.sent.some(([channel]) => channel === 'island:start-result')).toBe(false);
   });
 
-  it('becomes the recording island in the same window once the recording starts', async () => {
+  it('becomes the recording island in the same window, folded into wings', async () => {
     const { hub, island, ports, hover, opened: current } = await opened();
     hub.publish(running);
     await vi.advanceTimersByTimeAsync(1_000);
     expect(ports.openWindow).toHaveBeenCalledOnce();
     expect(lastState(current().sent)?.mode).toBe('recording');
-    expect(hover.options).toMatchObject({
-      delays: RECORDING_HOVER,
-      initial: { expanded: true, entered: true },
-    });
+    expect(hover.options).toMatchObject({ delays: RECORDING_HOVER, initial: { expanded: false } });
+    expect(current().sent).toContainEqual(['island:expanded', false]);
     island.request('close');
     expect(island.window()).not.toBeNull();
   });
@@ -217,6 +249,6 @@ describe('the icon during a recording', () => {
     island.toggle();
     expect(hover.expand).toHaveBeenCalledOnce();
     expect(ports.openWindow).toHaveBeenCalledOnce();
-    expect(ports.ready.screens).not.toHaveBeenCalled();
+    expect(ports.ready.prefs).not.toHaveBeenCalled();
   });
 });

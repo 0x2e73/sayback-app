@@ -1,8 +1,10 @@
 import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
 import type { RecordingRequest, RecordingState } from './recording-state';
-import type { IslandRequest, IslandSnapshot } from './island';
+import type { IslandRequest, IslandSnapshot, IslandThumbnail } from './island';
 import type { RecordingStartOutcome, RecordingStartRequest } from './recording-start';
+import type { IslandLiveSnapshot, LiveSegment, LiveTrack } from './live';
+import type { ScreenSwitchRequest } from './screen-switch';
 import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
 export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
@@ -34,6 +36,8 @@ export interface Settings {
   model: string;
   onboardingCompleted: boolean;
   appearance: Appearance;
+  /** The live draft is sent to the island; off, the island receives no text at all. */
+  islandLiveText: boolean;
 }
 export interface SettingsInput {
   notesProvider: NotesProvider;
@@ -138,6 +142,19 @@ export interface DesktopApi {
   onMenuBarNewRecording(listener: () => void): () => void;
   /** Audio level of the recording, 0 to 1, ten times a second; the island draws it. */
   sendLevel(level: number): void;
+  /**
+   * A 16 kHz mono block of one track for the live draft, starting `offset` samples into the
+   * track, pauses excluded; nothing is stored.
+   */
+  sendPcm(track: LiveTrack, samples: Int16Array, offset: number): void;
+  /** A downscaled JPEG frame of the capture, about once a second, for the island's preview. */
+  sendPreview(jpeg: Uint8Array): void;
+  /**
+   * A screen chosen in the recording island, with a primed activation: switch the capture and
+   * answer with `answerScreenSwitch`. Returns the unsubscribe function.
+   */
+  onScreenSwitchRequest(listener: (request: ScreenSwitchRequest) => void): () => void;
+  answerScreenSwitch(id: string, ok: boolean): Promise<Result<void>>;
   /** Pause, resume or stop asked from the menu bar or the island. Returns the unsubscribe function. */
   onRecordingRequest(listener: (request: RecordingRequest) => void): () => void;
   /**
@@ -163,18 +180,31 @@ export interface DesktopApi {
   onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
   /** Stores the colour scheme and applies it to the window at once. */
   setAppearance(value: Appearance): Promise<Result<void>>;
+  /** Stored at once, like the appearance; the island follows without a reload. */
+  setIslandLiveText(value: boolean): Promise<Result<void>>;
 }
 /** What the island page may do: it only talks to the main process. */
 export interface IslandApi {
   /** Shows the island and returns what it must draw. */
   ready(): Promise<Result<IslandSnapshot>>;
+  /** A screen switch during a recording answers once tried: an error when it failed. */
   request(request: IslandRequest): Promise<Result<void>>;
+  /** The picker's thumbnails, read at its opening. */
+  screenThumbnails(): Promise<Result<IslandThumbnail[]>>;
   /** Each listener returns the function that stops listening. */
   onState(listener: (snapshot: IslandSnapshot) => void): () => void;
   onExpanded(listener: (expanded: boolean) => void): () => void;
   onLevel(listener: (level: number) => void): () => void;
+  /** A preview frame of the capture, JPEG bytes, about once a second during a recording. */
+  onPreview(listener: (jpeg: Uint8Array) => void): () => void;
   /** The end of a `start`: busy is over; on failure, the error to show. */
   onStartResult(listener: (outcome: RecordingStartOutcome) => void): () => void;
+  /** The live text now; asked once the listeners below are set, and after any reload. */
+  liveSnapshot(): Promise<Result<IslandLiveSnapshot>>;
+  /** Replaces everything: on a status change, at the end of a recording, when the setting moves. */
+  onLive(listener: (snapshot: IslandLiveSnapshot) => void): () => void;
+  /** One utterance, new or revised: replaces the segment of the same id with a lower revision. */
+  onLiveSegment(listener: (segment: LiveSegment) => void): () => void;
 }
 /** The answer of a channel that was called too fast; the page may drop it silently. */
 export const RATE_LIMITED = 'Trop de demandes. Réessayez dans un instant.';

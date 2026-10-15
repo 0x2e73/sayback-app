@@ -10,7 +10,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServices, type DesktopServices } from './services';
-import { createIpcRegistrar } from './ipc';
+import { createIpcRegistrar, type IpcRegistrar } from './ipc';
 import { registerMeetingMenu } from './meeting-menu';
 import { createWindowRoles } from './window-roles';
 import {
@@ -19,7 +19,7 @@ import {
   registerMeetingHandlers,
   registerSettingsHandlers,
 } from './meeting-handlers';
-import { listScreens, registerCapture } from './capture-permissions';
+import { listScreens, listScreenThumbnails, registerCapture } from './capture-permissions';
 import { capturePermission } from './capture-sources';
 import { createCapturePrefsStore } from '../backend/infrastructure/capture-prefs-store';
 import { registerCapturePrefs } from './capture-prefs';
@@ -34,6 +34,11 @@ import type { Island } from './island-controller';
 import { registerIslandHandlers } from './island-handlers';
 import { createElectronIsland } from './island-window';
 import { createStartRelay, registerStartRelay } from './start-relay';
+import { createScreenSwitchRelay, registerScreenSwitchRelay } from './screen-switch-relay';
+import { composeLive } from './live-composition';
+import { registerLiveHandlers } from './live-handlers';
+import { createIslandLiveRelay, registerIslandLive } from './island-live';
+import type { LiveServices } from './live-services';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
@@ -56,6 +61,10 @@ const dataRoot =
   (existsSync(legacyDataRoot) ? legacyDataRoot : join(app.getPath('appData'), 'SayBack'));
 mkdirSync(dataRoot, { recursive: true });
 app.setPath('userData', dataRoot);
+// One SayBack per data folder: a second one would share the database, the recordings and the
+// PID file of the live server. A second launch brings the first one forward and quits.
+const primaryInstance = app.requestSingleInstanceLock();
+if (!primaryInstance) app.quit();
 const rendererPath = join(import.meta.dirname, '../renderer/index.html');
 // The development server URL is never honoured by a packaged app.
 const devRendererUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
@@ -68,6 +77,9 @@ let services: DesktopServices | undefined;
 let updates: UpdateService | undefined;
 let menuBar: MenuBar | null = null;
 let island: Island | null = null;
+let live: LiveServices | null = null;
+let revealApp: (() => void) | null = null;
+let liveEnded = false;
 const recordingState = createRecordingStateHub();
 
 function isRecording(): boolean {
@@ -98,7 +110,27 @@ function openWindow(show = true): BrowserWindow | null {
   return opened;
 }
 
+// The live engine, and its draft relayed to the island while the setting allows it.
+function startLive(registrar: IpcRegistrar, desktop: DesktopServices, root: string): LiveServices {
+  const engine = composeLive(
+    recordingState,
+    root,
+    () => desktop.credentials.settings().whisperModelPath,
+  );
+  registerLiveHandlers(registrar, engine.live);
+  const islandLive = createIslandLiveRelay({
+    transcript: engine.transcript,
+    enabled: () => desktop.credentials.settings().islandLiveText,
+    window: () => island?.window() ?? null,
+  });
+  registerIslandLive(registrar.handle, islandLive, {
+    set: (value) => desktop.credentials.setIslandLiveText(value),
+  });
+  return engine.live;
+}
+
 void app.whenReady().then(() => {
+  if (!primaryInstance) return;
   const root = app.getPath('userData');
   const desktop = createServices(root, {
     available: () => safeStorage.isEncryptionAvailable(),
@@ -141,8 +173,11 @@ void app.whenReady().then(() => {
     openHiddenWindow: () => openWindow(false),
   });
   registerStartRelay(registrar, startRelay);
+  const screenSwitch = createScreenSwitchRelay({ getWindow: liveWindow });
+  registerScreenSwitchRelay(registrar, screenSwitch);
   // A single icon for the whole run: `activate` and page reloads never come through here.
   menuBar = createElectronMenuBar(menuBarActions, () => island?.toggle());
+  revealApp = menuBarActions.open;
   recordingState.subscribe((snapshot) => menuBar?.announce(snapshot));
   recordingState.subscribe(createRecordingPower({ page: livePage, blocker: powerSaveBlocker }));
   registerRecordingState(handle, recordingState, () => {
@@ -168,11 +203,14 @@ void app.whenReady().then(() => {
       });
     },
     request: menuBarActions.request,
+    switchScreen: (screenId) => screenSwitch.switchScreen(screenId),
   });
-  if (island) registerIslandHandlers(registrar, island);
+  if (island) registerIslandHandlers(registrar, island, listScreenThumbnails);
+  live = startLive(registrar, desktop, root);
   openWindow();
 });
 
+app.on('second-instance', () => revealApp?.());
 // The window may be hidden, carrying a capture started from the island: the Dock shows it.
 app.on('activate', () => {
   if (!window) openWindow();
@@ -183,7 +221,19 @@ app.on('window-all-closed', () => {
 });
 // Back in the foreground: the update channel is re-read.
 app.on('browser-window-focus', () => updates?.windowFocused());
-app.on('will-quit', () => {
+app.on('will-quit', (event) => {
+  // The quit waits for the live server to be gone: no process outlives the app.
+  if (live && !liveEnded) {
+    event.preventDefault();
+    void live
+      .shutdown()
+      .catch((error: unknown) => console.error('[live] the engine did not stop', error))
+      .then(() => {
+        liveEnded = true;
+        app.quit();
+      });
+    return;
+  }
   island?.close();
   menuBar?.destroy();
   void updates?.stop();

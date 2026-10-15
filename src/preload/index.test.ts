@@ -112,6 +112,8 @@ it('sends the chosen appearance on its own channel', async () => {
   if (!api) throw new Error('the preload exposed nothing');
   await api.setAppearance('light');
   expect(ipcRenderer.invoke).toHaveBeenCalledWith('settings:set-appearance', 'light');
+  await api.setIslandLiveText(false);
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('settings:set-island-live-text', false);
 });
 
 it('sends the audio level to the main process without waiting for an answer', () => {
@@ -130,4 +132,58 @@ it('asks the main process for the menu of a meeting row on its own channel', asy
   const request = { meetingId: 'm', folders: [], folderId: null, disabled: false };
   await api.openMeetingMenu(request);
   expect(ipcRenderer.invoke).toHaveBeenCalledWith('meeting:context-menu', request);
+});
+
+it('sends a live audio block of a known track and a bounded size, and nothing else', () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  electron.send.mockClear();
+  const block = new Int16Array(3_200);
+  api.sendPcm('microphone', block, 0);
+  api.sendPcm('system', new Int16Array(16_000), 3_200);
+  api.sendPcm('microphone', new Int16Array(0), 0);
+  api.sendPcm('microphone', new Int16Array(16_001), 0);
+  api.sendPcm('speaker' as 'system', block, 0);
+  api.sendPcm('system', new Float32Array(3_200) as unknown as Int16Array, 0);
+  api.sendPcm('microphone', block, -1);
+  api.sendPcm('microphone', block, 1.5);
+  api.sendPcm('microphone', block, Number.NaN);
+  api.sendPcm('microphone', block, 86_400 * 16_000 + 1);
+  expect(electron.send.mock.calls.map(([channel, payload]) => [channel, payload.track])).toEqual([
+    ['live:pcm', 'microphone'],
+    ['live:pcm', 'system'],
+  ]);
+  expect(electron.send.mock.calls[0]?.[1].samples).toBe(block);
+});
+
+it('sends a preview frame of bounded JPEG bytes, and nothing else', () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  electron.send.mockClear();
+  const frame = new Uint8Array([255, 216, 255]);
+  api.sendPreview(frame);
+  api.sendPreview(new Uint8Array(0));
+  api.sendPreview(new Uint8Array(256 * 1024 + 1));
+  api.sendPreview([255, 216] as unknown as Uint8Array);
+  expect(electron.send.mock.calls).toEqual([['live:preview', frame]]);
+});
+
+it('relays a screen switch from the island, and answers it', async () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  const seen: unknown[] = [];
+  const stop = api.onScreenSwitchRequest((request) => seen.push(request));
+  const relay = electron.listeners.get('recording:switch-screen');
+  const request = { id: 'a', screenId: 'screen:2:0' };
+  for (const sent of [request, null, { id: 'b' }, { id: 3, screenId: 'screen:2:0' }]) {
+    relay?.({}, sent);
+  }
+  expect(seen).toEqual([request]);
+  stop();
+  expect(electron.listeners.has('recording:switch-screen')).toBe(false);
+  await api.answerScreenSwitch('a', false);
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('recording:switch-result', {
+    id: 'a',
+    ok: false,
+  });
 });

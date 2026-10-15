@@ -33,25 +33,38 @@ const snapshot = {
   expanded: false,
   shape: { kind: 'notch' },
   mode: 'recording',
+  screens: [{ id: 'screen:1:0', name: 'Écran 1' }],
 };
 const readySnapshot = {
   ...snapshot,
   recording: { recording: false },
   mode: 'ready',
-  ready: { title: 'Réunion', screen: null, screenCount: 0, error: null },
+  ready: { title: 'Réunion', screen: null, screens: [], error: null },
 };
 
-it('exposes only the two island channels to call, and listens to four', () => {
+it('exposes only the four island channels to call, and listens to seven', () => {
   void api.ready();
   void api.request('pause');
-  expect(electron.invoke.mock.calls).toEqual([['island:ready'], ['island:request', 'pause']]);
+  void api.liveSnapshot();
+  void api.screenThumbnails();
+  expect(electron.invoke.mock.calls).toEqual([
+    ['island:ready'],
+    ['island:request', 'pause'],
+    ['island:live-snapshot'],
+    ['island:screen-thumbnails'],
+  ]);
   expect(Object.keys(api).sort()).toEqual([
+    'liveSnapshot',
     'onExpanded',
     'onLevel',
+    'onLive',
+    'onLiveSegment',
+    'onPreview',
     'onStartResult',
     'onState',
     'ready',
     'request',
+    'screenThumbnails',
   ]);
 });
 
@@ -75,6 +88,7 @@ it('passes a state snapshot, ignoring malformed ones, until it unsubscribes', ()
     'state',
     { recording: {}, shape: {} },
     { ...snapshot, mode: 'other' },
+    { ...snapshot, screens: undefined },
     { ...readySnapshot, ready: undefined },
     readySnapshot,
   ];
@@ -95,4 +109,10 @@ it('passes the opening and closing, ignoring anything but a boolean', () => {
 it('passes a level between 0 and 1 only', () => {
   const sent = [0.4, -1, 2, Number.NaN, '0.5', 1];
   expect(relayed(api.onLevel, 'island:level', sent)).toEqual([0.4, 1]);
+});
+
+it('passes a preview frame of JPEG bytes only, within its bound', () => {
+  const frame = new Uint8Array([255, 216, 255]);
+  const sent = [frame, new Uint8Array(0), new Uint8Array(256 * 1024 + 1), [255, 216], 'jpeg'];
+  expect(relayed(api.onPreview, 'island:preview', sent)).toEqual([frame]);
 });

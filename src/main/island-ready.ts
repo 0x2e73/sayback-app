@@ -39,9 +39,15 @@ const SCREEN_PROBLEMS: readonly string[] = ['screen-denied', 'no-screen'] satisf
 const shown = (screen: ListedScreen | undefined): IslandScreen | null =>
   screen ? { id: screen.id, name: screen.name } : null;
 
+/** The tiles of the picker: the screens as listed, without their primary mark. */
+export const tilesOf = (screens: readonly ListedScreen[]): IslandScreen[] =>
+  screens.map(({ id, name }) => ({ id, name }));
+
 /** One opening of the ready island: its state, its start and its error hold. */
 export class ReadySession {
   private busy = false;
+  // Each reread of the screens moves it on: only the latest pick lands.
+  private rereads = 0;
   private holdTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
 
@@ -65,7 +71,7 @@ export class ReadySession {
       title: defaultMeetingTitle(ports.today()),
       remembered: { microphone, systemAudio, screen },
       screen: shown(chosen),
-      screenCount: screens.length,
+      screens: tilesOf(screens),
       error: screen ? screenProblem(screens.length > 0, ports.screenPermission()) : null,
     };
     return new ReadySession(state, prefs.screenId, ports, events);
@@ -95,21 +101,15 @@ export class ReadySession {
     this.finish(outcome);
   }
 
-  /** « Changer » and « Réessayer »: lists the screens again and moves to the next one. */
-  async cycleScreen(): Promise<void> {
-    const screens = await this.ports.screens();
-    if (this.disposed) return;
-    const index = screens.findIndex((item) => item.id === this.current.screen?.id);
-    const problem = screenProblem(screens.length > 0, this.ports.screenPermission());
-    this.current = {
-      ...this.current,
-      screen: shown(screens[(index + 1) % screens.length]),
-      screenCount: screens.length,
-      error: problem,
-    };
-    if (problem) this.holdError();
-    else this.releaseHold();
-    this.events.changed();
+  /** A tile of the picker: the screens are listed again, the chosen one kept if still there. */
+  async selectScreen(screenId: string): Promise<void> {
+    if (this.busy) return;
+    await this.reread(screenId);
+  }
+
+  /** « Réessayer »: lists the screens again, keeping the current one if it is still there. */
+  async retryScreens(): Promise<void> {
+    await this.reread(this.current.screen?.id);
   }
 
   /**
@@ -130,10 +130,30 @@ export class ReadySession {
     this.current = {
       ...this.current,
       screen: shown(kept),
-      screenCount: screens.length,
+      screens: tilesOf(screens),
       error: startError ? error : problem,
     };
     if (!startError && problem && !error) this.holdError();
+  }
+
+  private async reread(wanted: string | undefined): Promise<void> {
+    const turn = ++this.rereads;
+    const screens = await this.ports.screens();
+    // A start under way keeps the screen it was sent with.
+    if (this.disposed || turn !== this.rereads || this.busy) return;
+    const problem = screenProblem(screens.length > 0, this.ports.screenPermission());
+    const chosen =
+      screens.find((item) => item.id === wanted) ??
+      screens.find((item) => item.id === defaultScreenId(screens, this.rememberedScreenId));
+    this.current = {
+      ...this.current,
+      screen: shown(chosen),
+      screens: tilesOf(screens),
+      error: problem,
+    };
+    if (problem) this.holdError();
+    else this.releaseHold();
+    this.events.changed();
   }
 
   /** Closed: late answers and timers are dropped. */

@@ -18,3 +18,8 @@ export interface Intelligence {
   transcribe(meetingId: string, chunk: AudioChunk): Promise<Segment[]>;
   summarize(meeting: Meeting): Promise<Notes>;
 }
+/** Local speech to text for the live draft; never a remote provider. */
+export interface LiveEngine {
+  /** Text of 16 kHz mono samples. Rejects when the engine is not ready. */
+  transcribe(samples: Int16Array, signal: AbortSignal): Promise<string>;
+}
