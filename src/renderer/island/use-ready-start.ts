@@ -7,18 +7,13 @@ import {
   type SourceToggles,
 } from '../../shared/capture-selection';
 import type { IslandApi } from '../../shared/contracts';
-import type { IslandReadyState, IslandScreen } from '../../shared/island';
+import type { IslandReadyState, IslandRequest, IslandScreen } from '../../shared/island';
 import type { IslandStart, RecordingStartError } from '../../shared/recording-start';
 
-/** An error of this page's own start, valid until the main process sends a newer state. */
-interface StartFailure {
-  error: RecordingStartError | null;
-  over: IslandReadyState;
-}
-
 /**
- * What replaces the screen line. The audio rule is checked here at once, the screen errors only
- * matter with the screen on, and a reported missing audio source is gone once one is back.
+ * What replaces the screen line. The audio rule is checked here at once; a failed or interrupted
+ * start shows whatever the chips; the screen errors only matter with the screen on, and a refusal
+ * reported by main names the cause better than a missing screen.
  */
 export function readyLineError(
   selection: SourceToggles,
@@ -28,8 +23,9 @@ export function readyLineError(
   if (!hasAudioSource(selection)) return 'no-audio-source';
   if (reported === 'failed' || reported === 'interrupted') return reported;
   if (!selection.screen) return null;
+  if (reported === 'screen-denied') return reported;
   if (!screen) return 'no-screen';
-  return reported === 'no-audio-source' ? null : reported;
+  return reported === 'no-screen' ? reported : null;
 }
 
 /** Left as it was offered, the title names the moment the recording starts, as in the dialog. */
@@ -41,34 +37,38 @@ export function startRequest(selection: SourceToggles, screen: IslandScreen | nu
   return { type: 'start', title, selection };
 }
 
-/** The chips, set once from the remembered sources, then the start and its answer. */
-export function useReadyStart(api: IslandApi, ready: IslandReadyState) {
+/**
+ * The chips, set once from the remembered sources, then the start and its answer. The error of
+ * the last start stays until the next answer, or until the user tries another screen: main sends
+ * no state after a failed start.
+ */
+export function useReadyStart(
+  api: IslandApi,
+  ready: IslandReadyState,
+  onRequest: (request: IslandRequest) => void,
+) {
   const [selection, setSelection] = useState(() => normalizeSelection(ready.remembered));
   const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<StartFailure | null>(null);
+  const [failure, setFailure] = useState<RecordingStartError | null>(null);
   // A state update is too late to stop a second click fired in the same tick.
   const sending = useRef(false);
-  const latest = useRef(ready);
-  useEffect(() => {
-    latest.current = ready;
-  });
 
   const fail = useCallback((error: RecordingStartError) => {
     sending.current = false;
     setBusy(false);
-    setFailure({ error, over: latest.current });
+    setFailure(error);
   }, []);
 
-  // A success is not an answer here: the recording state that follows replaces this content.
+  // A success ends nothing here: the recording state that follows replaces this content.
   useEffect(
     () =>
       api.onStartResult((outcome) => {
-        if (!outcome.ok) fail(outcome.error);
+        if (outcome.ok) setFailure(null);
+        else fail(outcome.error);
       }),
     [api, fail],
   );
 
-  const reported = failure?.over === ready ? failure.error : ready.error;
   const canStart = hasAudioSource(selection) && (!selection.screen || ready.screen !== null);
 
   function toggle(key: SourceKey): void {
@@ -79,7 +79,6 @@ export function useReadyStart(api: IslandApi, ready: IslandReadyState) {
     if (sending.current || !canStart) return;
     sending.current = true;
     setBusy(true);
-    setFailure({ error: null, over: ready });
     api.request(startRequest(selection, ready.screen)).then(
       (result) => {
         if (!result.ok) fail('failed');
@@ -88,12 +87,20 @@ export function useReadyStart(api: IslandApi, ready: IslandReadyState) {
     );
   }
 
+  /** « Changer » and « Réessayer » are a new attempt: main reports what it finds. */
+  function request(wanted: IslandRequest): void {
+    if (wanted === 'cycle-screen') setFailure(null);
+    onRequest(wanted);
+  }
+
   return {
     selection,
     busy,
     canStart,
-    error: readyLineError(selection, ready.screen, reported),
+    // Busy, nothing from before is shown: the answer will say.
+    error: busy ? null : readyLineError(selection, ready.screen, failure ?? ready.error),
     toggle,
     start,
+    request,
   };
 }

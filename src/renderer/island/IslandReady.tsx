@@ -26,7 +26,7 @@ export function IslandReady({
   onLeft,
   onRequest,
 }: IslandReadyProps) {
-  const start = useReadyStart(api, ready);
+  const start = useReadyStart(api, ready, onRequest);
   const reachable = expanded && !leaving;
 
   function faded(event: TransitionEvent<HTMLDivElement>): void {
@@ -67,7 +67,7 @@ export function IslandReady({
         screenOn={start.selection.screen}
         error={start.error}
         busy={start.busy}
-        onRequest={onRequest}
+        onRequest={start.request}
       />
       <div className="island-actions island-ready-actions">
         <Button

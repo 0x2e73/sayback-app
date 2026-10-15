@@ -159,6 +159,37 @@ describe('ready island errors', () => {
     expect(island.request).toHaveBeenLastCalledWith('open');
   });
 
+  it('keeps the error of its start when a later state arrives without one', async () => {
+    const island = await opened(readySnapshot());
+    press('Démarrer');
+    island.result({ ok: false, error: 'screen-denied' });
+    island.push(readySnapshot());
+    expect(screen.getByRole('alert')).toHaveTextContent('Autorisation d’écran refusée.');
+  });
+
+  it('shows no error from before while a start is busy', async () => {
+    await opened(readySnapshot({ error: 'screen-denied' }));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    press('Démarrer');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Écran 1')).toBeInTheDocument();
+  });
+
+  it('names a refused screen rather than a missing one', async () => {
+    await opened(readySnapshot({ screen: null, screenCount: 0, error: 'screen-denied' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Autorisation d’écran refusée.');
+  });
+
+  it('drops the error of its start once the user tries another screen', async () => {
+    const island = await opened(readySnapshot());
+    press('Démarrer');
+    island.result({ ok: false, error: 'no-screen' });
+    press('Réessayer');
+    island.push(readySnapshot({ screen: { id: 'screen:2:0', name: 'Écran 2' } }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Écran 2')).toBeInTheDocument();
+  });
+
   it('clears the error of the last start when starting again', async () => {
     const island = await opened(readySnapshot());
     press('Démarrer');
