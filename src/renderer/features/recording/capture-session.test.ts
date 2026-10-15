@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
 import { CaptureSession } from './capture-session';
+import { INERT_LIVE_TAP, type LiveTap } from './live-tap';
 import type { CaptureSource, DesktopApi, Meeting } from '../../../shared/contracts';
 
 const displayTracks: Array<{ stop: () => void; onended: (() => void) | null }> = [];
 const resources = vi.hoisted(() => ({ open: vi.fn() }));
+const sendPcm = vi.fn();
 vi.mock('./capture-resources', () => ({ openCaptureResources: resources.open }));
 
 class FakeStream {
@@ -54,6 +56,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   resources.open.mockReset();
+  sendPcm.mockReset();
   displayTracks.length = 0;
 });
 
@@ -69,6 +72,7 @@ it('switches the recorded display while keeping the meeting and audio capture ac
     display: first,
     audio,
     analyser: {},
+    live: INERT_LIVE_TAP,
     replaceDisplay: vi.fn(async (next: MediaStream) => {
       displayTracks[0]?.stop();
       captureResources.display = next;
@@ -105,18 +109,23 @@ it('switches the recorded display while keeping the meeting and audio capture ac
   await capture.stop();
 });
 
-async function startWithLimit(onEnded: () => void): Promise<CaptureSession> {
+async function startWithLimit(
+  onEnded: () => void,
+  live: LiveTap = INERT_LIVE_TAP,
+): Promise<CaptureSession> {
   vi.stubGlobal('MediaStream', FakeStream);
   vi.stubGlobal('MediaRecorder', FakeRecorder);
   resources.open.mockResolvedValue({
     audio: new FakeStream([{}]) as unknown as MediaStream,
     analyser: {},
+    live,
     replaceDisplay: vi.fn(),
     dispose: vi.fn(async () => undefined),
   });
   const meeting = { id: 'meeting-1' } as Meeting;
   const api = {
     createMeeting: vi.fn(async () => ({ ok: true, value: meeting })),
+    sendPcm,
     saveMedia: vi.fn(async () => ({ ok: true, value: undefined })),
     finishMeeting: vi.fn(async () => ({ ok: true, value: meeting })),
   } as unknown as DesktopApi;
@@ -168,4 +177,19 @@ it('clears the limit when the recording stops', async () => {
   vi.advanceTimersByTime(3 * 3600 * 1000);
   expect(onEnded).not.toHaveBeenCalled();
   vi.useRealTimers();
+});
+
+it('pauses and resumes the live tap with the recording and disposes it through the resources', async () => {
+  const live = { attach: vi.fn(), setPaused: vi.fn(), dispose: vi.fn() };
+  const capture = await startWithLimit(vi.fn(), live);
+  capture.togglePause();
+  expect(live.setPaused).toHaveBeenLastCalledWith(true);
+  capture.togglePause();
+  expect(live.setPaused).toHaveBeenLastCalledWith(false);
+  await capture.stop();
+});
+
+it('hands the capture the desktop api for the live blocks', async () => {
+  await startWithLimit(vi.fn());
+  expect(resources.open.mock.calls[0]?.[1]).toMatchObject({ sendPcm });
 });

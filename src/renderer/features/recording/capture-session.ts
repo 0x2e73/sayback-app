@@ -2,6 +2,7 @@ import type { CaptureSource, DesktopApi, Meeting } from '../../../shared/contrac
 import { unwrap } from '../../../shared/contracts';
 import { MAX_RECORDING_SECONDS } from './recording-limit';
 import { RecordingWriter } from './recording-writer';
+import { stopRecorder } from './stop-recorder';
 
 import {
   openCaptureResources,
@@ -47,7 +48,7 @@ export class CaptureSession {
     title: string,
     options: CaptureOptions,
   ): Promise<CaptureSession> {
-    const resources = await openCaptureResources(options);
+    const resources = await openCaptureResources(options, api);
     let meeting: Meeting | undefined;
     try {
       meeting = unwrap(await api.createMeeting(title));
@@ -70,7 +71,7 @@ export class CaptureSession {
       this.rotation = this.rotation
         .then(async () => {
           if (this.stopPromise) return;
-          await this.stopRecorder(this.audioRecorder);
+          await stopRecorder(this.audioRecorder);
           this.startAudio();
         })
         .catch((error: unknown) => {
@@ -166,7 +167,7 @@ export class CaptureSession {
       if (this.stopPromise) return;
       this.validateDisplayAudio(next);
       const previous = this.resources.display;
-      await this.stopRecorder(this.videoRecorder);
+      await stopRecorder(this.videoRecorder);
       if (this.stopPromise) return;
       clearInterval(this.frameTimer);
       if (previous) previous.getVideoTracks().forEach((track) => (track.onended = null));
@@ -216,6 +217,7 @@ export class CaptureSession {
       if (this.audioRecorder?.state === 'recording') this.audioRecorder.pause();
       if (this.videoRecorder?.state === 'recording') this.videoRecorder.pause();
     }
+    this.resources.live.setPaused(this.paused);
     this.armLimit();
     this.pauseListeners.forEach((listener) => listener());
   }
@@ -223,13 +225,6 @@ export class CaptureSession {
   onPauseChange(listener: () => void): () => void {
     this.pauseListeners.add(listener);
     return () => this.pauseListeners.delete(listener);
-  }
-  private stopRecorder(recorder?: MediaRecorder): Promise<void> {
-    if (!recorder || recorder.state === 'inactive') return Promise.resolve();
-    return new Promise((resolve) => {
-      recorder.addEventListener('stop', () => resolve(), { once: true });
-      recorder.stop();
-    });
   }
   stop(): Promise<Meeting> {
     if (this.stopPromise) return this.stopPromise;
@@ -241,10 +236,7 @@ export class CaptureSession {
       try {
         await this.rotation;
         await this.switching?.catch(() => undefined);
-        await Promise.all([
-          this.stopRecorder(this.audioRecorder),
-          this.stopRecorder(this.videoRecorder),
-        ]);
+        await Promise.all([stopRecorder(this.audioRecorder), stopRecorder(this.videoRecorder)]);
         return await this.writer.finish(this.elapsed);
       } finally {
         this.preview?.pause();
