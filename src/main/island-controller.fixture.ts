@@ -1,7 +1,8 @@
 import { vi } from 'vitest';
 import type { CapturePrefs } from '../shared/contracts';
+import type { IslandSnapshot } from '../shared/island';
 import type { RecordingState } from '../shared/recording-state';
-import type { RecordingStartOutcome } from '../shared/recording-start';
+import type { IslandStart, RecordingStartOutcome } from '../shared/recording-start';
 import { createIsland, ISLAND_SETTLE } from './island-controller';
 import type { IslandLayout } from './island-geometry';
 import type { HoverOptions, IslandWindowPort } from './island-ports';
@@ -124,3 +125,25 @@ export function fixture(nextLayout: IslandLayout | null = layout) {
     advance: (ms: number) => (time += ms),
   };
 }
+
+export const start: IslandStart = {
+  type: 'start',
+  title: 'Réunion du 15 octobre, 11 h 00',
+  selection: { microphone: true, systemAudio: true, screen: true, screenId: 'screen:1:0' },
+};
+
+/** A ready island opened by the icon. */
+export async function opened() {
+  const setup = fixture();
+  setup.island.toggle();
+  await vi.advanceTimersByTimeAsync(0);
+  return setup;
+}
+
+export function readyOf(snapshot: IslandSnapshot | undefined) {
+  if (snapshot?.mode !== 'ready') throw new Error('not a ready snapshot');
+  return snapshot.ready;
+}
+
+export const lastState = (sent: [string, unknown][]) =>
+  sent.filter(([channel]) => channel === 'island:state').at(-1)?.[1] as IslandSnapshot | undefined;

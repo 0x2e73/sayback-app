@@ -1,12 +1,13 @@
-import { defaultMeetingTitle, defaultScreenId, hasAudioSource } from '../shared/capture-selection';
+import {
+  defaultMeetingTitle,
+  defaultScreenId,
+  hasAudioSource,
+  screenProblem,
+  type ScreenProblem,
+} from '../shared/capture-selection';
 import type { CapturePermission, CapturePrefs } from '../shared/contracts';
 import type { IslandReadyState, IslandScreen } from '../shared/island';
-import type {
-  IslandStart,
-  RecordingStartError,
-  RecordingStartOutcome,
-  StartPayload,
-} from '../shared/recording-start';
+import type { IslandStart, RecordingStartOutcome, StartPayload } from '../shared/recording-start';
 import { READY_ERROR_HOLD } from './island-hover';
 
 /** A screen as the capture sources list it: the main one comes first and is marked. */
@@ -33,13 +34,7 @@ export interface ReadyEvents {
 
 const FAILED: RecordingStartOutcome = { ok: false, error: 'failed' };
 
-function screenError(
-  screens: readonly ListedScreen[],
-  permission: CapturePermission,
-): RecordingStartError | null {
-  if (permission === 'denied') return 'screen-denied';
-  return screens.length ? null : 'no-screen';
-}
+const SCREEN_PROBLEMS: readonly string[] = ['screen-denied', 'no-screen'] satisfies ScreenProblem[];
 
 const shown = (screen: ListedScreen | undefined): IslandScreen | null =>
   screen ? { id: screen.id, name: screen.name } : null;
@@ -52,6 +47,8 @@ export class ReadySession {
 
   private constructor(
     private current: IslandReadyState,
+    /** The screen remembered at the opening: where the island falls back when its screen goes. */
+    private readonly rememberedScreenId: string | undefined,
     private readonly ports: ReadyPorts,
     private readonly events: ReadyEvents,
   ) {
@@ -69,9 +66,9 @@ export class ReadySession {
       remembered: { microphone, systemAudio, screen },
       screen: shown(chosen),
       screenCount: screens.length,
-      error: screen ? screenError(screens, ports.screenPermission()) : null,
+      error: screen ? screenProblem(screens.length > 0, ports.screenPermission()) : null,
     };
-    return new ReadySession(state, ports, events);
+    return new ReadySession(state, prefs.screenId, ports, events);
   }
 
   state(): IslandReadyState {
@@ -83,8 +80,14 @@ export class ReadySession {
     return this.busy || this.holdTimer !== undefined;
   }
 
+  isBusy(): boolean {
+    return this.busy;
+  }
+
   async start({ title, selection }: IslandStart): Promise<void> {
     if (this.busy || this.disposed) return;
+    // The previous error goes with the new attempt: a later state must not bring it back.
+    this.current = { ...this.current, error: null };
     if (!hasAudioSource(selection)) return this.finish({ ok: false, error: 'no-audio-source' });
     this.busy = true;
     const outcome = await this.ports.start({ title, selection }).catch(() => FAILED);
@@ -97,20 +100,46 @@ export class ReadySession {
     const screens = await this.ports.screens();
     if (this.disposed) return;
     const index = screens.findIndex((item) => item.id === this.current.screen?.id);
+    const problem = screenProblem(screens.length > 0, this.ports.screenPermission());
     this.current = {
       ...this.current,
       screen: shown(screens[(index + 1) % screens.length]),
       screenCount: screens.length,
-      error: screenError(screens, this.ports.screenPermission()),
+      error: problem,
     };
+    if (problem) this.holdError();
+    else this.releaseHold();
     this.events.changed();
+  }
+
+  /**
+   * The screens changed: the current one stays if it is still there, else the remembered or main
+   * one. A start error stays; a screen problem follows the new screens, as at the opening.
+   */
+  async refreshScreens(): Promise<void> {
+    const screens = await this.ports.screens();
+    if (this.disposed) return;
+    const kept =
+      screens.find((item) => item.id === this.current.screen?.id) ??
+      screens.find((item) => item.id === defaultScreenId(screens, this.rememberedScreenId));
+    const { error, remembered } = this.current;
+    const startError = error !== null && !SCREEN_PROBLEMS.includes(error);
+    const problem = remembered.screen
+      ? screenProblem(screens.length > 0, this.ports.screenPermission())
+      : null;
+    this.current = {
+      ...this.current,
+      screen: shown(kept),
+      screenCount: screens.length,
+      error: startError ? error : problem,
+    };
+    if (!startError && problem && !error) this.holdError();
   }
 
   /** Closed: late answers and timers are dropped. */
   dispose(): void {
     this.disposed = true;
-    clearTimeout(this.holdTimer);
-    this.holdTimer = undefined;
+    this.releaseHold();
   }
 
   private finish(outcome: RecordingStartOutcome): void {
@@ -118,6 +147,11 @@ export class ReadySession {
     this.current = { ...this.current, error: outcome.ok ? null : outcome.error };
     if (!outcome.ok) this.holdError();
     this.events.result(outcome);
+  }
+
+  private releaseHold(): void {
+    clearTimeout(this.holdTimer);
+    this.holdTimer = undefined;
   }
 
   private holdError(): void {

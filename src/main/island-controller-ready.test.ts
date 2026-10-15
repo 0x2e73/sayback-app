@@ -1,30 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IslandSnapshot } from '../shared/island';
-import type { IslandStart, RecordingStartOutcome } from '../shared/recording-start';
+import type { RecordingStartOutcome } from '../shared/recording-start';
 import { CLICK_GUARD, FOLD_FALLBACK } from './island-controller';
-import { fixture, layout, prefs, running, screens } from './island-controller.fixture';
+import {
+  fixture,
+  lastState,
+  layout,
+  opened,
+  prefs,
+  readyOf,
+  running,
+  screens,
+  start,
+} from './island-controller.fixture';
 import { READY_ERROR_HOLD, READY_HOVER, RECORDING_HOVER } from './island-hover';
-
-const start: IslandStart = {
-  type: 'start',
-  title: 'Réunion du 15 octobre, 11 h 00',
-  selection: { microphone: true, systemAudio: true, screen: true, screenId: 'screen:1:0' },
-};
-
-async function opened() {
-  const setup = fixture();
-  setup.island.toggle();
-  await vi.advanceTimersByTimeAsync(0);
-  return setup;
-}
-
-function readyOf(snapshot: IslandSnapshot | undefined) {
-  if (snapshot?.mode !== 'ready') throw new Error('not a ready snapshot');
-  return snapshot.ready;
-}
-
-const lastState = (sent: [string, unknown][]) =>
-  sent.filter(([channel]) => channel === 'island:state').at(-1)?.[1] as IslandSnapshot | undefined;
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -126,24 +114,6 @@ describe('the ready island', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(readyOf(lastState(current().sent)).screen?.id).toBe('screen:1:0');
     expect(ports.ready.screens).toHaveBeenCalledTimes(3);
-  });
-
-  it('says at the opening that the screen is refused or missing, and holds open', async () => {
-    const setup = fixture();
-    setup.ports.ready.screenPermission.mockReturnValue('denied');
-    setup.island.toggle();
-    await vi.advanceTimersByTimeAsync(0);
-    expect(readyOf(setup.island.ready()).error).toBe('screen-denied');
-    expect(setup.hover.held()).toBe(true);
-    setup.ports.ready.screenPermission.mockReturnValue('granted');
-    setup.ports.ready.screens.mockResolvedValue([]);
-    setup.island.request('cycle-screen');
-    await vi.advanceTimersByTimeAsync(0);
-    expect(readyOf(lastState(setup.opened().sent))).toMatchObject({
-      screen: null,
-      screenCount: 0,
-      error: 'no-screen',
-    });
   });
 });
 

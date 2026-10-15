@@ -11,6 +11,7 @@ import {
 } from './island-hover';
 import type { Island, IslandPorts, IslandWindowPort } from './island-ports';
 import { ReadySession } from './island-ready';
+import { islandSnapshot } from './island-snapshot';
 import type { RecordingSnapshot } from './recording-state-hub';
 
 export type { Island, IslandPorts, IslandWindowPort } from './island-ports';
@@ -39,6 +40,8 @@ class IslandController implements Island {
   /** The mode of the window shown or being opened; null without any. */
   private mode: Mode | null = null;
   private expanded = false;
+  /** The icon was clicked during a recording before its island existed. */
+  private expandWhenShown = false;
   private opening = false;
   private stale = false;
   // Each opening and closing moves it on: an opening that outlived its turn is dropped.
@@ -57,7 +60,11 @@ class IslandController implements Island {
       resume: () => ports.request('resume'),
       stop: () => ports.request('stop'),
       open: () => this.openFromIsland(),
-      close: () => this.whenReady(() => this.dismiss()),
+      // The × waits for the start: closing would hide its outcome.
+      close: () =>
+        this.whenReady(() => {
+          if (!this.session?.isBusy()) this.dismiss();
+        }),
       'open-privacy-settings': () => this.whenReady(() => ports.openPrivacySettings()),
       'cycle-screen': () => {
         this.session?.cycleScreen().catch(report('listing the screens failed'));
@@ -88,14 +95,17 @@ class IslandController implements Island {
   }
 
   toggle(): void {
-    if (this.ports.hub.current().state.recording) {
-      this.hover?.expand();
-      return;
-    }
+    if (this.ports.hub.current().state.recording) return this.openRecording();
     const wasReady = this.mode === 'ready';
     if (wasReady) return this.dismiss();
     this.close();
     this.open('ready').catch(report('opening failed'));
+  }
+
+  private openRecording(): void {
+    if (this.hover) return this.hover.expand();
+    this.expandWhenShown = true;
+    if (!this.mode) this.lifecycle.call();
   }
 
   level(level: number): void {
@@ -108,7 +118,8 @@ class IslandController implements Island {
       return;
     }
     if (!this.window()) return;
-    const next = await this.ports.layout();
+    const session = this.session;
+    const [next] = await Promise.all([this.ports.layout(), session?.refreshScreens()]);
     const target = this.window();
     if (!next || !target) return;
     this.layout = next;
@@ -144,6 +155,7 @@ class IslandController implements Island {
     this.layout = null;
     this.mode = null;
     this.expanded = false;
+    this.expandWhenShown = false;
     this.opening = false;
     return leaving;
   }
@@ -191,14 +203,17 @@ class IslandController implements Island {
     this.mode = mode;
     this.opening = true;
     this.stale = false;
+    const opening = this.openSession(mode);
     try {
-      const [next, session] = await Promise.all([this.ports.layout(), this.openSession(mode)]);
+      const [next, session] = await Promise.all([this.ports.layout(), opening]);
       if (generation !== this.generation || !next || !this.wanted(mode)) {
         session?.dispose();
         return this.abandon(generation);
       }
       this.show(mode, next, session);
     } catch (error) {
+      // The layout may fail while the session opened: its error hold must not outlive it.
+      opening.then((session) => session?.dispose()).catch(() => undefined);
       this.abandon(generation);
       throw error;
     } finally {
@@ -227,6 +242,8 @@ class IslandController implements Island {
     this.current = this.ports.openWindow(layout);
     this.watch(this.current);
     this.hover = this.startHover(mode, { expanded: this.expanded, entered: false });
+    if (mode === 'recording' && this.expandWhenShown) this.hover.expand();
+    this.expandWhenShown = false;
   }
 
   private startHover(mode: Mode, initial: HoverState): IslandHover {
@@ -271,14 +288,9 @@ class IslandController implements Island {
 
   private snapshot(): IslandSnapshot | null {
     if (!this.layout) return null;
-    const { state } = this.ports.hub.current();
-    // The elapsed time at sending: the page counts on from its own reception.
-    const recording = state.recording ? { ...state, elapsed: this.ports.hub.elapsed() } : state;
-    const frame = { recording, expanded: this.expanded, shape: this.layout.shape };
-    if (this.mode === 'ready' && this.session) {
-      return { ...frame, mode: 'ready', ready: this.session.state() };
-    }
-    return { ...frame, mode: 'recording' };
+    const ready = this.mode === 'ready' ? (this.session?.state() ?? null) : null;
+    const { shape } = this.layout;
+    return islandSnapshot({ hub: this.ports.hub, shape, expanded: this.expanded, ready });
   }
 
   private send(channel: string, payload: unknown): void {
