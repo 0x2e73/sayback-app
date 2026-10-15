@@ -15,9 +15,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-button.chip:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
+@media (hover: hover) and (pointer: fine) {
+  button.chip:hover {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
 }
 .chip[aria-pressed='true'] {
   border-color: var(--color-border-strong);

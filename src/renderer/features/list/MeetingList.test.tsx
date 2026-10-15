@@ -2,14 +2,17 @@
 import '@testing-library/jest-dom/vitest';
 import type { ComponentProps } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { AudioChunk, Meeting, Notes } from '../../../shared/contracts';
 import { meetingFixture } from '../../test-api';
 import { groupByDate } from './date-groups';
 import { MeetingList } from './MeetingList';
 import { MEETING_DRAG_TYPE } from './useFolderDrop';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const now = new Date(2026, 9, 14, 10, 0);
 const local = (month: number, day: number, hour = 12, minute = 0) =>
@@ -194,4 +197,13 @@ it('ignores Enter while a recording locks the list', () => {
   const onSelect = renderList({ selectedId: 'a', locked: true });
   fireEvent.keyDown(row(/Point hebdo/), { key: 'Enter' });
   expect(onSelect).not.toHaveBeenCalled();
+});
+
+it('staggers the rows in once, then clears the mark even if no transition ends', () => {
+  vi.useFakeTimers();
+  renderList();
+  const list = screen.getByRole('listbox');
+  expect(list).toHaveAttribute('data-enter');
+  act(() => vi.advanceTimersByTime(600));
+  expect(list).not.toHaveAttribute('data-enter');
 });

@@ -115,15 +115,27 @@
     transform var(--duration-base) var(--ease-out);
 }
 
-/* List: the rows come in with a short stagger, the selection slides from row to row. */
-.meeting-list {
+/* List: each state of the list is one view that fades; the rows stagger in once. */
+.list-view {
   transition: opacity var(--duration-base) var(--ease-out);
+}
+.list-view[data-state='closing'] {
+  position: absolute;
+  top: var(--space-2);
+  right: 0;
+  left: 0;
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
 }
 .meeting-row {
   transition:
     background-color var(--duration-fast) var(--ease-out),
     opacity var(--duration-fast) var(--ease-out),
-    transform var(--duration-exit) var(--ease-out);
+    transform var(--duration-fast) var(--ease-out);
+}
+.meeting-row:active:not([aria-disabled='true']) {
+  transform: scale(var(--motion-press-soft));
 }
 .meeting-row.is-dragging {
   transform: scale(var(--motion-scale-out));
@@ -135,20 +147,17 @@
     opacity var(--duration-slow) var(--ease-move),
     transform var(--duration-slow) var(--ease-move);
 }
-.meeting-list-selection {
-  position: absolute;
-  top: 0;
-  left: var(--space-2);
-  right: var(--space-2);
-  height: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-  pointer-events: none;
-}
-.meeting-list-selection[data-ready] {
+.segmented-tab,
+.source-option {
   transition:
-    transform var(--duration-slow) var(--ease-move),
-    opacity var(--duration-base) var(--ease-out);
+    background-color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.segmented-tab:active,
+.source-option:active {
+  transform: scale(var(--motion-press-soft));
 }
 .meeting-row .row-status,
 .meeting-row .meeting-row-summary,
@@ -158,7 +167,7 @@
 @starting-style {
   .meeting-row[data-new] {
     opacity: 0;
-    transform: scale(var(--motion-scale-out));
+    transform: translateY(var(--motion-rise));
   }
   .meeting-row [data-changed] {
     opacity: 0;
@@ -167,23 +176,22 @@
     opacity: 0;
     transform: translateY(var(--motion-rise));
   }
-  .meeting-list {
+  .list-view {
     opacity: 0;
   }
 }
+/* Rows 1, 2, then every other row of a group: 0, 50 and 100 ms. The heading is the first child. */
 .meeting-list[data-enter] .meeting-row {
   transition:
     background-color var(--duration-fast) var(--ease-out),
-    opacity var(--duration-slow) var(--ease-out),
-    transform var(--duration-slow) var(--ease-out);
+    opacity var(--duration-row) var(--ease-out),
+    transform var(--duration-row) var(--ease-out);
+  will-change: opacity, transform;
 }
 .meeting-list[data-enter] .meeting-row:nth-child(n + 4) {
-  transition-delay: var(--delay-3);
-}
-.meeting-list[data-enter] .meeting-row:nth-child(3) {
   transition-delay: var(--delay-2);
 }
-.meeting-list[data-enter] .meeting-row:nth-child(2) {
+.meeting-list[data-enter] .meeting-row:nth-child(3) {
   transition-delay: var(--delay-1);
 }
 

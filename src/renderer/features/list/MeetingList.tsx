@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import type { DateGroup } from './date-groups';
 import { MeetingRow } from './MeetingRow';
@@ -30,7 +30,11 @@ function focusOption(list: HTMLElement, id: string): void {
   }
 }
 
-/** The highlight is one element that glides to the selected row, placed by hand like the segmented thumb. */
+/**
+ * The highlight is one element that glides to the selected row, placed by hand like the
+ * segmented thumb. It glides only from one row to another: the first placement, a placement
+ * after no row was selected, and a resize all jump.
+ */
 function useSelectionThumb(selectedId: string | null, groups: unknown) {
   const list = useRef<HTMLDivElement>(null);
   const thumb = useRef<HTMLSpanElement>(null);
@@ -38,24 +42,40 @@ function useSelectionThumb(selectedId: string | null, groups: unknown) {
     const box = list.current;
     const mark = thumb.current;
     if (!box || !mark) return;
-    function place(): void {
+    function place(glide: boolean): void {
       const row = box?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
       if (!mark) return;
-      mark.style.opacity = row ? '1' : '0';
-      if (!row) return;
+      if (!row) {
+        mark.style.opacity = '0';
+        delete mark.dataset.ready;
+        return;
+      }
+      if (!glide) delete mark.dataset.ready;
       mark.style.height = `${row.offsetHeight}px`;
       mark.style.transform = `translateY(${row.offsetTop}px)`;
+      if (!('ready' in mark.dataset)) {
+        void mark.offsetHeight;
+        mark.dataset.ready = '';
+      }
+      mark.style.opacity = '1';
     }
-    place();
-    void mark.offsetHeight;
-    mark.dataset.ready = '';
+    place(true);
     if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(place);
+    // The observer reports once on start: only a real change of width is a resize.
+    let width = box.offsetWidth;
+    const observer = new ResizeObserver(() => {
+      if (box.offsetWidth === width) return;
+      width = box.offsetWidth;
+      place(false);
+    });
     observer.observe(box);
     return () => observer.disconnect();
   }, [selectedId, groups]);
   return { list, thumb };
 }
+
+// Rows have stopped entering once the longest delay and duration have passed.
+const ENTRANCE_MS = 600;
 
 export function MeetingList(props: MeetingListProps) {
   const { groups, folders, selectedId, now, locked, arrivedIds, onSelect } = props;
@@ -63,6 +83,10 @@ export function MeetingList(props: MeetingListProps) {
   const { list, thumb } = useSelectionThumb(selectedId, groups);
   // The rows stagger in once, when the list appears; rows added later do not replay it.
   const [entering, setEntering] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setEntering(false), ENTRANCE_MS);
+    return () => clearTimeout(timer);
+  }, []);
   const ids = groups.flatMap((group) => group.items.map((meeting) => meeting.id));
   const tabStop = selectedId !== null && ids.includes(selectedId) ? selectedId : ids[0];
 

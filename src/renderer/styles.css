@@ -95,22 +95,25 @@
   --duration-exit: 150ms;
   --duration-base: 200ms;
   --duration-slow: 280ms;
+  --duration-row: 240ms;
+  --duration-glide: 220ms;
   --duration-loop: 1s;
   --duration-ambient: 1.6s;
-  --delay-1: 40ms;
-  --delay-2: 80ms;
+  --delay-1: 50ms;
+  --delay-2: 100ms;
   --delay-3: 120ms;
   --delay-wait: 300ms;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-move: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-linear: linear;
   --ease-ambient: cubic-bezier(0.37, 0, 0.63, 1);
-  --motion-rise: 6px;
+  --motion-rise: 10px;
   --motion-drop: -4px;
-  --motion-slide: 8px;
-  --motion-scale-in: 0.96;
+  --motion-slide: 12px;
+  --motion-scale-in: 0.94;
   --motion-scale-out: 0.98;
-  --motion-press: 0.97;
+  --motion-press: 0.96;
+  --motion-press-soft: 0.98;
   --motion-icon: 0.5;
   --motion-accept: 1.06;
   /* Island shell only: a damped spring for its size, the one exception to the single curve. */
@@ -347,9 +350,11 @@ p {
     transform var(--duration-fast) var(--ease-out),
     opacity var(--duration-base) var(--ease-out);
 }
-.button:active:not(:disabled, [aria-disabled='true']),
-button.chip:active:not(:disabled) {
+.button:active:not(:disabled, [aria-disabled='true']) {
   transform: scale(var(--motion-press));
+}
+button.chip:active:not(:disabled) {
+  transform: scale(var(--motion-press-soft));
 }
 .button-label {
   transition: opacity var(--duration-base) var(--ease-out);
@@ -412,6 +417,7 @@ button.chip:active:not(:disabled) {
     --motion-scale-in: 1;
     --motion-scale-out: 1;
     --motion-press: 1;
+    --motion-press-soft: 1;
     --motion-icon: 1;
     --motion-accept: 1;
     --delay-1: 0ms;

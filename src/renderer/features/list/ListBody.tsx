@@ -1,4 +1,6 @@
 import type { Folder, Meeting } from '../../../shared/contracts';
+import { Presence } from '../../components/Presence';
+import { useHeld } from '../../components/use-held';
 import { EmptyState, Skeleton } from '../../components/ui';
 import type { DateGroup } from './date-groups';
 import { emptyList, type FolderScope } from './list-filter';
@@ -37,29 +39,60 @@ function ListSkeleton() {
   );
 }
 
+type View = 'loading' | 'empty' | 'list';
+
+function viewOf(props: ListBodyProps): View {
+  if (props.loading) return 'loading';
+  return props.groups.length === 0 ? 'empty' : 'list';
+}
+
+/**
+ * Loading, empty and loaded are three views that cross-fade: the one that leaves keeps what it
+ * showed, lays over the new one and fades at the exit speed, so a state never cuts to the next.
+ */
 export function ListBody(props: ListBodyProps) {
-  if (props.loading) return <ListSkeleton />;
-  if (props.groups.length === 0) {
-    const empty = emptyList(props);
-    return (
-      <EmptyState title={empty.message}>
-        {empty.searchEverywhere && (
-          <button type="button" className="text-link" onClick={props.onSearchEverywhere}>
-            Chercher dans toutes les réunions
-          </button>
-        )}
-      </EmptyState>
-    );
-  }
+  const view = viewOf(props);
+  const empty = emptyList(props);
+  const message = useHeld(view === 'empty' ? empty.message : null);
+  const searchEverywhere = useHeld(view === 'empty' ? empty.searchEverywhere : null);
+  const groups = useHeld(view === 'list' ? props.groups : null);
   return (
-    <MeetingList
-      groups={props.groups}
-      folders={props.folders}
-      selectedId={props.selectedId}
-      now={props.now}
-      locked={props.locked}
-      arrivedIds={props.arrivedIds}
-      onSelect={props.onSelect}
-    />
+    <>
+      <Presence open={view === 'loading'}>
+        {({ ref, state }) => (
+          <div ref={ref} className="list-view" data-state={state}>
+            <ListSkeleton />
+          </div>
+        )}
+      </Presence>
+      <Presence open={view === 'empty'}>
+        {({ ref, state }) => (
+          <div ref={ref} className="list-view" data-state={state}>
+            <EmptyState title={message ?? ''}>
+              {searchEverywhere && (
+                <button type="button" className="text-link" onClick={props.onSearchEverywhere}>
+                  Chercher dans toutes les réunions
+                </button>
+              )}
+            </EmptyState>
+          </div>
+        )}
+      </Presence>
+      <Presence open={view === 'list'}>
+        {({ ref, state }) => (
+          <div ref={ref} className="list-view" data-state={state}>
+            <MeetingList
+              groups={groups ?? props.groups}
+              folders={props.folders}
+              selectedId={props.selectedId}
+              now={props.now}
+              locked={props.locked}
+              arrivedIds={props.arrivedIds}
+              onSelect={props.onSelect}
+            />
+          </div>
+        )}
+      </Presence>
+    </>
   );
 }

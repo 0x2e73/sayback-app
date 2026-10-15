@@ -31,9 +31,11 @@
   align-items: center;
   gap: var(--space-1);
 }
-.folder-control:hover .folder-control-face {
-  background: var(--color-surface);
-  color: var(--color-text);
+@media (hover: hover) and (pointer: fine) {
+  .folder-control:hover .folder-control-face {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
 }
 .folder-control:has(:focus-visible) .folder-control-face {
   outline: 2px solid var(--color-focus);

@@ -18,9 +18,13 @@
   text-align: left;
 }
 
-.model-select-trigger:hover,
 .model-select-trigger[aria-expanded='true'] {
   border-color: var(--color-accent-soft);
+}
+@media (hover: hover) and (pointer: fine) {
+  .model-select-trigger:hover {
+    border-color: var(--color-accent-soft);
+  }
 }
 
 .model-select-trigger svg {
@@ -69,9 +73,13 @@
   text-align: left;
 }
 
-.model-select-list button:hover,
 .model-select-list button.active {
   background: var(--color-surface-raised);
+}
+@media (hover: hover) and (pointer: fine) {
+  .model-select-list button:hover {
+    background: var(--color-surface-raised);
+  }
 }
 
 .model-select-list button svg {

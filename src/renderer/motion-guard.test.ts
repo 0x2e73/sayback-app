@@ -3,11 +3,13 @@ import { declarations, read, sheets, tokenBlock } from './design-tokens-support'
 
 const motionProperty = /^(?:-webkit-)?(?:transition|animation)(?:-[a-z-]+)?$/;
 const allowedVars =
-  /var\(--(?:duration-(?:fast|exit|base|slow|loop|ambient)|delay-(?:1|2|3|wait)|ease-(?:out|move|linear|ambient))\)/g;
+  /var\(--(?:duration-(?:fast|exit|base|slow|row|glide|loop|ambient)|delay-(?:1|2|3|wait)|ease-(?:out|move|linear|ambient))\)/g;
 // The island shell alone animates its size, on its own curve (exception in frontend.md).
 const islandSheet = 'styles/island.css';
 const islandVars = /var\(--(?:duration-island|ease-island)\)/g;
 const islandProperties = new Set(['width', 'height', 'border-radius']);
+// The sliding selection highlight alone animates its height.
+const selectionSheet = 'styles/meeting-list.css';
 const timeLiteral = /(?<![\w.-])[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?m?s(?![\w-])/;
 const easingWord = /\b(?:ease|ease-in|ease-out|ease-in-out|linear|steps?|step-start|step-end)\b/;
 const easingFunction = /\b(?:cubic-bezier|linear|steps|spring)\(|\bcalc\(/;
@@ -27,6 +29,8 @@ const declaredMotionTokens = [
   '--duration-exit',
   '--duration-base',
   '--duration-slow',
+  '--duration-row',
+  '--duration-glide',
   '--duration-loop',
   '--duration-ambient',
   '--delay-1',
@@ -48,6 +52,7 @@ const offsetTokens = [
   '--motion-scale-in',
   '--motion-scale-out',
   '--motion-press',
+  '--motion-press-soft',
   '--motion-icon',
   '--motion-accept',
 ];
@@ -55,6 +60,7 @@ const offsetTokens = [
 function declarationProblem(
   { property, value }: { property: string; value: string },
   island: boolean,
+  height = false,
 ): boolean {
   const general = value.toLowerCase().replace(allowedVars, ' ');
   const rest = island ? general.replace(islandVars, ' ') : general;
@@ -63,22 +69,24 @@ function declarationProblem(
   const words = rest.split(/[\s,]+/).filter(Boolean);
   if (timingOnly.test(property)) return words.length > 0;
   const animated = (word: string) =>
-    animatedProperties.has(word) || (island && islandProperties.has(word));
+    animatedProperties.has(word) ||
+    (island && islandProperties.has(word)) ||
+    (height && word === 'height');
   if (transitionList.test(property)) return words.some((word) => !animated(word));
   return false;
 }
 
-function motionViolations(css: string, island = false): string[] {
+function motionViolations(css: string, island = false, height = false): string[] {
   return declarations(css)
     .filter(({ property }) => motionProperty.test(property))
-    .filter((declaration) => declarationProblem(declaration, island))
+    .filter((declaration) => declarationProblem(declaration, island, height))
     .map(({ property, value }) => `${property}: ${value}`);
 }
 
 function sheetMotion(sheet: string): string[] {
   const css = read(sheet);
   const body = sheet === 'styles.css' ? css.replace(tokenBlock(css), '') : css;
-  return motionViolations(body, sheet === islandSheet);
+  return motionViolations(body, sheet === islandSheet, sheet === selectionSheet);
 }
 
 describe('motion guard', () => {
@@ -139,6 +147,28 @@ describe('motion guard', () => {
     expect(
       motionViolations('.x { transition: top var(--duration-island) var(--ease-island); }', true),
     ).not.toEqual([]);
+  });
+
+  it('animates a height only in the selection highlight', () => {
+    expect(read(selectionSheet)).toMatch(
+      /\.meeting-list-selection\[data-ready\]\s*\{[^}]*height var\(--duration-glide\)/,
+    );
+    for (const sheet of sheets.filter((name) => name !== selectionSheet && name !== islandSheet)) {
+      expect(read(sheet), sheet).not.toMatch(/transition[^;]*\bheight\b/);
+    }
+    expect(read(selectionSheet).match(/transition[^;]*\bheight\b/g)).toHaveLength(1);
+  });
+
+  it.each([
+    ['.button:active', '--motion-press'],
+    ['button.chip:active', '--motion-press-soft'],
+    ['.segmented-tab:active', '--motion-press-soft'],
+    ['.source-option:active', '--motion-press-soft'],
+    ['.meeting-row:active', '--motion-press-soft'],
+  ])('presses %s with scale(var(%s))', (selector, token) => {
+    const css = sheets.map((sheet) => read(sheet)).join('\n');
+    const escaped = selector.replace(/[.]/g, '\\.');
+    expect(css).toMatch(new RegExp(`${escaped}[^{]*\\{[^}]*scale\\(var\\(${token}\\)\\)`));
   });
 
   it('finds the island sheet', () => {

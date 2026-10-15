@@ -35,8 +35,10 @@
   font-size: var(--text-control);
   font-weight: 500;
 }
-.segmented-tab:hover {
-  color: var(--color-text);
+@media (hover: hover) and (pointer: fine) {
+  .segmented-tab:hover {
+    color: var(--color-text);
+  }
 }
 .segmented-tab[aria-selected='true'],
 .segmented-tab[aria-checked='true'] {

@@ -59,18 +59,27 @@ function useThumb(value: string) {
     const box = group.current;
     const mark = thumb.current;
     if (!box || !mark) return;
-    function place(): void {
+    function place(glide: boolean): void {
       const active = box?.querySelector<HTMLElement>('.segmented-tab[tabindex="0"]');
       if (!active || !mark) return;
+      // A resize moves the tab under the thumb: it follows at once instead of chasing it.
+      if (!glide) delete mark.dataset.ready;
       mark.style.width = `${active.offsetWidth}px`;
       mark.style.transform = `translateX(${active.offsetLeft}px)`;
     }
-    place();
+    place(true);
     // Flush the first position before the transition is switched on: no slide from the corner.
     void mark.offsetWidth;
     mark.dataset.ready = '';
     if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(place);
+    let width = box.offsetWidth;
+    const observer = new ResizeObserver(() => {
+      if (box.offsetWidth === width) return;
+      width = box.offsetWidth;
+      place(false);
+      void mark.offsetWidth;
+      mark.dataset.ready = '';
+    });
     observer.observe(box);
     return () => observer.disconnect();
   }, [value]);
