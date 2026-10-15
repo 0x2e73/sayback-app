@@ -39,6 +39,8 @@ interface Fixture {
   api: DesktopApi;
   order: string[];
   answer: ReturnType<typeof vi.fn<DesktopApi['answerStartRequest']>>;
+  acknowledge: ReturnType<typeof vi.fn<DesktopApi['acknowledgeStartRequest']>>;
+  announce: ReturnType<typeof vi.fn<DesktopApi['announceRecordingState']>>;
   remember: ReturnType<typeof vi.fn<DesktopApi['setCapturePrefs']>>;
   ask(request: RecordingStartRequest): Promise<void>;
 }
@@ -48,11 +50,19 @@ function islandStartApi(): Fixture {
   const order: string[] = [];
   const api = apiFor([]);
   api.getSettings = () => ok({ ...settings, hasOpenAiKey: true });
-  api.getSources = () => ok([main]);
-  api.announceRecordingState = () => {
+  api.getSources = () => {
+    order.push('sources');
+    return ok([main]);
+  };
+  const announce = vi.fn<DesktopApi['announceRecordingState']>(() => {
     order.push('announce');
     return ok(undefined);
-  };
+  });
+  api.announceRecordingState = announce;
+  const acknowledge = vi.fn<DesktopApi['acknowledgeStartRequest']>((id) => {
+    order.push(`ack ${id}`);
+  });
+  api.acknowledgeStartRequest = acknowledge;
   api.onStartRequest = (next) => {
     order.push('subscribe');
     listener = next;
@@ -62,7 +72,15 @@ function islandStartApi(): Fixture {
   const remember = vi.fn<DesktopApi['setCapturePrefs']>(() => ok(undefined));
   api.answerStartRequest = answer;
   api.setCapturePrefs = remember;
-  return { api, order, answer, remember, ask: (next) => act(async () => listener(next)) };
+  return {
+    api,
+    order,
+    answer,
+    acknowledge,
+    announce,
+    remember,
+    ask: (next) => act(async () => listener(next)),
+  };
 }
 
 beforeEach(() => {
@@ -106,6 +124,39 @@ describe('a start asked by the island', () => {
       expect(island.answer).toHaveBeenCalledWith('start-1', { ok: false, error: 'screen-denied' }),
     );
     expect(island.remember).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges the request before anything is awaited', async () => {
+    const island = islandStartApi();
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    island.order.length = 0;
+    await island.ask(request);
+    expect(island.order[0]).toBe('ack start-1');
+    await waitFor(() => expect(island.answer).toHaveBeenCalledWith('start-1', { ok: true }));
+  });
+
+  it('stops a capture that opens after the deadline and answers failed', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const island = islandStartApi();
+    const late = fakeSession();
+    let open: () => void = () => {};
+    capture.start.mockImplementationOnce(
+      () => new Promise((resolve) => (open = () => resolve(late))),
+    );
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    await island.ask({ ...request, deadline: Date.now() + 195_000 });
+    await waitFor(() => expect(capture.start).toHaveBeenCalledOnce());
+    vi.setSystemTime(Date.now() + 196_000);
+    await act(async () => open());
+    await waitFor(() =>
+      expect(island.answer).toHaveBeenCalledWith('start-1', { ok: false, error: 'failed' }),
+    );
+    expect(late.stop).toHaveBeenCalledOnce();
+    expect(island.remember).not.toHaveBeenCalled();
+    expect(island.announce).not.toHaveBeenCalledWith(expect.objectContaining({ recording: true }));
+    vi.useRealTimers();
   });
 
   it('answers failed while a recording already runs', async () => {

@@ -12,6 +12,8 @@ export type StartMeeting = (
   title: string,
   options: CaptureSelection,
   autoAnalyze: boolean,
+  /** Epoch ms after which nobody waits for this start: it stops instead of recording. */
+  deadline?: number,
 ) => Promise<void>;
 
 /** One start, from the dialog or the island. */

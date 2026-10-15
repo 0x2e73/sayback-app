@@ -6,16 +6,13 @@ import { useListFilter } from './features/list/use-list-filter';
 import { useFolders } from './features/list/use-folders';
 import { useMeetings } from './features/list/use-meetings';
 import { useAutoAnalysis } from './features/meetings/use-auto-analysis';
-import type { CaptureOptions } from './features/recording/capture-session';
-import { answerIslandStart } from './features/recording/island-start';
 import { useRecording } from './features/recording/use-recording';
 import { useUpdateInstall } from './features/updates/use-update-install';
 import { useUpdateStatus } from './features/updates/use-update-status';
-import { useMenuBar } from './use-menu-bar';
+import { useRecordingEntry } from './use-recording-entry';
 import { workspaceNotice } from './workspace-notice';
 
 export type CardView = 'meeting' | 'settings';
-type StartOptions = Omit<CaptureOptions, 'onFailure' | 'onEnded'>;
 
 export function useWorkspace(api: DesktopApi) {
   const library = useMeetings(api);
@@ -26,7 +23,6 @@ export function useWorkspace(api: DesktopApi) {
   const filter = useListFilter(library.meetings, folders.folders);
   const [card, setCard] = useState<CardView>('meeting');
   const [chosenId, setChosenId] = useState<string | null>(null);
-  const [newMeeting, setNewMeeting] = useState(false);
   const { run: runAutoAnalysis } = analysis;
   const updateMeeting = library.update;
   const { clear: clearFilter } = filter;
@@ -42,19 +38,7 @@ export function useWorkspace(api: DesktopApi) {
     [clearFilter, runAutoAnalysis, updateMeeting],
   );
   const recording = useRecording(api, onFinished);
-  // One recording at a time: the pane is locked meanwhile.
-  useMenuBar(api, recording, {
-    onNewRecording: () => {
-      if (!recording.capture) setNewMeeting(true);
-    },
-    onStartRequest: (request) => void answerIslandStart(api, request, start),
-  });
-
-  async function start(title: string, options: StartOptions, autoAnalyze: boolean) {
-    analysis.clearError();
-    await recording.start(title, options, autoAnalyze);
-    setNewMeeting(false);
-  }
+  const entry = useRecordingEntry(api, recording, analysis.clearError);
 
   const selected = resolveSelection(filter.visible, chosenId);
 
@@ -81,7 +65,7 @@ export function useWorkspace(api: DesktopApi) {
       onInstall: () => void updateInstall.install(),
     },
     card,
-    newMeeting,
+    newMeeting: entry.newMeeting,
     selected,
     notice: workspaceNotice({
       recording: recording.interrupted ? '' : recording.error,
@@ -90,15 +74,15 @@ export function useWorkspace(api: DesktopApi) {
       folders: folders.error,
       update: updateInstall.error,
     }),
-    start,
+    start: entry.start,
     select,
     deleted,
     toggleSettings: () => setCard((current) => (current === 'settings' ? 'meeting' : 'settings')),
     showSettings: () => setCard('settings'),
-    openNewMeeting: () => setNewMeeting(true),
-    closeNewMeeting: () => setNewMeeting(false),
+    openNewMeeting: entry.openNewMeeting,
+    closeNewMeeting: entry.closeNewMeeting,
     configureAnalysis: () => {
-      setNewMeeting(false);
+      entry.closeNewMeeting();
       setCard('settings');
     },
   };

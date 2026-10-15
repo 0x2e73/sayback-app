@@ -2,24 +2,8 @@ import { errorMessage } from '../../../shared/format';
 import { useCallback, useRef, useState } from 'react';
 import type { DesktopApi, Meeting } from '../../../shared/contracts';
 
-import { CaptureSession, type CaptureOptions } from './capture-session';
-
-/**
- * The dialog and the island both start here: one capture at a time, a second start refused
- * even while the first one is still opening.
- */
-function useOneCapture() {
-  const opening = useRef(false);
-  return useCallback(async (running: boolean, open: () => Promise<CaptureSession>) => {
-    if (running || opening.current) throw new Error('Un enregistrement est déjà en cours.');
-    opening.current = true;
-    try {
-      return await open();
-    } finally {
-      opening.current = false;
-    }
-  }, []);
-}
+import { useCaptureOpener } from './capture-opener';
+import type { CaptureOptions, CaptureSession } from './capture-session';
 
 export function useRecording(
   api: DesktopApi,
@@ -30,7 +14,7 @@ export function useRecording(
   const [interrupted, setInterrupted] = useState(false);
   const [error, setError] = useState('');
   const active = useRef<CaptureSession | null>(null);
-  const oneCapture = useOneCapture();
+  const openCapture = useCaptureOpener(api);
   const finishing = useRef(false);
   const interruption = useRef<{ meeting?: Meeting } | null>(null);
   const autoAnalyze = useRef(false);
@@ -89,14 +73,11 @@ export function useRecording(
     title: string,
     options: Omit<CaptureOptions, 'onFailure' | 'onEnded'>,
     analyzeAfterStop: boolean,
+    deadline?: number,
   ) {
-    const session = await oneCapture(active.current !== null, () =>
-      CaptureSession.start(api, title, {
-        ...options,
-        onFailure: interrupt,
-        onEnded: stop,
-      }),
-    );
+    const handlers = { onFailure: interrupt, onEnded: stop };
+    const running = active.current !== null;
+    const session = await openCapture(running, title, { ...options, ...handlers }, deadline);
     active.current = session;
     autoAnalyze.current = analyzeAfterStop;
     setCapture(session);

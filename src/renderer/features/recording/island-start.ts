@@ -61,13 +61,22 @@ async function missingScreen(api: IslandStartApi): Promise<RecordingStartError> 
 
 const FAILED: RecordingStartOutcome = { ok: false, error: 'failed' };
 
-/** Runs the start and always answers: the main process is waiting with the island busy. */
+type AnswerApi = IslandStartApi &
+  Pick<DesktopApi, 'acknowledgeStartRequest' | 'answerStartRequest'>;
+
+/**
+ * Acknowledges at once, before any wait (main gives up after 15 s without it), then runs the
+ * start and always answers: the main process is waiting with the island busy.
+ */
 export async function answerIslandStart(
-  api: IslandStartApi & Pick<DesktopApi, 'answerStartRequest'>,
+  api: AnswerApi,
   request: RecordingStartRequest,
   onStart: StartMeeting,
 ): Promise<void> {
-  const outcome = await startFromIsland(api, request, onStart).catch(() => FAILED);
+  api.acknowledgeStartRequest(request.id);
+  const withinDeadline: StartMeeting = (title, options, autoAnalyze) =>
+    onStart(title, options, autoAnalyze, request.deadline);
+  const outcome = await startFromIsland(api, request, withinDeadline).catch(() => FAILED);
   await api.answerStartRequest(request.id, outcome).catch(() => undefined);
 }
 
