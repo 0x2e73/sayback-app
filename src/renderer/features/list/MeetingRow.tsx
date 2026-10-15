@@ -1,8 +1,10 @@
-import { useState, type DragEvent } from 'react';
+import { useEffect, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { formatRowDate } from './date-groups';
+import { platformOf } from '../../platform';
 import { useChanged } from '../../components/use-changed';
 import { RowStatus } from './RowStatus';
+import { isSettled, placeUnder, type MenuPlace } from './row-menu';
 import { MEETING_DRAG_TYPE } from './useFolderDrop';
 
 interface MeetingRowProps {
@@ -15,17 +17,43 @@ interface MeetingRowProps {
   locked: boolean;
   now: Date;
   onSelect(id: string, by?: 'keyboard'): void;
+  onMenu(meeting: Meeting, at?: MenuPlace): void;
 }
 
 export function MeetingRow(props: MeetingRowProps) {
-  const { meeting, folder, selected, focusable, arrived, locked, now, onSelect } = props;
+  const { meeting, folder, selected, focusable, arrived, locked, now, onSelect, onMenu } = props;
   const folderChanged = useChanged(meeting.folderId ?? null);
   const [dragging, setDragging] = useState(false);
-  // A move while recording or analysing would be overwritten by the final save.
-  const settled = meeting.status !== 'recording' && meeting.status !== 'processing';
+  const settled = isSettled(meeting);
 
-  function select(): void {
+  // Ctrl+click is the secondary click of a Mac: the menu opens, the row is not chosen.
+  // The end of the drag may not reach a row that was moved in the DOM meanwhile.
+  useEffect(() => {
+    if (!dragging) return;
+    const letGo = () => setDragging(false);
+    window.addEventListener('dragend', letGo, true);
+    window.addEventListener('drop', letGo, true);
+    return () => {
+      window.removeEventListener('dragend', letGo, true);
+      window.removeEventListener('drop', letGo, true);
+    };
+  }, [dragging]);
+
+  function select(event: MouseEvent): void {
+    if (platformOf(navigator.platform) === 'mac' && event.ctrlKey) return;
     if (!locked) onSelect(meeting.id);
+  }
+
+  function openMenu(event: MouseEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    if (!locked) onMenu(meeting);
+  }
+
+  function menuKey(event: KeyboardEvent<HTMLDivElement>): void {
+    const asked = event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+    if (!asked || event.target !== event.currentTarget) return;
+    event.preventDefault();
+    if (!locked) onMenu(meeting, placeUnder(event.currentTarget));
   }
 
   function startDrag(event: DragEvent<HTMLDivElement>): void {
@@ -45,6 +73,8 @@ export function MeetingRow(props: MeetingRowProps) {
       className={`meeting-row${dragging ? ' is-dragging' : ''}`}
       draggable={!locked && settled}
       onClick={select}
+      onContextMenu={openMenu}
+      onKeyDown={menuKey}
       onDragStart={startDrag}
       onDragEnd={() => setDragging(false)}
     >

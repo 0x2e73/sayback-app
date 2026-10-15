@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { LIST_ERROR, workspaceNotice } from './workspace-notice';
 
-const none = { recording: '', analysis: '', library: '', folders: '', update: '' };
+const none = { recording: '', analysis: '', library: '', folders: '', rowMenu: '', update: '' };
 
 it.each([
   ['nothing when all is well', none, null],

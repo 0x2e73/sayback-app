@@ -123,3 +123,11 @@ it('sends the audio level to the main process without waiting for an answer', ()
   api.sendLevel('0.5' as unknown as number);
   expect(electron.send.mock.calls).toEqual([['live:level', 0.25]]);
 });
+
+it('asks the main process for the menu of a meeting row on its own channel', async () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  const request = { meetingId: 'm', folders: [], folderId: null, disabled: false };
+  await api.openMeetingMenu(request);
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('meeting:context-menu', request);
+});

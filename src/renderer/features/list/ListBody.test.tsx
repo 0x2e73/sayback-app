@@ -31,6 +31,7 @@ function body(overrides: Partial<ComponentProps<typeof ListBody>> = {}) {
       locked={false}
       arrivedIds={new Set()}
       onSelect={vi.fn()}
+      onMenu={vi.fn()}
       onSearchEverywhere={vi.fn()}
       {...overrides}
     />

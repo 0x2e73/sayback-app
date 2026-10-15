@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent
 import type { Folder, Meeting } from '../../../shared/contracts';
 import type { DateGroup } from './date-groups';
 import { MeetingRow } from './MeetingRow';
+import type { MenuPlace } from './row-menu';
 import { targetForKey } from './selection';
 
 interface MeetingListProps {
@@ -13,6 +14,7 @@ interface MeetingListProps {
   arrivedIds: ReadonlySet<string>;
   /** `keyboard` when an arrow key chose the row: the card then changes without an entrance. */
   onSelect(id: string, by?: 'keyboard'): void;
+  onMenu(meeting: Meeting, at?: MenuPlace): void;
 }
 
 function hasModifier(event: KeyboardEvent): boolean {
@@ -78,7 +80,7 @@ function useSelectionThumb(selectedId: string | null, groups: unknown) {
 const ENTRANCE_MS = 600;
 
 export function MeetingList(props: MeetingListProps) {
-  const { groups, folders, selectedId, now, locked, arrivedIds, onSelect } = props;
+  const { groups, folders, selectedId, now, locked, arrivedIds, onSelect, onMenu } = props;
   const baseId = useId();
   const { list, thumb } = useSelectionThumb(selectedId, groups);
   // The rows stagger in once, when the list appears; rows added later do not replay it.
@@ -134,6 +136,7 @@ export function MeetingList(props: MeetingListProps) {
               locked={locked}
               now={now}
               onSelect={onSelect}
+              onMenu={onMenu}
             />
           ))}
         </div>

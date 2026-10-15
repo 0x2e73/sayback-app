@@ -6,6 +6,7 @@ import { FolderFilter } from './FolderFilter';
 import { ListBody } from './ListBody';
 import { ListFooter } from './ListFooter';
 import { ALL_MEETINGS, type FolderScope } from './list-filter';
+import type { MenuPlace } from './row-menu';
 import type { UpdateLineProps } from '../updates/UpdateLine';
 import { useArrivals } from './use-arrivals';
 import { useCurrentDate } from './use-current-date';
@@ -26,6 +27,8 @@ export interface ListPaneProps {
   recording: { readonly elapsed: number } | null;
   update: UpdateLineProps;
   onSelect(id: string, by?: 'keyboard'): void;
+  /** Right-click or the menu key on a row: the page opens the native menu. */
+  onRowMenu(meeting: Meeting, at?: MenuPlace): void;
   onToggleSettings(): void;
   onNew(): void;
   onShowRecording(): void;
@@ -78,6 +81,7 @@ export function ListPane(props: ListPaneProps) {
           locked={locked}
           arrivedIds={arrivedIds}
           onSelect={props.onSelect}
+          onMenu={props.onRowMenu}
           onSearchEverywhere={() => props.onScope(ALL_MEETINGS)}
         />
       </div>

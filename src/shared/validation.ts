@@ -75,3 +75,13 @@ const mediaSchema = z
 export function validateMedia(input: unknown): MediaUpload {
   return mediaSchema.parse(input);
 }
+
+const coordinateSchema = z.number().int().min(0).max(20_000);
+export const meetingMenuRequestSchema = z.object({
+  meetingId: idSchema,
+  // The backend sets no limit on folders: the cap only bounds the message.
+  folders: z.array(z.object({ id: idSchema, name: folderNameSchema })).max(1_000),
+  folderId: idSchema.nullable(),
+  disabled: z.boolean(),
+  at: z.object({ x: coordinateSchema, y: coordinateSchema }).optional(),
+});

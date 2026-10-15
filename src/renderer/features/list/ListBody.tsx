@@ -5,6 +5,7 @@ import { EmptyState, Skeleton } from '../../components/ui';
 import type { DateGroup } from './date-groups';
 import { emptyList, type FolderScope } from './list-filter';
 import { MeetingList } from './MeetingList';
+import type { MenuPlace } from './row-menu';
 
 interface ListBodyProps {
   loading: boolean;
@@ -18,6 +19,7 @@ interface ListBodyProps {
   locked: boolean;
   arrivedIds: ReadonlySet<string>;
   onSelect(id: string, by?: 'keyboard'): void;
+  onMenu(meeting: Meeting, at?: MenuPlace): void;
   onSearchEverywhere(): void;
 }
 
@@ -89,6 +91,7 @@ export function ListBody(props: ListBodyProps) {
               locked={props.locked}
               arrivedIds={props.arrivedIds}
               onSelect={props.onSelect}
+              onMenu={props.onMenu}
             />
           </div>
         )}

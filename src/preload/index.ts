@@ -46,6 +46,7 @@ const api: DesktopApi = {
   processMeeting: (id) => ipcRenderer.invoke('meetings:process', id),
   clarify: (id, at, text) => ipcRenderer.invoke('meetings:clarify', id, at, text),
   deleteMeeting: (id) => ipcRenderer.invoke('meetings:delete', id),
+  openMeetingMenu: (request) => ipcRenderer.invoke('meeting:context-menu', request),
   saveMedia: (upload) => ipcRenderer.invoke('media:save', upload),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   completeOnboarding: () => ipcRenderer.invoke('onboarding:complete'),

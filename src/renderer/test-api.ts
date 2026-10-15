@@ -82,6 +82,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     },
     getMeeting: (id) => ok(meetings.find((meeting) => meeting.id === id)!),
     deleteMeeting: () => ok(undefined),
+    openMeetingMenu: () => ok(null),
     openDataFolder: () => ok(undefined),
     checkLocalSetup: () => ok(readySetup),
     openSetupGuide: () => ok(undefined),
