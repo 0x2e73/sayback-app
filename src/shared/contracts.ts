@@ -1,6 +1,7 @@
 import type { Meeting } from '../backend/domain/meeting';
 import type { Folder } from '../backend/domain/folder';
 import type { RecordingRequest, RecordingState } from './recording-state';
+import type { IslandRequest, IslandSnapshot } from './island';
 import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
 export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
@@ -117,6 +118,16 @@ export interface DesktopApi {
   onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
   /** Stores the colour scheme and applies it to the window at once. */
   setAppearance(value: Appearance): Promise<Result<void>>;
+}
+/** What the island page may do: it only talks to the main process. */
+export interface IslandApi {
+  /** Shows the island and returns what it must draw. */
+  ready(): Promise<Result<IslandSnapshot>>;
+  request(request: IslandRequest): Promise<Result<void>>;
+  /** Each listener returns the function that stops listening. */
+  onState(listener: (snapshot: IslandSnapshot) => void): () => void;
+  onExpanded(listener: (expanded: boolean) => void): () => void;
+  onLevel(listener: (level: number) => void): () => void;
 }
 export function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error);
