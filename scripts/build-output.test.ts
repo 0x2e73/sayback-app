@@ -29,4 +29,12 @@ describe('buildProblems', () => {
       'out/preload/island.cjs charge un autre fichier, refusé par le bac à sable',
     ]);
   });
+
+  it('refuses an island page that still allows the dev server socket', () => {
+    const read = (path: string) =>
+      path === 'out/renderer/island.html' ? "connect-src 'self' ws://localhost:*" : complete(path);
+    expect(buildProblems(read)).toEqual([
+      'out/renderer/island.html autorise encore le serveur de développement',
+    ]);
+  });
 });
