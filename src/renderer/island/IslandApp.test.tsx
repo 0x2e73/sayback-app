@@ -1,64 +1,9 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IslandApi } from '../../shared/contracts';
-import type { IslandSnapshot } from '../../shared/island';
-import type { RecordingState } from '../../shared/recording-state';
-import { IslandApp } from './IslandApp';
-
-const shape: IslandSnapshot['shape'] = {
-  kind: 'notch',
-  barHeight: 38,
-  notchWidth: 220,
-  compactWidth: 388,
-  openWidth: 560,
-  openHeight: 240,
-};
-
-const recording = (extra: Partial<RecordingState> = {}): RecordingState =>
-  ({ recording: true, elapsed: 12, paused: false, stopping: false, ...extra }) as RecordingState;
-
-function fakeIsland(first: IslandSnapshot) {
-  const listeners: {
-    state(snapshot: IslandSnapshot): void;
-    expanded(expanded: boolean): void;
-    level: Set<(level: number) => void>;
-  } = { state: () => {}, expanded: () => {}, level: new Set() };
-  const request = vi.fn<IslandApi['request']>(async () => ({ ok: true, value: undefined }));
-  const api: IslandApi = {
-    ready: async () => ({ ok: true, value: first }),
-    request,
-    onState: (listener) => {
-      listeners.state = listener;
-      return () => {};
-    },
-    onExpanded: (listener) => {
-      listeners.expanded = listener;
-      return () => {};
-    },
-    onLevel: (listener) => {
-      listeners.level.add(listener);
-      return () => listeners.level.delete(listener);
-    },
-    onStartResult: () => () => {},
-  };
-  return {
-    api,
-    request,
-    push: (snapshot: IslandSnapshot) => act(() => listeners.state(snapshot)),
-    expand: (expanded: boolean) => act(() => listeners.expanded(expanded)),
-    level: (value: number) => act(() => listeners.level.forEach((listener) => listener(value))),
-  };
-}
-
-async function shown(snapshot: IslandSnapshot) {
-  const island = fakeIsland(snapshot);
-  render(<IslandApp api={island.api} now={() => Date.now()} />);
-  await act(async () => {});
-  return island;
-}
+import { recording, shape, shown } from './island-fixture';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {

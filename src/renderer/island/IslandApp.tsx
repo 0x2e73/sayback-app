@@ -1,9 +1,9 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { IslandApi } from '../../shared/contracts';
-import type { IslandShape } from '../../shared/island';
-import { LevelMeter, type LevelFeed } from '../components/ui';
-import { IslandOpen } from './IslandOpen';
-import { monotonic, useChrono, useIsland, type Clock, type IslandView } from './use-island';
+import type { IslandRequest, IslandShape } from '../../shared/island';
+import { IslandReady } from './IslandReady';
+import { IslandRecording } from './IslandRecording';
+import { monotonic, useIsland, type Clock, type IslandView } from './use-island';
 
 interface IslandAppProps {
   api: IslandApi;
@@ -24,43 +24,51 @@ function shapeStyle(shape: IslandShape): ShapeStyle {
 }
 
 interface IslandShellProps {
-  feed: LevelFeed;
+  api: IslandApi;
   view: IslandView;
   now: Clock;
-  onRequest: ReturnType<typeof useIsland>['request'];
+  onRequest(request: IslandRequest): void;
 }
 
-function IslandShell({ feed, view, now, onRequest }: IslandShellProps) {
-  const { recording, shape } = view.snapshot;
-  const chrono = useChrono(recording, view.receivedAt, now);
-  const paused = recording.recording && recording.paused;
-  const stopping = recording.recording && recording.stopping;
+// One shell for both modes: the ready content stays mounted, with its chips and busy state,
+// while it fades out over the recording content.
+function IslandShell({ api, view, now, onRequest }: IslandShellProps) {
+  const { snapshot, ready } = view;
+  const [handedOver, setHandedOver] = useState(false);
+  const { recording, shape } = snapshot;
+  const recordingMode = snapshot.mode === 'recording';
+  const arriving = recordingMode && ready !== null;
   return (
     <main
       className="island"
       aria-label="SayBack"
+      data-mode={snapshot.mode}
       data-kind={shape.kind}
       data-expanded={view.expanded || undefined}
-      data-paused={paused || undefined}
+      data-paused={(recording.recording && recording.paused) || undefined}
+      data-arriving={arriving || undefined}
     >
       <div className="island-shell" style={shapeStyle(shape)}>
-        <div className="island-compact" aria-hidden="true">
-          <span className="island-wing">
-            <span className="island-dot" />
-            <LevelMeter feed={feed} bars={4} />
-          </span>
-          <span />
-          <span className="island-wing island-wing-end">
-            <span className="island-chrono island-chrono-compact">{chrono}</span>
-          </span>
-        </div>
-        <IslandOpen
-          expanded={view.expanded}
-          chrono={chrono}
-          paused={paused}
-          stopping={stopping}
-          onRequest={onRequest}
-        />
+        {ready && !(arriving && handedOver) && (
+          <IslandReady
+            api={api}
+            ready={ready}
+            expanded={view.expanded}
+            leaving={recordingMode}
+            onLeft={() => setHandedOver(true)}
+            onRequest={onRequest}
+          />
+        )}
+        {recordingMode && (
+          <IslandRecording
+            feed={api}
+            recording={recording}
+            receivedAt={view.receivedAt}
+            expanded={view.expanded}
+            now={now}
+            onRequest={onRequest}
+          />
+        )}
       </div>
     </main>
   );
@@ -68,6 +76,8 @@ function IslandShell({ feed, view, now, onRequest }: IslandShellProps) {
 
 export function IslandApp({ api, now = monotonic }: IslandAppProps) {
   const { view, request } = useIsland(api, now);
-  if (!view?.snapshot.recording.recording) return null;
-  return <IslandShell feed={api} view={view} now={now} onRequest={request} />;
+  if (!view) return null;
+  const { snapshot } = view;
+  if (snapshot.mode === 'recording' && !snapshot.recording.recording) return null;
+  return <IslandShell api={api} view={view} now={now} onRequest={request} />;
 }

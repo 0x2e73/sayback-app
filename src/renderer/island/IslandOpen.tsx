@@ -24,7 +24,7 @@ export function IslandOpen({ expanded, chrono, paused, stopping, onRequest }: Is
   // A stray click on a panel that appears under the cursor must not end the meeting.
   const confirmation = useConfirmation(stop, expanded);
   return (
-    <div className="island-open" inert={!expanded} aria-hidden={!expanded}>
+    <div className="island-panel island-open" inert={!expanded} aria-hidden={!expanded}>
       <header className="island-open-header">
         <span className="island-state">
           <span className="island-dot" />

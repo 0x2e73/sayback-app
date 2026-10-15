@@ -10,13 +10,18 @@ body {
   --color-text-subtle: var(--color-island-text-subtle);
   --color-surface: var(--color-island-surface);
   --color-surface-raised: var(--color-island-surface-raised);
+  --color-border: var(--color-island-border);
   --color-border-strong: var(--color-island-border-strong);
   --color-accent: var(--color-island-accent);
   --color-live: var(--color-island-live);
   --color-paused: var(--color-island-paused);
+  --color-danger: var(--color-island-danger);
   --color-action: var(--color-island-action);
   --color-action-hover: var(--color-island-action-hover);
   --color-on-action: var(--color-island-on-action);
+  /* Mixed again here: computed at the root, the tints would keep the theme's accent. */
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  --color-accent-tint: color-mix(in srgb, var(--color-accent) 10%, transparent);
 
   position: relative;
   height: 100%;
@@ -40,6 +45,10 @@ body {
     width var(--duration-island) var(--ease-island),
     height var(--duration-island) var(--ease-island),
     border-radius var(--duration-island) var(--ease-island);
+}
+/* Ready, it grows out of the notch itself and folds back into it. */
+.island[data-mode='ready'] .island-shell {
+  width: var(--island-notch-width);
 }
 .island[data-expanded] .island-shell {
   width: var(--island-open-width);
@@ -95,23 +104,36 @@ body {
   visibility: hidden;
 }
 
-/* Laid out at the open size and centred, so the growing shell reveals it without moving it. */
-.island-open {
+/* Laid out at the open size and centred, so the growing shell reveals them without moving them. */
+.island-panel {
   position: absolute;
   top: var(--island-bar-height);
   left: 50%;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: var(--space-3);
   width: var(--island-open-width);
   height: calc(var(--island-open-height) - var(--island-bar-height));
   margin-left: calc(var(--island-open-width) / -2);
-  padding: var(--space-3) var(--space-5) var(--space-4);
   opacity: 0;
+  /* Folding, the content goes first and the shell follows. */
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
-.island[data-expanded] .island-open {
+.island[data-expanded] .island-panel {
   opacity: 1;
   transition: opacity var(--duration-base) var(--ease-out) var(--duration-fast);
+}
+/* Ready to recording: the start content fades out as the recording content fades in. */
+.island[data-arriving] .island-ready {
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.island[data-arriving] .island-compact,
+.island[data-arriving] .island-open {
+  animation: fade-enter var(--duration-base) var(--ease-out);
+}
+.island-open {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) var(--space-4);
 }
 .island-open-header {
   display: flex;
@@ -156,4 +178,70 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+/* Ready: title, sources, screen, actions; the last row takes what is left. */
+.island-ready {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5) var(--space-4);
+}
+.island-ready-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.island-title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-section);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.island-close {
+  flex: none;
+  width: var(--control-sm);
+  min-height: var(--control-sm);
+  color: var(--color-text-muted);
+}
+/* The screen line and the error that replaces it share one height: nothing below moves. */
+.island-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+  height: var(--control-sm);
+  color: var(--color-text-muted);
+  font-size: var(--text-control);
+}
+.island-line[data-off] {
+  color: var(--color-text-subtle);
+}
+.island-line-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.island-line-warning {
+  flex: none;
+  color: var(--color-danger);
+}
+.island-line-action {
+  flex: none;
+  min-height: var(--control-sm);
+  padding-block: 0;
+}
+.island-ready-actions {
+  align-self: end;
+  justify-content: space-between;
 }
