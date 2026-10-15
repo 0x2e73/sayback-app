@@ -16,14 +16,19 @@ const meeting = meetingFixture('m1', 'Revue', '2026-10-14T08:00:00Z', {
 });
 
 function renderSection(
-  extra: { meeting?: Meeting; disabled?: boolean; submitError?: string } = {},
+  extra: {
+    meeting?: Meeting;
+    disabled?: boolean;
+    submitError?: string;
+    currentTime?: () => number;
+  } = {},
 ) {
   const onTimestamp = vi.fn();
   const onSubmit = vi.fn(async () => true);
   render(
     <Clarifications
       meeting={extra.meeting ?? meeting}
-      currentTime={() => 30}
+      currentTime={extra.currentTime ?? (() => 30)}
       disabled={extra.disabled ?? false}
       saving={false}
       submitError={extra.submitError ?? ''}
@@ -52,6 +57,15 @@ it('opens the form at the playback position and closes it after saving', async (
   await user.click(screen.getByRole('button', { name: 'Ajouter' }));
   expect(onSubmit).toHaveBeenCalledWith(30, 'Le budget.');
   expect(await screen.findByRole('button', { name: 'Ajouter une précision' })).toBeInTheDocument();
+});
+
+it('reads the playback position when the button is clicked, not when it renders', async () => {
+  const user = userEvent.setup();
+  let now = 10;
+  renderSection({ currentTime: () => now });
+  now = 42;
+  await user.click(screen.getByRole('button', { name: 'Ajouter une précision' }));
+  expect(screen.getByRole('textbox', { name: 'Moment' })).toHaveValue('00:42');
 });
 
 it('closes the form with « Annuler »', async () => {
