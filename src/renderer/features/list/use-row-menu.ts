@@ -1,10 +1,17 @@
-import { useState } from 'react';
-import { unwrap, type DesktopApi, type Folder, type Meeting } from '../../../shared/contracts';
+import { useEffect, useRef, useState } from 'react';
+import {
+  RATE_LIMITED,
+  unwrap,
+  type DesktopApi,
+  type Folder,
+  type Meeting,
+} from '../../../shared/contracts';
 import { errorMessage } from '../../../shared/format';
 import { menuRequest, type MenuPlace } from './row-menu';
 
 interface RowMenuOptions {
   api: DesktopApi;
+  meetings: Meeting[];
   folders: Folder[];
   onMove(meetingId: string, folderId: string | null): Promise<boolean>;
   /** The meeting is gone from the disk: the list lets go of it. */
@@ -15,20 +22,35 @@ interface RowMenuOptions {
  * The native menu of a row. The main process only draws it: the move is the one the drag and
  * drop uses, and the deletion waits for the confirmation dialog.
  */
-export function useRowMenu({ api, folders, onMove, onDeleted }: RowMenuOptions) {
+export function useRowMenu({ api, meetings, folders, onMove, onDeleted }: RowMenuOptions) {
   const [target, setTarget] = useState<Meeting | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+
+  // The menu is modal: the library may have changed by the time it answers.
+  const latestMeetings = useRef(meetings);
+  useEffect(() => {
+    latestMeetings.current = meetings;
+  }, [meetings]);
+
+  function report(failure: unknown): void {
+    const message = errorMessage(failure);
+    // A menu asked too fast just does not open.
+    if (message !== RATE_LIMITED) setError(message);
+  }
 
   async function open(meeting: Meeting, at?: MenuPlace): Promise<void> {
     try {
       const choice = unwrap(await api.openMeetingMenu(menuRequest(meeting, folders, at)));
       setError('');
-      if (choice?.kind === 'delete') setTarget(meeting);
-      if (choice?.kind !== 'move') return;
-      if (choice.folderId !== (meeting.folderId ?? null)) await onMove(meeting.id, choice.folderId);
+      const current = latestMeetings.current.find((item) => item.id === meeting.id);
+      if (!current || !choice) return;
+      if (choice.kind === 'delete') setTarget(current);
+      if (choice.kind === 'move' && choice.folderId !== (current.folderId ?? null)) {
+        await onMove(current.id, choice.folderId);
+      }
     } catch (failure) {
-      setError(errorMessage(failure));
+      report(failure);
     }
   }
 
@@ -39,7 +61,8 @@ export function useRowMenu({ api, folders, onMove, onDeleted }: RowMenuOptions) 
       unwrap(await api.deleteMeeting(target.id));
       onDeleted(target.id);
       return true;
-    } catch {
+    } catch (failure) {
+      report(failure);
       return false;
     } finally {
       setDeleting(false);

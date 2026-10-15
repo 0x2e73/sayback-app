@@ -197,3 +197,24 @@ it('opens no row menu while a recording locks the list', () => {
   fireEvent.keyDown(row, { key: 'ContextMenu' });
   expect(onRowMenu).not.toHaveBeenCalled();
 });
+
+it('drops the marks of a drag whose row left the library before the drag ended', () => {
+  const folders = [acme];
+  const view = render(<Pane {...props({ meetings: [today('a', 'Produit')], folders })} />);
+  fireEvent.dragStart(screen.getByRole('option', { name: /Produit/ }), {
+    dataTransfer: { setData: vi.fn() },
+  });
+  expect(screen.getByRole('button', { name: 'Acme' })).toHaveAttribute('data-drop-ready');
+  view.rerender(<Pane {...props({ meetings: [], folders })} />);
+  expect(screen.getByRole('button', { name: 'Acme' })).not.toHaveAttribute('data-drop-ready');
+});
+
+it('ends a drag on a dragend that only reaches the window', () => {
+  render(<Pane {...props({ meetings: [today('a', 'Produit')], folders: [acme] })} />);
+  const row = screen.getByRole('option', { name: /Produit/ });
+  fireEvent.dragStart(row, { dataTransfer: { setData: vi.fn() } });
+  expect(row).toHaveClass('is-dragging');
+  fireEvent.dragEnd(window);
+  expect(row).not.toHaveClass('is-dragging');
+  expect(screen.getByRole('button', { name: 'Acme' })).not.toHaveAttribute('data-drop-ready');
+});

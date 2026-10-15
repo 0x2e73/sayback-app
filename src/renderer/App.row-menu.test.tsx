@@ -3,7 +3,12 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { DesktopApi, Meeting, MeetingMenuChoice } from '../shared/contracts';
+import {
+  RATE_LIMITED,
+  type DesktopApi,
+  type Meeting,
+  type MeetingMenuChoice,
+} from '../shared/contracts';
 import { App } from './App';
 import { apiFor, meetingFixture, ok } from './test-api';
 
@@ -153,6 +158,60 @@ describe('The menu of a meeting row', () => {
     render(<App api={api} />);
     fireEvent.contextMenu(await row(/Point hebdo/));
     expect(await screen.findByRole('alert')).toHaveTextContent('Menu indisponible');
+  });
+
+  it('stays silent when the menu is asked too fast', async () => {
+    const { api, openMeetingMenu } = setup(null);
+    api.openMeetingMenu = vi.fn(async () => ({ ok: false as const, error: RATE_LIMITED }));
+    render(<App api={api} />);
+    fireEvent.contextMenu(await row(/Point hebdo/));
+    await waitFor(() => expect(api.openMeetingMenu).toHaveBeenCalled());
+    expect(openMeetingMenu).not.toHaveBeenCalled();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('reports a failed deletion in the notice as well as in the dialog', async () => {
+    const user = userEvent.setup();
+    const { api } = setup({ kind: 'delete' });
+    api.deleteMeeting = async () => ({ ok: false, error: 'Disque plein' });
+    render(<App api={api} />);
+    fireEvent.contextMenu(await row(/Point hebdo/));
+    const dialog = await screen.findByRole('dialog', { name: 'Supprimer cette réunion ?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Supprimer' }));
+    expect((await screen.findAllByText('Disque plein')).length).toBeGreaterThan(0);
+  });
+
+  it('ignores the answer for a meeting that left the library while the menu was open', async () => {
+    const user = userEvent.setup();
+    const { api } = setup(null);
+    let answer: (value: { ok: true; value: MeetingMenuChoice }) => void = () => {};
+    const asked = vi
+      .fn<DesktopApi['openMeetingMenu']>()
+      .mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)))
+      .mockResolvedValue({ ok: true, value: { kind: 'delete' } });
+    api.openMeetingMenu = asked;
+    render(<App api={api} />);
+    const target = await row(/Point hebdo/);
+    fireEvent.contextMenu(target);
+    fireEvent.contextMenu(target);
+    const dialog = await screen.findByRole('dialog', { name: 'Supprimer cette réunion ?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Supprimer' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    answer({ ok: true, value: { kind: 'delete' } });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(api.deleteMeeting).toHaveBeenCalledTimes(1);
+  });
+
+  it('compares with the folder the meeting has now, not the one it had at the click', async () => {
+    const { api } = setup({ kind: 'move', folderId: 'f1' });
+    let answer: (value: { ok: true; value: MeetingMenuChoice }) => void = () => {};
+    api.openMeetingMenu = () => new Promise((resolve) => (answer = resolve));
+    render(<App api={api} />);
+    fireEvent.contextMenu(await row(/Point hebdo/));
+    answer({ ok: true, value: { kind: 'move', folderId: null } });
+    await waitFor(() => expect(api.moveMeeting).toHaveBeenCalledWith('old', null));
   });
 
   it('does not choose the row on a Ctrl+click of a Mac', async () => {

@@ -44,6 +44,7 @@ export function useWorkspace(api: DesktopApi, onboarded: boolean) {
 
   const rowMenu = useRowMenu({
     api,
+    meetings: library.meetings,
     folders: folders.folders,
     onMove: folders.move,
     onDeleted: deleted,

@@ -20,8 +20,9 @@ function dropAnnouncement(folderId: string | null, folders: Folder[]): string {
   return folder ? `Réunion déplacée dans « ${folder.name} ».` : 'Réunion déplacée.';
 }
 
-function startsMeetingDrag(event: Event): boolean {
-  return event.target instanceof Element && event.target.closest('[data-meeting-id]') !== null;
+function draggedMeetingId(event: Event): string | null {
+  if (!(event.target instanceof Element)) return null;
+  return event.target.closest<HTMLElement>('[data-meeting-id]')?.dataset.meetingId ?? null;
 }
 
 export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) {
@@ -29,7 +30,9 @@ export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) 
   // The chip that took a meeting flashes once; the animation clears the mark when it ends.
   const [accepted, setAccepted] = useState<string | null>(null);
   // From the moment a row is picked up until it lands or is let go: every chip that can take it shows it.
-  const [dragging, setDragging] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  // A row that left the library takes its dragend with it: the mark goes with the row.
+  const dragging = draggedId !== null && meetings.some((meeting) => meeting.id === draggedId);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   // The folder may be deleted while the move is pending, so read the latest list afterwards.
   const latestFolders = useRef(folders);
@@ -38,21 +41,23 @@ export function useFolderDrop({ meetings, folders, onMove }: FolderDropOptions) 
   }, [folders]);
 
   useEffect(() => {
-    const pickUp = (event: Event) => setDragging(startsMeetingDrag(event));
-    const letGo = () => setDragging(false);
-    document.addEventListener('dragstart', pickUp);
-    document.addEventListener('dragend', letGo);
-    document.addEventListener('drop', letGo);
+    const pickUp = (event: Event) => setDraggedId(draggedMeetingId(event));
+    const letGo = () => setDraggedId(null);
+    // Capture, on the window: a row that is gone or a handler that stops it cannot hide the end.
+    window.addEventListener('dragstart', pickUp);
+    window.addEventListener('dragend', letGo, true);
+    window.addEventListener('drop', letGo, true);
     return () => {
-      document.removeEventListener('dragstart', pickUp);
-      document.removeEventListener('dragend', letGo);
-      document.removeEventListener('drop', letGo);
+      window.removeEventListener('dragstart', pickUp);
+      window.removeEventListener('dragend', letGo, true);
+      window.removeEventListener('drop', letGo, true);
     };
   }, []);
 
   async function drop(event: DragEvent<HTMLElement>, id: string | null): Promise<void> {
     event.preventDefault();
     setDragTarget(null);
+    setDraggedId(null);
     const meetingId = event.dataTransfer.getData(MEETING_DRAG_TYPE);
     const meeting = meetings.find((item) => item.id === meetingId);
     if (!meetingId || (meeting && (meeting.folderId ?? null) === id)) return;

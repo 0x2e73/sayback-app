@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { z } from 'zod';
-import type { Result } from '../shared/contracts';
+import { RATE_LIMITED, type Result } from '../shared/contracts';
 import type { WindowRole, WindowRoles } from './window-roles';
 
 /**
@@ -65,8 +65,7 @@ export function createIpcRegistrar(
       const withinRate = perSecond === undefined ? () => true : rateLimiter(perSecond, now);
       ipcMain.handle(channel, async (event, ...args): Promise<Result<unknown>> => {
         if (!windowRoles.allows(event, roles)) return { ok: false, error: 'Accès refusé.' };
-        if (!withinRate())
-          return { ok: false, error: 'Trop de demandes. Réessayez dans un instant.' };
+        if (!withinRate()) return { ok: false, error: RATE_LIMITED };
         try {
           return { ok: true, value: await action(...args) };
         } catch (error) {

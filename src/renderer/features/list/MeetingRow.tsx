@@ -1,4 +1,4 @@
-import { useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import { formatRowDate } from './date-groups';
 import { platformOf } from '../../platform';
@@ -27,6 +27,18 @@ export function MeetingRow(props: MeetingRowProps) {
   const settled = isSettled(meeting);
 
   // Ctrl+click is the secondary click of a Mac: the menu opens, the row is not chosen.
+  // The end of the drag may not reach a row that was moved in the DOM meanwhile.
+  useEffect(() => {
+    if (!dragging) return;
+    const letGo = () => setDragging(false);
+    window.addEventListener('dragend', letGo, true);
+    window.addEventListener('drop', letGo, true);
+    return () => {
+      window.removeEventListener('dragend', letGo, true);
+      window.removeEventListener('drop', letGo, true);
+    };
+  }, [dragging]);
+
   function select(event: MouseEvent): void {
     if (platformOf(navigator.platform) === 'mac' && event.ctrlKey) return;
     if (!locked) onSelect(meeting.id);

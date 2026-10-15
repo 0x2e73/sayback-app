@@ -176,6 +176,9 @@ export interface IslandApi {
   /** The end of a `start`: busy is over; on failure, the error to show. */
   onStartResult(listener: (outcome: RecordingStartOutcome) => void): () => void;
 }
+/** The answer of a channel that was called too fast; the page may drop it silently. */
+export const RATE_LIMITED = 'Trop de demandes. Réessayez dans un instant.';
+
 export function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error);
   return result.value;
