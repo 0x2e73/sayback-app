@@ -49,6 +49,10 @@ function islandStartApi(): Fixture {
   let listener: (request: RecordingStartRequest) => void = () => {};
   const order: string[] = [];
   const api = apiFor([]);
+  api.selectSource = vi.fn<DesktopApi['selectSource']>(() => {
+    order.push('select');
+    return ok(undefined);
+  });
   api.getSettings = () => ok({ ...settings, hasOpenAiKey: true });
   api.getSources = () => {
     order.push('sources');
@@ -103,6 +107,7 @@ describe('a start asked by the island', () => {
     await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
     await island.ask(request);
     await waitFor(() => expect(island.answer).toHaveBeenCalledWith('start-1', { ok: true }));
+    expect(island.api.selectSource).toHaveBeenCalledWith('screen:1:0', true);
     expect(capture.start).toHaveBeenCalledWith(
       island.api,
       'Réunion du 15 octobre, 11 h 42',
@@ -162,6 +167,19 @@ describe('a start asked by the island', () => {
     vi.useRealTimers();
   });
 
+  it('answers failed when the screen cannot be chosen, and remembers nothing', async () => {
+    const island = islandStartApi();
+    island.api.selectSource = () => Promise.resolve({ ok: false, error: 'Source invalide.' });
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    await island.ask(request);
+    await waitFor(() =>
+      expect(island.answer).toHaveBeenCalledWith('start-1', { ok: false, error: 'failed' }),
+    );
+    expect(capture.start).not.toHaveBeenCalled();
+    expect(island.remember).not.toHaveBeenCalled();
+  });
+
   it('refuses a start during the welcome', async () => {
     const island = islandStartApi();
     island.api.getSettings = () => ok({ ...settings, onboardingCompleted: false });
@@ -219,5 +237,7 @@ describe('a start asked by the island', () => {
     await act(async () => open());
     await waitFor(() => expect(island.answer).toHaveBeenCalledWith('start-1', { ok: true }));
     expect(capture.start).toHaveBeenCalledOnce();
+    // Refused before choosing a source: main keeps the first start's screen.
+    expect(island.api.selectSource).toHaveBeenCalledOnce();
   });
 });

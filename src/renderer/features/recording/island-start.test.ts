@@ -29,29 +29,20 @@ function fixture() {
       autoAnalyze: true,
       screenId: 'screen:2:0',
     });
-  const calls: string[] = [];
-  const selectSource = vi.spyOn(api, 'selectSource').mockImplementation(async () => {
-    calls.push('select');
-    return { ok: true, value: undefined };
-  });
   const setCapturePrefs = vi.spyOn(api, 'setCapturePrefs');
-  const onStart = vi.fn(async () => {
-    calls.push('start');
-  });
-  return { api, calls, selectSource, setCapturePrefs, onStart };
+  const onStart = vi.fn(async () => {});
+  return { api, setCapturePrefs, onStart };
 }
 
 describe('startFromIsland', () => {
   it('starts as the dialog does and remembers the choices once started', async () => {
-    const { api, calls, selectSource, setCapturePrefs, onStart } = fixture();
+    const { api, setCapturePrefs, onStart } = fixture();
     await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({ ok: true });
-    expect(selectSource).toHaveBeenCalledWith('screen:1:0', true);
     expect(onStart).toHaveBeenCalledWith(
       'Réunion du 15 octobre, 11 h 42',
       { microphone: true, systemAudio: true, screen: true, source: main },
       true,
     );
-    expect(calls).toEqual(['select', 'start']);
     expect(setCapturePrefs).toHaveBeenCalledWith({
       microphone: true,
       systemAudio: true,
@@ -70,9 +61,8 @@ describe('startFromIsland', () => {
   });
 
   it('starts without a screen and keeps the remembered one', async () => {
-    const { api, selectSource, setCapturePrefs, onStart } = fixture();
+    const { api, setCapturePrefs, onStart } = fixture();
     await expect(startFromIsland(api, withoutScreen, onStart)).resolves.toEqual({ ok: true });
-    expect(selectSource).not.toHaveBeenCalled();
     expect(onStart).toHaveBeenCalledWith(
       expect.any(String),
       { microphone: true, systemAudio: false, screen: false, source: undefined },
@@ -167,11 +157,6 @@ describe('startFromIsland', () => {
   it('answers failed for anything else and remembers nothing', async () => {
     const { api, setCapturePrefs, onStart } = fixture();
     onStart.mockRejectedValueOnce(new Error('La réunion n’a pas pu être créée.'));
-    await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({
-      ok: false,
-      error: 'failed',
-    });
-    vi.spyOn(api, 'selectSource').mockResolvedValueOnce({ ok: false, error: 'Source invalide.' });
     await expect(startFromIsland(api, withScreen, onStart)).resolves.toEqual({
       ok: false,
       error: 'failed',

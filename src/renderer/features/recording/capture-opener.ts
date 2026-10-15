@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import type { DesktopApi } from '../../../shared/contracts';
+import { unwrap, type DesktopApi } from '../../../shared/contracts';
 import { CaptureSession, type CaptureOptions } from './capture-session';
 
 /** What holds the one capture: nothing, a running recording, or an interrupted one not yet seen. */
@@ -18,7 +18,8 @@ export class CaptureBusy extends Error {
 }
 
 /**
- * Opens the capture. One that opens after its deadline is stopped before it is ever shown or
+ * Points main at the screen, then opens the capture at once: `getDisplayMedia` takes the source
+ * chosen last. One that opens after its deadline is stopped before it is ever shown or
  * announced: the main process has already told the island it failed.
  */
 async function openCapture(
@@ -27,6 +28,7 @@ async function openCapture(
   options: CaptureOptions,
   deadline: number | undefined,
 ): Promise<CaptureSession> {
+  if (options.screen) unwrap(await api.selectSource(options.source?.id ?? '', options.systemAudio));
   const session = await CaptureSession.start(api, title, options);
   if (deadline === undefined || Date.now() <= deadline) return session;
   await session.stop().catch(() => undefined);
@@ -35,7 +37,7 @@ async function openCapture(
 
 /**
  * The dialog and the island both start here: one capture at a time, a second start refused
- * even while the first one is still opening.
+ * even while the first one is still opening, before it can choose another source.
  */
 export function useCaptureOpener(api: DesktopApi) {
   const opening = useRef(false);

@@ -147,7 +147,6 @@ export async function startFromIsland(
     await launchMeeting(api, onStart, {
       title,
       selection: toggles,
-      sourceId,
       source: screens.chosen,
       autoAnalyze: prefs.autoAnalyze && analysis,
       remembered: {

@@ -52,7 +52,6 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
       await launchMeeting(api, onStart, {
         title: titleToStart(),
         selection,
-        sourceId: choice.sourceId,
         source: choice.source,
         autoAnalyze: choice.autoAnalyze && analysisReady,
         remembered: {

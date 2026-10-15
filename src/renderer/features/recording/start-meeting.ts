@@ -1,10 +1,5 @@
 import type { SourceToggles } from '../../../shared/capture-selection';
-import {
-  unwrap,
-  type CapturePrefs,
-  type CaptureSource,
-  type DesktopApi,
-} from '../../../shared/contracts';
+import type { CapturePrefs, CaptureSource, DesktopApi } from '../../../shared/contracts';
 import type { CaptureOptions } from './capture-session';
 
 export type CaptureSelection = Omit<CaptureOptions, 'onFailure' | 'onEnded'>;
@@ -21,7 +16,6 @@ export interface MeetingLaunch {
   title: string;
   selection: SourceToggles;
   /** The screen or window to share; read only with the screen on. */
-  sourceId: string;
   source?: CaptureSource;
   /** The analysis after the stop, once the settings allow it. */
   autoAnalyze: boolean;
@@ -29,7 +23,7 @@ export interface MeetingLaunch {
   remembered: CapturePrefs;
 }
 
-type LaunchApi = Pick<DesktopApi, 'selectSource' | 'setCapturePrefs'>;
+type LaunchApi = Pick<DesktopApi, 'setCapturePrefs'>;
 
 /** A window gets a new identifier each time: only a screen is worth remembering. */
 export function rememberedScreenId(
@@ -42,8 +36,8 @@ export function rememberedScreenId(
 }
 
 /**
- * Points the capture at its source, starts, then remembers the choices. A failure throws
- * before anything is remembered; a failed save of the habits is not worth a message.
+ * Starts, then remembers the choices. A failure throws before anything is remembered; a failed
+ * save of the habits is not worth a message.
  */
 export async function launchMeeting(
   api: LaunchApi,
@@ -51,7 +45,6 @@ export async function launchMeeting(
   launch: MeetingLaunch,
 ): Promise<void> {
   const { selection } = launch;
-  if (selection.screen) unwrap(await api.selectSource(launch.sourceId, selection.systemAudio));
   const source = selection.screen ? launch.source : undefined;
   await onStart(launch.title, { ...selection, source }, launch.autoAnalyze);
   void api.setCapturePrefs(launch.remembered).catch(() => undefined);
