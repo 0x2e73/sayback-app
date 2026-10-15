@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   unwrap,
+  type Appearance,
   type DesktopApi,
   type NotesProvider,
   type Settings,
@@ -55,6 +56,7 @@ export function useSettingsFields(api: DesktopApi) {
   const { setHasOpenAiKey, setHasAnthropicKey, setHasGeminiKey, setHasCompatibleKey } = keys;
   const [compatibleBaseUrl, setCompatibleBaseUrl] = useState('');
   const [whisperModelPath, setWhisperModelPath] = useState('');
+  const [appearance, setAppearance] = useState<Appearance>('system');
   const [loadError, setLoadError] = useState('');
   const {
     items: models,
@@ -78,6 +80,7 @@ export function useSettingsFields(api: DesktopApi) {
         setHasCompatibleKey(settings.hasCompatibleKey);
         setCompatibleBaseUrl(settings.compatibleBaseUrl);
         setWhisperModelPath(settings.whisperModelPath);
+        setAppearance(settings.appearance);
         if (modelsAvailable(settings.notesProvider, settings)) {
           void loadModels(settings.notesProvider).then((available) => {
             if (available.length && !available.includes(settings.model)) {
@@ -110,6 +113,7 @@ export function useSettingsFields(api: DesktopApi) {
     ...keys,
     compatibleBaseUrl,
     whisperModelPath,
+    appearance,
     models,
     modelsLoading,
     modelsError,
@@ -119,6 +123,7 @@ export function useSettingsFields(api: DesktopApi) {
     setModel,
     setCompatibleBaseUrl,
     setWhisperModelPath,
+    setAppearance,
     loadModels,
     clearModels,
   };

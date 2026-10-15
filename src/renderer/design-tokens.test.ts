@@ -250,7 +250,10 @@ describe('design tokens', () => {
         expect(themeBlock(read('styles.css'), theme)).toContain(`${token}:`);
       }
     }
-    expect(read('styles/segmented.css')).toMatch(/aria-selected='true'\]\s*\{[^}]*--color-thumb/);
+    for (const state of ['aria-selected', 'aria-checked']) {
+      const rule = new RegExp(`${state}='true'\\][^{]*\\{[^}]*--color-thumb`);
+      expect(read('styles/segmented.css')).toMatch(rule);
+    }
     expect(read('styles/recording.css')).toMatch(/\.recording-preview\s*\{[^}]*--color-media/);
     expect(read('styles/meeting-detail.css')).toMatch(
       /\.detail-video:fullscreen\s*\{[^}]*--color-media/,

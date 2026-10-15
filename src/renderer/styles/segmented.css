@@ -20,7 +20,8 @@
 .segmented-tab:hover {
   color: var(--color-text);
 }
-.segmented-tab[aria-selected='true'] {
+.segmented-tab[aria-selected='true'],
+.segmented-tab[aria-checked='true'] {
   background: var(--color-thumb);
   box-shadow: var(--shadow-thumb);
   color: var(--color-text);

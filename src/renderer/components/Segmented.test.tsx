@@ -76,3 +76,31 @@ it('ignores the other keys', async () => {
   await user.keyboard('a{ArrowDown}');
   expect(onChange).toHaveBeenCalledOnce();
 });
+
+it('can stand for a radio group, with no panel to control', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(
+    <Segmented
+      kind="radios"
+      label="Apparence"
+      options={[
+        { value: 'system', label: 'Système' },
+        { value: 'light', label: 'Clair' },
+        { value: 'dark', label: 'Sombre' },
+      ]}
+      value="system"
+      onChange={onChange}
+    />,
+  );
+  expect(screen.getByRole('radiogroup', { name: 'Apparence' })).toBeInTheDocument();
+  expect(screen.queryByRole('tablist')).toBeNull();
+  const system = screen.getByRole('radio', { name: 'Système' });
+  expect(system).toBeChecked();
+  expect(system).toHaveAttribute('tabindex', '0');
+  expect(system).not.toHaveAttribute('aria-controls');
+  await user.click(system);
+  await user.keyboard('{ArrowRight}');
+  expect(onChange).toHaveBeenLastCalledWith('light');
+  expect(screen.getByRole('radio', { name: 'Clair' })).toHaveFocus();
+});

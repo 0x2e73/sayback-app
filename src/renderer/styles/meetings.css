@@ -128,3 +128,6 @@
   border-color: var(--color-accent);
   background: var(--color-accent-tint);
 }
+.appearance-choice {
+  max-width: 360px;
+}

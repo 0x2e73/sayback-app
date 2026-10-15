@@ -7,12 +7,28 @@ export interface SegmentedOption<T extends string> {
   panelId: string;
 }
 
-interface SegmentedProps<T extends string> {
+export interface RadioOption<T extends string> {
+  value: T;
   label: string;
-  options: readonly SegmentedOption<T>[];
+}
+
+interface SharedProps<T extends string> {
+  label: string;
   value: T;
   onChange(value: T): void;
 }
+
+interface TabsProps<T extends string> extends SharedProps<T> {
+  kind?: 'tabs';
+  options: readonly SegmentedOption<T>[];
+}
+
+interface RadiosProps<T extends string> extends SharedProps<T> {
+  kind: 'radios';
+  options: readonly RadioOption<T>[];
+}
+
+type SegmentedProps<T extends string> = TabsProps<T> | RadiosProps<T>;
 
 export const tabId = (panelId: string) => `${panelId}-tab`;
 
@@ -24,13 +40,22 @@ function targetIndex(key: string, index: number, count: number): number | null {
   return null;
 }
 
-/** Tabs with automatic activation: the arrows move the focus and the selection together. */
-export function Segmented<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: SegmentedProps<T>) {
+function semantics(option: SegmentedOption<string> | RadioOption<string>, selected: boolean) {
+  if (!('panelId' in option)) return { role: 'radio', 'aria-checked': selected } as const;
+  return {
+    role: 'tab',
+    id: tabId(option.panelId),
+    'aria-selected': selected,
+    'aria-controls': option.panelId,
+  } as const;
+}
+
+/**
+ * Tabs, or a radio group, with automatic activation: the arrows move the focus and the
+ * selection together.
+ */
+export function Segmented<T extends string>(props: SegmentedProps<T>) {
+  const { label, options, value, onChange } = props;
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
@@ -44,7 +69,11 @@ export function Segmented<T extends string>({
   }
 
   return (
-    <div className="segmented" role="tablist" aria-label={label}>
+    <div
+      className="segmented"
+      role={props.kind === 'radios' ? 'radiogroup' : 'tablist'}
+      aria-label={label}
+    >
       {options.map((option, index) => {
         const selected = option.value === value;
         return (
@@ -54,11 +83,8 @@ export function Segmented<T extends string>({
               tabs.current[index] = element;
             }}
             type="button"
-            role="tab"
-            id={tabId(option.panelId)}
             className="segmented-tab"
-            aria-selected={selected}
-            aria-controls={option.panelId}
+            {...semantics(option, selected)}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(option.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}

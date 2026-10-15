@@ -3,6 +3,7 @@ import type { DesktopApi } from '../../../shared/contracts';
 import { Button, Notice } from '../../components/ui';
 import { LocalSetupPanel } from '../local-setup/LocalSetupPanel';
 import { ApiSettingsForm } from './ApiSettingsForm';
+import { AppearanceSettings } from './AppearanceSettings';
 import { useSettings } from './use-settings';
 
 interface SettingsViewProps {
@@ -44,6 +45,7 @@ export function SettingsView({ api, onShowOnboarding }: SettingsViewProps) {
           <LocalSetupPanel api={api} />
         </section>
       )}
+      <AppearanceSettings value={settings.appearance} onChange={settings.chooseAppearance} />
       <section className="settings-card">
         <div className="section-icon">
           <CircleHelp size={21} />
