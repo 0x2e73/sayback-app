@@ -33,35 +33,49 @@ export function createScreenSwitchRelay({
 }: ScreenSwitchRelayDeps): ScreenSwitchRelay {
   const pending = new Map<string, (ok: boolean) => void>();
 
-  function wait(contents: SwitchContents, screenId: string): Promise<boolean> {
-    const id = newId();
-    return new Promise((resolve) => {
-      const settle = (ok: boolean) => {
-        clearTimeout(timer);
-        pending.delete(id);
-        resolve(ok);
-      };
-      const timer = setTimeout(() => settle(false), SWITCH_TIMEOUT);
-      pending.set(id, settle);
+  // As for a start: the page may be hidden, and getDisplayMedia may ask for a gesture.
+  async function ask(
+    contents: SwitchContents,
+    id: string,
+    screenId: string,
+    expired: () => boolean,
+  ) {
+    try {
+      await contents.executeJavaScript('void 0', true);
+    } catch {
+      return false;
+    }
+    if (expired()) return false;
+    return new Promise<boolean>((resolve) => {
+      pending.set(id, resolve);
       try {
         contents.send(SWITCH_REQUEST, { id, screenId });
       } catch {
-        settle(false);
+        resolve(false);
       }
     });
   }
 
   return {
+    // One deadline for the activation and the answer: a page that never settles either fails.
     async switchScreen(screenId) {
       const contents = getWindow()?.webContents;
       if (!contents || contents.isDestroyed()) return false;
+      const id = newId();
+      let expired = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => {
+          expired = true;
+          resolve(false);
+        }, SWITCH_TIMEOUT);
+      });
       try {
-        // As for a start: the page may be hidden, and getDisplayMedia may ask for a gesture.
-        await contents.executeJavaScript('void 0', true);
-      } catch {
-        return false;
+        return await Promise.race([ask(contents, id, screenId, () => expired), timeout]);
+      } finally {
+        clearTimeout(timer);
+        pending.delete(id);
       }
-      return wait(contents, screenId);
     },
     answer(input) {
       const { id, ok } = screenSwitchAnswerSchema.parse(input);

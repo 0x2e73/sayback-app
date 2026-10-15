@@ -46,7 +46,9 @@ export function useScreenPicker({ active, current, onPick }: PickerOptions) {
     setOpen(true);
   }
 
+  // One pick per opening: a second click before the picker closes is ignored.
   function pick(screenId: string, instantly = false): void {
+    if (picked !== null) return;
     if (screenId === current) return close(instantly);
     setPicked(screenId);
     onPick(screenId);

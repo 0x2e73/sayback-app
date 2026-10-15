@@ -54,6 +54,15 @@ describe('the screen switch relay', () => {
     await expect(silent).resolves.toBe(false);
   });
 
+  it('fails an activation that never settles within the same deadline, and sends nothing', async () => {
+    const stuck = page();
+    stuck.executeJavaScript.mockReturnValueOnce(new Promise(() => {}));
+    const switched = relayTo(stuck).switchScreen('screen:2:0');
+    await vi.advanceTimersByTimeAsync(SWITCH_TIMEOUT);
+    await expect(switched).resolves.toBe(false);
+    expect(stuck.send).not.toHaveBeenCalled();
+  });
+
   it('drops a late or unknown answer, and refuses a malformed one', async () => {
     const relay = relayTo(page());
     expect(() => relay.answer({ id: 'switch-9', ok: true })).not.toThrow();

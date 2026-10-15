@@ -165,6 +165,45 @@ describe('the picker of the recording island', () => {
     expect(screen.getByRole('button', { name: 'Changer d’écran' })).toBeInTheDocument();
   });
 
+  it('sends one pick per opening, and locks the control while the switch runs', async () => {
+    const screens = [...twoScreens, { id: 'screen:3:0', name: 'Écran 3' }];
+    const island = await shown(recordingSnapshot({}, screens));
+    let answer: (ok: boolean) => void = () => {};
+    island.request.mockReturnValueOnce(
+      new Promise(
+        (resolve) => (answer = (ok) => resolve(ok ? { ok, value: undefined } : { ok, error: 'x' })),
+      ),
+    );
+    press('Changer d’écran');
+    fireEvent.click(tile('Écran 2'));
+    fireEvent.click(tile('Écran 3'));
+    const picks = island.request.mock.calls.filter(([request]) => typeof request === 'object');
+    expect(picks).toEqual([[{ type: 'select-screen', screenId: 'screen:2:0' }]]);
+    await act(async () => vi.advanceTimersByTime(PICKED_HOLD));
+    expect(screen.getByRole('button', { name: 'Changer d’écran' })).toBeDisabled();
+    await act(async () => answer(true));
+    expect(screen.getByRole('button', { name: 'Changer d’écran' })).toBeEnabled();
+  });
+
+  it('forgets a failure once the capture announces the screen it asked for', async () => {
+    const island = await shown(recordingSnapshot());
+    island.request.mockResolvedValueOnce({ ok: false, error: 'Changement impossible.' });
+    press('Changer d’écran');
+    fireEvent.click(tile('Écran 2'));
+    await act(async () => vi.advanceTimersByTime(PICKED_HOLD));
+    expect(screen.getByText('Changement impossible')).toBeInTheDocument();
+    island.push(recordingSnapshot({ sourceId: 'screen:2:0' }));
+    expect(screen.queryByText('Changement impossible')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Changer d’écran' })).toBeEnabled();
+  });
+
+  it('closes when fewer than two screens remain during a recording', async () => {
+    const island = await shown(recordingSnapshot());
+    press('Changer d’écran');
+    island.push(recordingSnapshot({}, [twoScreens[0]!]));
+    expect(picker()).not.toBeInTheDocument();
+  });
+
   it('checks the new screen once the capture switched, and opens closed after a fold', async () => {
     const island = await shown(recordingSnapshot());
     press('Changer d’écran');

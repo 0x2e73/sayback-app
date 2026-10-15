@@ -31,10 +31,11 @@ export function IslandRecording(props: IslandRecordingProps) {
   const stopping = recording.recording && recording.stopping;
   const source = recording.recording ? recording.sourceId : undefined;
   const live = useLiveText(api);
-  const switching = useScreenSwitch(api);
-  // Folding the island or stopping the recording closes the picker.
+  const switching = useScreenSwitch(api, source);
+  const offered = source !== undefined && screens.length >= 2;
+  // Folding the island, stopping the recording or a screen going closes the picker.
   const picker = useScreenPicker({
-    active: expanded && !stopping,
+    active: expanded && !stopping && offered,
     current: source ?? null,
     onPick: switching.pick,
   });
@@ -66,7 +67,7 @@ export function IslandRecording(props: IslandRecordingProps) {
                 api={api}
                 screens={screens}
                 checked={picker.checked}
-                disabled={stopping}
+                disabled={stopping || switching.pending}
                 keyboard={false}
                 onPick={picker.pick}
                 onBack={picker.close}
@@ -76,10 +77,10 @@ export function IslandRecording(props: IslandRecordingProps) {
         }
         switchControl={
           <ScreenSwitchControl
-            offered={source !== undefined && screens.length >= 2}
+            offered={offered}
             open={picker.open}
             failed={switching.failed}
-            disabled={stopping}
+            disabled={stopping || switching.pending}
             onToggle={() => picker.toggle()}
           />
         }
