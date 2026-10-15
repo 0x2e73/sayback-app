@@ -77,6 +77,7 @@ describe('runRelease', () => {
       `cp -cR ${join(root, 'node_modules')}`,
       'npm run check',
       'npx electron-builder --dir',
+      'node scripts/local-signing-cli.ts',
       'git worktree remove',
       'git worktree prune',
     ]);
@@ -93,7 +94,7 @@ describe('runRelease', () => {
     await runRelease({ allowDirty: false }, context(io));
     const tree = calls.find((call) => call.args[1] === 'add')?.args[3] ?? '';
     const steps = calls.filter((call) => call.cwd === tree);
-    expect(steps.map((call) => call.command)).toEqual(['npm', 'npx']);
+    expect(steps.map((call) => call.command)).toEqual(['npm', 'npx', 'node']);
     for (const step of steps) expect(step.env).toEqual({ [LOCAL_UPDATE_CHANNEL_ENV]: '1' });
   });
 

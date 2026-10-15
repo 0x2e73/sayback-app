@@ -89,6 +89,14 @@ Quittez SayBack avant la copie. Ne lancez pas l’app depuis le dossier `updates
 
 Seules les apps construites par `npm run update:publish` (qui pose `SAYBACK_LOCAL_UPDATE_CHANNEL=1`) portent ce canal : `npm run package` et `npm run dist` construisent une app sans lui. Une copie téléchargée, marquée en quarantaine par macOS, le garde fermé.
 
+**Garder les autorisations d’une mise à jour à l’autre.** Sans certificat, l’app est signée ad hoc : macOS la voit comme une nouvelle app à chaque build et oublie l’autorisation **Enregistrement de l’écran**. Avec un certificat de signature de code dans le trousseau de session (un certificat autosigné suffit, sans approbation), exportez son nom avant `npm run package` ou `npm run update:publish` :
+
+```bash
+export SAYBACK_SIGNING_IDENTITY="SayBack Local Signing"
+```
+
+L’app est alors signée avec ce certificat, sans runtime renforcé : une autorisation accordée une fois reste valable après les mises à jour. Variable absente : signature ad hoc, comme avant. Variable présente mais certificat introuvable : le build échoue plutôt que de revenir en silence à l’ad hoc. `npm run dist` n’est pas concerné.
+
 ## Sous le capot
 
 Electron, React et TypeScript. Le processus principal gère SQLite, les fichiers de médias et les fournisseurs d’IA ; l’interface lui parle par un preload et des canaux IPC validés avec Zod.

@@ -1,14 +1,14 @@
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  APP_BUNDLE_NAME,
   BUILD_INFO_FILE_NAME,
   LOCAL_UPDATE_CHANNEL_ENV,
   UPDATES_DIR_NAME,
   buildInfoSchema,
   type UpdateManifest,
 } from '../src/shared/update-channel.ts';
+import { findBuiltApp } from './built-app.ts';
 import { ReleaseError, publishToChannel, publishedCommit } from './update-publish.ts';
 
 // Builds the current commit in a frozen copy (detached git worktree, cloned node_modules), runs
@@ -62,11 +62,15 @@ export function parseReleaseArgs(argv: readonly string[]): ReleaseOptions {
   return options;
 }
 
-/** The checks, in order; the first that fails stops everything. `package` builds the `.app`. */
+/**
+ * The checks, in order; the first that fails stops everything. `package` builds the `.app`, `sign`
+ * re-signs it with the local identity when one is named (inherited environment), as `npm run package`.
+ */
 export const RELEASE_STEPS: readonly { label: string; command: string; args: readonly string[] }[] =
   [
     { label: 'check', command: 'npm', args: ['run', 'check'] },
     { label: 'package', command: 'npx', args: ['electron-builder', '--dir', '--publish', 'never'] },
+    { label: 'sign', command: 'node', args: ['scripts/local-signing-cli.ts'] },
   ];
 
 /** What `runRelease` asks of the system: replaceable in tests. */
@@ -104,28 +108,6 @@ const STEP_ENV = { [LOCAL_UPDATE_CHANNEL_ENV]: '1' };
 function assertNotAborted(context: ReleaseContext): void {
   if (context.signal?.aborted)
     throw new ReleaseError("publication interrompue : rien n'est publié");
-}
-
-/** Output folders to look in: this machine's architecture first, then any other `mac…`. */
-function outputOrder(outputs: readonly string[]): string[] {
-  const preferred = `mac-${process.arch}`;
-  const others = outputs.filter((name) => name.startsWith('mac') && name !== preferred).sort();
-  return outputs.includes(preferred) ? [preferred, ...others] : others;
-}
-
-/** The bundle electron-builder built in the copy: `SayBack.app` in `dist/mac-<arch>`. */
-async function findBuiltApp(tree: string): Promise<string> {
-  const distDir = join(tree, 'dist');
-  const outputs = await readdir(distDir).catch((): string[] => []);
-  for (const name of outputOrder(outputs)) {
-    const candidate = join(distDir, name, APP_BUNDLE_NAME);
-    const found = await stat(candidate).then(
-      (info) => info.isDirectory(),
-      () => false,
-    );
-    if (found) return candidate;
-  }
-  throw new ReleaseError(`aucun ${APP_BUNDLE_NAME} dans ${distDir}`);
 }
 
 async function buildAndCheck(tree: string, context: ReleaseContext): Promise<void> {
