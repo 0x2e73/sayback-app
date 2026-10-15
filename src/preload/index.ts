@@ -19,6 +19,7 @@ function isStartRequest(value: unknown): value is RecordingStartRequest {
   return (
     typeof value.id === 'string' &&
     typeof value.title === 'string' &&
+    typeof value.deadline === 'number' &&
     [microphone, systemAudio, screen].every((toggle) => typeof toggle === 'boolean')
   );
 }
@@ -93,6 +94,9 @@ const api: DesktopApi = {
     return () => {
       ipcRenderer.removeListener('recording:start-request', relay);
     };
+  },
+  acknowledgeStartRequest: (id) => {
+    if (typeof id === 'string') ipcRenderer.send('recording:start-accepted', { id });
   },
   answerStartRequest: (id, outcome) =>
     ipcRenderer.invoke('recording:start-result', { id, outcome }),

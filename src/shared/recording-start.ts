@@ -23,8 +23,10 @@ export interface StartPayload {
 }
 
 export interface RecordingStartRequest extends StartPayload {
-  /** Echoed in the answer: a late answer to an abandoned request is dropped. */
+  /** Echoed in the acknowledgement and the answer: a late answer is dropped. */
   id: string;
+  /** Epoch ms after which the main process has given up: a start still running must stop. */
+  deadline: number;
 }
 
 /**
@@ -39,6 +41,9 @@ export const startOutcomeSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), error: startErrorSchema }).strict(),
 ]);
 export type RecordingStartOutcome = z.infer<typeof startOutcomeSchema>;
+
+/** The main renderer has received the request (`recording:start-accepted`). */
+export const startAcceptedSchema = z.object({ id: z.string().min(1).max(64) }).strict();
 
 /** The answer of the main renderer on `recording:start-result`. */
 export const startAnswerSchema = z

@@ -129,6 +129,8 @@ export interface DesktopApi {
    * and answer with `answerStartRequest`. Subscribe before the first `announceRecordingState`.
    */
   onStartRequest(listener: (request: RecordingStartRequest) => void): () => void;
+  /** Sent as soon as a start request arrives: main then waits up to its deadline for the answer. */
+  acknowledgeStartRequest(id: string): void;
   answerStartRequest(id: string, outcome: RecordingStartOutcome): Promise<Result<void>>;
   /** Last known update state; the first call waits for the startup read of the channel. */
   getUpdateStatus(): Promise<Result<UpdateStatus>>;

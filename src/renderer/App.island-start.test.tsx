@@ -30,6 +30,7 @@ const fakeSession = () => ({
 
 const request: RecordingStartRequest = {
   id: 'start-1',
+  deadline: Date.now() + 195_000,
   title: 'Réunion du 15 octobre, 11 h 42',
   selection: { microphone: true, systemAudio: true, screen: true, screenId: 'screen:1:0' },
 };

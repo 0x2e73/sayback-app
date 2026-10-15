@@ -92,6 +92,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     sendLevel: () => undefined,
     onRecordingRequest: () => () => {},
     onStartRequest: () => () => {},
+    acknowledgeStartRequest: () => undefined,
     answerStartRequest: () => ok(undefined),
     getUpdateStatus: () => ok(upToDate),
     checkForUpdate: () => ok(upToDate),

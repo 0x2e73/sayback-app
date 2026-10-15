@@ -138,7 +138,7 @@ void app.whenReady().then(() => {
     getWindow: liveWindow,
     openHiddenWindow: () => openWindow(false),
   });
-  registerStartRelay(handle, startRelay);
+  registerStartRelay(registrar, startRelay);
   // A single icon for the whole run: `activate` and page reloads never come through here.
   menuBar = createElectronMenuBar(menuBarActions, () => island?.toggle());
   recordingState.subscribe((snapshot) => menuBar?.announce(snapshot));
