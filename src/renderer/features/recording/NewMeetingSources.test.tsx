@@ -233,3 +233,12 @@ it('folds the list when the user goes on without a screen', async () => {
     'false',
   );
 });
+
+it('offers to go on without a screen when the list failed', async () => {
+  const { within: inDialog, user } = await openDialog({
+    getSources: () => Promise.resolve({ ok: false, error: 'Impossible de lister les écrans.' }),
+  });
+  await user.click(await inDialog.findByRole('button', { name: 'Continuer sans écran' }));
+  expect(pressed(inDialog.getByRole('button', { name: 'Écran' }))).toBe('false');
+  expect(inDialog.queryByRole('alert')).toBeNull();
+});

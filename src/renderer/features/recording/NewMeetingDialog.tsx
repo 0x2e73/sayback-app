@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import type { DesktopApi } from '../../../shared/contracts';
 import { Dialog, Notice } from '../../components/ui';
 import { AnalysisOption } from './AnalysisOption';
@@ -20,11 +20,21 @@ interface NewMeetingDialogProps {
 
 const FORM_ID = 'new-meeting';
 
+// The form is disabled until the habits are read, and a disabled field cannot take the focus.
+function useFocusWhenReady(ready: boolean, field: RefObject<HTMLInputElement | null>): void {
+  useEffect(() => {
+    const active = document.activeElement;
+    const lost = !active || active === document.body || active.tagName === 'DIALOG';
+    if (ready && lost) field.current?.focus();
+  }, [ready, field]);
+}
+
 export function NewMeetingDialog({ api, onClose, onStart, onConfigure }: NewMeetingDialogProps) {
   const form = useNewMeeting(api, onStart);
   const panel = useSourcePanel();
   const titleField = useRef<HTMLInputElement>(null);
   useSubmitShortcut(FORM_ID);
+  useFocusWhenReady(form.ready, titleField);
 
   // A folded list must not come back open with another list, or with the screen.
   function withoutScreen(): void {
@@ -53,7 +63,7 @@ export function NewMeetingDialog({ api, onClose, onStart, onConfigure }: NewMeet
       }
     >
       <form id={FORM_ID} onSubmit={(event) => void form.submit(event)}>
-        <fieldset className="new-meeting-form" disabled={form.busy}>
+        <fieldset className="new-meeting-form" disabled={form.busy || !form.ready}>
           {form.error && <Notice>{form.error}</Notice>}
           <label className="field">
             Titre

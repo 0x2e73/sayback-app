@@ -199,3 +199,37 @@ it('no longer carries the old copy', async () => {
     expect(dialog).not.toHaveTextContent(gone);
   }
 });
+
+it('names an untouched title after the minute the recording starts', async () => {
+  const { user, onStart, startButton } = await openDialog();
+  await waitFor(() => expect(startButton).toBeEnabled());
+  vi.setSystemTime(new Date(2026, 9, 15, 11, 23));
+  await user.click(startButton);
+  expect(onStart).toHaveBeenCalledWith('Réunion du 15 octobre, 11 h 23', expect.anything(), true);
+});
+
+it('keeps a typed title as it was typed, whatever the time', async () => {
+  const { user, onStart, within: inDialog, startButton } = await openDialog();
+  await user.clear(inDialog.getByLabelText('Titre'));
+  await user.type(inDialog.getByLabelText('Titre'), 'Point client');
+  vi.setSystemTime(new Date(2026, 9, 15, 11, 40));
+  await user.click(startButton);
+  expect(onStart).toHaveBeenCalledWith('Point client', expect.anything(), true);
+});
+
+it('stays shut until the habits are read, then takes the focus on the title', async () => {
+  let release: () => void = () => {};
+  const habits = new Promise<void>((resolve) => (release = resolve));
+  const { within: inDialog, startButton } = await openDialog({
+    getCapturePrefs: async () => {
+      await habits;
+      return { ok: true, value: everything };
+    },
+  });
+  expect(inDialog.getByLabelText('Titre')).toBeDisabled();
+  expect(inDialog.getByRole('button', { name: 'Microphone' })).toBeDisabled();
+  expect(startButton).toBeDisabled();
+  release();
+  await waitFor(() => expect(inDialog.getByLabelText('Titre')).toBeEnabled());
+  expect(inDialog.getByLabelText('Titre')).toHaveFocus();
+});
