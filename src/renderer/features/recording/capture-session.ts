@@ -12,6 +12,8 @@ import {
 } from './capture-resources';
 export type { CaptureOptions } from './capture-resources';
 
+const CLOSING = 'La réunion est en cours de clôture.';
+
 export class CaptureSession {
   private readonly writer: RecordingWriter;
   private videoRecorder?: MediaRecorder;
@@ -28,7 +30,7 @@ export class CaptureSession {
   private rotationTimer?: ReturnType<typeof setInterval>;
   private limitTimer?: ReturnType<typeof setTimeout>;
   private stopPromise?: Promise<Meeting>;
-  private switching?: Promise<void>;
+  private switching?: { to: string; operation: Promise<void> };
   private currentSource?: CaptureSource;
   private sourceChanges = 0;
   readonly analyser: AnalyserNode;
@@ -144,6 +146,8 @@ export class CaptureSession {
     this.videoRecorder.onerror = () =>
       this.options.onFailure(new Error('La capture vidéo a été interrompue.'));
     this.videoRecorder.start(1000);
+    // Its stream carries the microphone and the system sound: a paused passage stays unrecorded.
+    if (this.paused) this.videoRecorder.pause();
     display.getVideoTracks().forEach((track) => {
       track.onended = () => {
         if (!this.stopPromise) this.options.onEnded();
@@ -152,10 +156,13 @@ export class CaptureSession {
     this.frames.follow(display);
   }
   async switchSource(api: Pick<DesktopApi, 'selectSource'>, source: CaptureSource): Promise<void> {
-    if (this.stopPromise) throw new Error('La réunion est en cours de clôture.');
-    if (this.switching) return this.switching;
+    if (this.stopPromise) throw new Error(CLOSING);
+    if (this.switching) {
+      if (this.switching.to === source.id) return this.switching.operation;
+      throw new Error('Un changement de source est déjà en cours.');
+    }
     const operation = this.replaceSource(api, source);
-    this.switching = operation;
+    this.switching = { to: source.id, operation };
     try {
       await operation;
     } finally {
@@ -172,11 +179,11 @@ export class CaptureSession {
       audio: this.options.systemAudio,
     });
     try {
-      if (this.stopPromise) return;
+      if (this.stopPromise) throw new Error(CLOSING);
       this.validateDisplayAudio(next);
       const previous = this.resources.display;
       await stopRecorder(this.videoRecorder);
-      if (this.stopPromise) return;
+      if (this.stopPromise) throw new Error(CLOSING);
       this.frames.release();
       if (previous) previous.getVideoTracks().forEach((track) => (track.onended = null));
       await this.resources.replaceDisplay(next);
@@ -235,7 +242,7 @@ export class CaptureSession {
     this.stopPromise = (async () => {
       try {
         await this.rotation;
-        await this.switching?.catch(() => undefined);
+        await this.switching?.operation.catch(() => undefined);
         await Promise.all([stopRecorder(this.audioRecorder), stopRecorder(this.videoRecorder)]);
         return await this.writer.finish(this.elapsed);
       } finally {

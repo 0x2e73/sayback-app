@@ -3,54 +3,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { CaptureSession } from './capture-session';
 import { INERT_LIVE_TAP, type LiveTap } from './live-tap';
 import type { CaptureSource, DesktopApi, Meeting } from '../../../shared/contracts';
+import { display, displayTracks, FakeRecorder, FakeStream } from './capture-session.test-support';
 
-const displayTracks: Array<{ stop: () => void; onended: (() => void) | null }> = [];
 const resources = vi.hoisted(() => ({ open: vi.fn() }));
 const sendPcm = vi.fn();
 vi.mock('./capture-resources', () => ({ openCaptureResources: resources.open }));
-
-class FakeStream {
-  constructor(private readonly tracks: unknown[]) {}
-  getTracks() {
-    return this.tracks;
-  }
-  getVideoTracks() {
-    return this.tracks.filter((track) => 'onended' in (track as object));
-  }
-  getAudioTracks() {
-    return this.tracks.filter((track) => !('onended' in (track as object)));
-  }
-}
-
-class FakeRecorder {
-  state = 'inactive';
-  ondataavailable?: (event: BlobEvent) => void;
-  onerror?: () => void;
-  private onStop?: () => void;
-  constructor(readonly stream: MediaStream) {}
-  start() {
-    this.state = 'recording';
-  }
-  pause() {
-    this.state = 'paused';
-  }
-  resume() {
-    this.state = 'recording';
-  }
-  addEventListener(event: string, listener: () => void) {
-    if (event === 'stop') this.onStop = listener;
-  }
-  stop() {
-    this.state = 'inactive';
-    this.onStop?.();
-  }
-}
-
-function display() {
-  const track = { stop: vi.fn(), onended: null as (() => void) | null };
-  displayTracks.push(track);
-  return new FakeStream([track]) as unknown as MediaStream;
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -58,6 +15,7 @@ afterEach(() => {
   resources.open.mockReset();
   sendPcm.mockReset();
   displayTracks.length = 0;
+  FakeRecorder.made.length = 0;
 });
 
 it('switches the recorded display while keeping the meeting and audio capture active', async () => {
