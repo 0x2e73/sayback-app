@@ -80,6 +80,7 @@
   --header-height: 52px;
   --pane-list-width: clamp(280px, 25vw, 360px);
   --reading-width: 680px;
+  --onboarding-width: 520px;
   /* Island defaults; the page sets the measured sizes inline. */
   --island-bar-height: 38px;
   --island-notch-width: 220px;
@@ -295,7 +296,6 @@ p {
 .field textarea,
 .field-control,
 .search input,
-.onboarding-progress span,
 .switch-track {
   transition:
     background-color var(--duration-fast) var(--ease-out),
@@ -374,6 +374,7 @@ p {
 @media (prefers-reduced-motion: reduce) {
   .row-progress-bar,
   .analysis-line-bar,
+  .onboarding-progress span,
   .level-meter-bar,
   .island-shell {
     transition: none;

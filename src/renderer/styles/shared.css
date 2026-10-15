@@ -110,7 +110,7 @@
   display: grid;
   gap: var(--space-4);
   max-width: 560px;
-  margin-top: 22px;
+  margin-top: var(--space-5);
 }
 .local-setup-ready,
 .local-setup-missing li {
