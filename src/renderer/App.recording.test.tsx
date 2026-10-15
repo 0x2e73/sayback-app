@@ -157,13 +157,18 @@ describe('Recording from the list pane', () => {
     expect(screen.queryByText('Autre erreur')).toBeNull();
   });
 
-  it('stops by itself after two hours', async () => {
+  it('finishes the meeting when the capture ends by itself, the window hidden or not', async () => {
+    let end: () => void = () => {};
+    capture.start.mockImplementation(async (_api, _title, options) => {
+      end = options.onEnded;
+      return session;
+    });
     const user = userEvent.setup();
     render(<App api={configuredApi()} />);
     await startRecording(user);
     await screen.findByRole('button', { name: 'Terminer la réunion' });
     expect(session.stop).not.toHaveBeenCalled();
-    session.elapsed = 7200;
+    act(() => end());
     await waitFor(() => expect(session.stop).toHaveBeenCalled());
     expect(await screen.findByRole('option', { name: /Revue du vendredi/ })).toBeInTheDocument();
   });

@@ -38,7 +38,7 @@ export function RecordingView({
   onOpenInterrupted,
 }: RecordingViewProps) {
   const paused = useCapturePaused(capture);
-  const elapsed = useRecordingClock(capture, onStop);
+  const elapsed = useRecordingClock(capture);
   const source = useRecordingSource(api, capture);
   const feed = useRecordingFeed(api, capture);
   const phase = phaseOf(failed, stopping, paused);

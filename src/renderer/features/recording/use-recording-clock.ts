@@ -1,18 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { CaptureSession } from './capture-session';
-import { MAX_RECORDING_SECONDS } from './recording-limit';
 
 const TICK = 200;
 
-/** Elapsed seconds of a capture; ends the recording once it reaches the limit. */
-export function useRecordingClock(capture: CaptureSession, onLimit: () => void): number {
-  const [elapsed, setElapsed] = useState(0);
+/** Elapsed seconds of a capture, for display only: the two-hour limit lives in the capture. */
+export function useRecordingClock(capture: CaptureSession): number {
+  const [elapsed, setElapsed] = useState(() => capture.elapsed);
   useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsed(capture.elapsed);
-      if (capture.elapsed >= MAX_RECORDING_SECONDS) onLimit();
-    }, TICK);
+    const timer = setInterval(() => setElapsed(capture.elapsed), TICK);
     return () => clearInterval(timer);
-  }, [capture, onLimit]);
+  }, [capture]);
   return elapsed;
 }
