@@ -77,21 +77,14 @@ describe('registerIslandHandlers', () => {
     });
   });
 
-  it.each([
-    'pause',
-    'resume',
-    'stop',
-    'open',
-    'close',
-    'open-privacy-settings',
-    'refresh-screens',
-    'picker-opened',
-    'picker-closed',
-  ])('passes the %s request on', (request) => {
-    const { actions, island } = registered();
-    actions.get('island:request')?.(request);
-    expect(island.request).toHaveBeenCalledWith(request);
-  });
+  it.each(['pause', 'resume', 'stop', 'open', 'close', 'open-privacy-settings', 'refresh-screens'])(
+    'passes the %s request on',
+    (request) => {
+      const { actions, island } = registered();
+      actions.get('island:request')?.(request);
+      expect(island.request).toHaveBeenCalledWith(request);
+    },
+  );
 
   it('passes a picked screen on, and refuses a window or a stray field', () => {
     const { actions, island } = registered();

@@ -19,8 +19,6 @@ export interface RequestTarget {
 
 export interface IslandRequests {
   handle(request: IslandRequest): Promise<void> | void;
-  /** Closes the ready island, unless its picker is open: the page closes that first. */
-  escape(): void;
 }
 
 type RequestPorts = Pick<IslandPorts, 'request' | 'openPrivacySettings' | 'openApp' | 'openDialog'>;
@@ -29,7 +27,7 @@ const report = (what: string) => (error: unknown) => console.error(`[island] ${w
 
 /** Every request of the island page; a screen switch during a recording settles once tried. */
 export function createIslandRequests(target: RequestTarget, ports: RequestPorts): IslandRequests {
-  // The × and Escape wait for a busy start: closing would hide its outcome.
+  // The × and Escape (sent as `close` by the page) wait for a busy start: closing would hide its outcome.
   function closeReady(): void {
     if (target.mode() === 'ready' && !target.session()?.isBusy()) target.dismiss();
   }
@@ -56,8 +54,6 @@ export function createIslandRequests(target: RequestTarget, ports: RequestPorts)
     'refresh-screens': () => {
       target.session()?.retryScreens().catch(report('listing the screens failed'));
     },
-    'picker-opened': () => target.session()?.setPicking(true),
-    'picker-closed': () => target.session()?.setPicking(false),
   };
 
   function selectScreen(screenId: string): Promise<void> | undefined {
@@ -70,9 +66,6 @@ export function createIslandRequests(target: RequestTarget, ports: RequestPorts)
       if (typeof request === 'string') return commands[request]();
       if (request.type === 'select-screen') return selectScreen(request.screenId);
       target.session()?.start(request).catch(report('the start failed'));
-    },
-    escape() {
-      if (!target.session()?.isPicking()) closeReady();
     },
   };
 }

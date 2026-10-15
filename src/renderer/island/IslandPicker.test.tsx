@@ -32,7 +32,6 @@ describe('the picker of the ready island', () => {
     expect(tile('Écran 2')).toHaveAttribute('aria-checked', 'false');
     expect(screen.queryByRole('button', { name: 'Microphone' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Démarrer' })).toBeInTheDocument();
-    expect(island.request).toHaveBeenLastCalledWith('picker-opened');
     expect(island.screenThumbnails).toHaveBeenCalledOnce();
     expect(tile('Écran 1')).toHaveFocus();
   });
@@ -47,7 +46,6 @@ describe('the picker of the ready island', () => {
     expect(picker()).toBeInTheDocument();
     await act(async () => vi.advanceTimersByTime(1));
     expect(picker()).not.toBeInTheDocument();
-    expect(island.request).toHaveBeenLastCalledWith('picker-closed');
     island.push(readySnapshot({ screen: twoScreens[1]! }));
     expect(screen.getByText('Écran 2 sélectionné')).toBeInTheDocument();
   });
@@ -70,6 +68,14 @@ describe('the picker of the ready island', () => {
     );
   });
 
+  it('asks main to close on Escape once the picker is closed', async () => {
+    const island = await opened(readySnapshot());
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(island.request).not.toHaveBeenCalledWith('close');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(island.request).toHaveBeenLastCalledWith('close');
+  });
+
   it('moves the focus with the arrows without picking', async () => {
     const island = await opened(readySnapshot());
     press('Changer d’écran');
@@ -82,6 +88,28 @@ describe('the picker of the ready island', () => {
     expect(island.request).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: 'select-screen' }),
     );
+  });
+
+  it('starts on the screen just picked, before main has answered the pick', async () => {
+    const island = await opened(readySnapshot());
+    press('Changer d’écran');
+    fireEvent.click(tile('Écran 2'));
+    await act(async () => vi.advanceTimersByTime(PICKED_HOLD));
+    expect(screen.getByText('Écran 2')).toBeInTheDocument();
+    press('Démarrer');
+    expect(island.request).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: 'start',
+        selection: expect.objectContaining({ screenId: 'screen:2:0' }),
+      }),
+    );
+  });
+
+  it('closes when fewer than two screens remain', async () => {
+    const island = await opened(readySnapshot());
+    press('Changer d’écran');
+    island.push(readySnapshot({ screens: [twoScreens[0]!] }));
+    expect(picker()).not.toBeInTheDocument();
   });
 
   it('closes when a start begins', async () => {

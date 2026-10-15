@@ -5,22 +5,18 @@ import type { HoverDeps, IslandHover } from './island-hover';
 import type { ReadyPorts } from './island-ready';
 import type { RecordingStateHub } from './recording-state-hub';
 
-/** What the island needs of a key press: Escape closes the ready island. */
-export interface KeyInput {
-  type: string;
-  key: string;
-}
-
 export interface IslandWindowPort {
   readonly webContents: {
     readonly mainFrame: unknown;
     send(channel: string, payload: unknown): void;
     isDestroyed(): boolean;
     on(event: 'render-process-gone', listener: () => void): unknown;
-    on(event: 'before-input-event', listener: (event: unknown, input: KeyInput) => void): unknown;
   };
   on(event: 'blur', listener: () => void): unknown;
-  /** The ready island takes the keyboard, so a click elsewhere blurs it; the recording one never. */
+  /**
+   * The ready island takes the keyboard, so a click elsewhere blurs it and its page handles
+   * Escape; the recording one never.
+   */
   setFocusable(focusable: boolean): void;
   focus(): void;
   showInactive(): void;

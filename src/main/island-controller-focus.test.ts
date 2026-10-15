@@ -38,18 +38,8 @@ describe('the ready island takes the keyboard', () => {
   it('stays while a start is busy, whatever takes the keyboard', async () => {
     const { island, opened: current } = await busy();
     current().blur();
-    current().key('Escape');
+    island.request('close');
     expect(island.window()).not.toBeNull();
-  });
-
-  it('closes on Escape, and on no other key', async () => {
-    const { island, opened: current } = await opened();
-    island.ready();
-    current().key('Enter');
-    current().key('Escape', 'keyUp');
-    expect(island.window()).not.toBeNull();
-    current().key('Escape');
-    expect(island.window()).toBeNull();
   });
 
   it('treats the icon click that blurred it as a close, not a reopening', async () => {
@@ -73,7 +63,7 @@ describe('the recording island never takes the keyboard', () => {
     hub.publish(running);
     expect(current().window.setFocusable).toHaveBeenLastCalledWith(false);
     current().blur();
-    current().key('Escape');
+    island.request('close');
     expect(island.window()).not.toBeNull();
   });
 

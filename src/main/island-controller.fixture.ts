@@ -5,7 +5,7 @@ import type { RecordingState } from '../shared/recording-state';
 import type { IslandStart, RecordingStartOutcome } from '../shared/recording-start';
 import { createIsland, ISLAND_SETTLE } from './island-controller';
 import type { IslandLayout } from './island-geometry';
-import type { HoverOptions, IslandWindowPort, KeyInput } from './island-ports';
+import type { HoverOptions, IslandWindowPort } from './island-ports';
 import type { ListedScreen } from './island-ready';
 import { createRecordingStateHub } from './recording-state-hub';
 
@@ -44,9 +44,8 @@ export const prefs: CapturePrefs = {
 export function fakeWindow() {
   let destroyed = false;
   const sent: [string, unknown][] = [];
-  const listeners = new Map<string, (event?: unknown, input?: KeyInput) => void>();
-  const listen = (event: string, listener: (event?: unknown, input?: KeyInput) => void) =>
-    listeners.set(event, listener);
+  const listeners = new Map<string, () => void>();
+  const listen = (event: string, listener: () => void) => listeners.set(event, listener);
   const window = {
     webContents: {
       mainFrame: {},
@@ -66,13 +65,12 @@ export function fakeWindow() {
       destroyed = true;
     }),
   } satisfies IslandWindowPort;
-  const fire = (event: string, input?: KeyInput) => listeners.get(event)?.({}, input);
+  const fire = (event: string) => listeners.get(event)?.();
   return {
     window,
     sent,
     crash: () => fire('render-process-gone'),
     blur: () => fire('blur'),
-    key: (key: string, type = 'keyDown') => fire('before-input-event', { key, type }),
   };
 }
 

@@ -1,4 +1,4 @@
-import { useRef, type TransitionEvent } from 'react';
+import type { TransitionEvent } from 'react';
 import { X } from 'lucide-react';
 import type { IslandApi } from '../../shared/contracts';
 import type { IslandReadyState, IslandRequest } from '../../shared/island';
@@ -6,9 +6,8 @@ import { Button } from '../components/ui';
 import { PickerSwap } from './PickerSwap';
 import { ReadySources } from './ReadySources';
 import { ScreenPicker } from './ScreenPicker';
-import { usePickerEscape } from './use-picker-escape';
+import { usePickedScreen, useReadyPicker } from './use-ready-picker';
 import { useReadyStart } from './use-ready-start';
-import { useScreenPicker } from './use-screen-picker';
 
 interface IslandReadyProps {
   api: IslandApi;
@@ -29,16 +28,10 @@ export function IslandReady({
   onLeft,
   onRequest,
 }: IslandReadyProps) {
-  const start = useReadyStart(api, ready, onRequest);
   const reachable = expanded && !leaving;
-  const change = useRef<HTMLButtonElement>(null);
-  // A start closes the picker, as does the island folding.
-  const picker = useScreenPicker({
-    active: reachable && !start.busy,
-    current: ready.screen?.id ?? null,
-    onPick: (screenId) => start.request({ type: 'select-screen', screenId }),
-  });
-  usePickerEscape(picker.open, picker.close, onRequest, change);
+  const choice = usePickedScreen(ready);
+  const start = useReadyStart(api, ready, choice.screen, onRequest);
+  const { picker, change } = useReadyPicker({ ready, start, ...choice, reachable, onRequest });
 
   // Ended or cancelled, the fade is over; IslandApp also has a timer if neither comes.
   function faded(event: TransitionEvent<HTMLDivElement>): void {
@@ -72,7 +65,13 @@ export function IslandReady({
         open={picker.open}
         instant={picker.instant}
         base={
-          <ReadySources ready={ready} start={start} onChange={picker.toggle} changeRef={change} />
+          <ReadySources
+            ready={ready}
+            screen={choice.screen}
+            start={start}
+            onChange={picker.toggle}
+            changeRef={change}
+          />
         }
         picker={
           <ScreenPicker

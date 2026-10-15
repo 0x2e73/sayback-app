@@ -264,7 +264,6 @@ class IslandController implements Island {
     watchSurface(target, {
       crashed: ifCurrent(() => this.close()),
       blurred: ifCurrent(() => this.blurred()),
-      escape: ifCurrent(() => this.requests.escape()),
     });
   }
 

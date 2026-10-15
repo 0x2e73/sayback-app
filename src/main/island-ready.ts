@@ -46,8 +46,8 @@ export const tilesOf = (screens: readonly ListedScreen[]): IslandScreen[] =>
 /** One opening of the ready island: its state, its start and its error hold. */
 export class ReadySession {
   private busy = false;
-  /** The picker is open: Escape closes it first, in the page. */
-  private picking = false;
+  // Each reread of the screens moves it on: only the latest pick lands.
+  private rereads = 0;
   private holdTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
 
@@ -88,14 +88,6 @@ export class ReadySession {
 
   isBusy(): boolean {
     return this.busy;
-  }
-
-  isPicking(): boolean {
-    return this.picking;
-  }
-
-  setPicking(open: boolean): void {
-    this.picking = open;
   }
 
   async start({ title, selection }: IslandStart): Promise<void> {
@@ -145,8 +137,10 @@ export class ReadySession {
   }
 
   private async reread(wanted: string | undefined): Promise<void> {
+    const turn = ++this.rereads;
     const screens = await this.ports.screens();
-    if (this.disposed) return;
+    // A start under way keeps the screen it was sent with.
+    if (this.disposed || turn !== this.rereads || this.busy) return;
     const problem = screenProblem(screens.length > 0, this.ports.screenPermission());
     const chosen =
       screens.find((item) => item.id === wanted) ??

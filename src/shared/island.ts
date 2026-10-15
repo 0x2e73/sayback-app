@@ -16,9 +16,8 @@ export type SelectScreen = z.infer<typeof selectScreenSchema>;
 /**
  * What the island may ask. Recording: pause, resume, stop, `expand` (a click on the closed wings),
  * and `open` brings SayBack forward.
- * Ready: `open` opens the dialog instead, `close` is the ×, `open-privacy-settings` opens the
- * screen recording pane, `refresh-screens` lists the screens again (« Réessayer »),
- * `picker-opened` / `picker-closed` let Escape close the picker before the island,
+ * Ready: `open` opens the dialog instead, `close` is the × and Escape, `open-privacy-settings`
+ * opens the screen recording pane, `refresh-screens` lists the screens again (« Réessayer »),
  * `{ type: 'start' }` starts. Both: `{ type: 'select-screen' }` picks a screen.
  */
 export const islandRequestSchema = z.union([
@@ -31,8 +30,6 @@ export const islandRequestSchema = z.union([
     'close',
     'open-privacy-settings',
     'refresh-screens',
-    'picker-opened',
-    'picker-closed',
   ]),
   islandStartSchema,
   selectScreenSchema,

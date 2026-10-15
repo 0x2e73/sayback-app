@@ -1,11 +1,13 @@
 import type { Ref } from 'react';
-import type { IslandReadyState } from '../../shared/island';
+import type { IslandReadyState, IslandScreen } from '../../shared/island';
 import { SourceChips } from '../features/recording/SourceChips';
 import { ReadyScreenLine } from './ReadyScreenLine';
 import type { ReadyStart } from './use-ready-start';
 
 interface ReadySourcesProps {
   ready: IslandReadyState;
+  /** The screen checked last in the picker, or main's. */
+  screen: IslandScreen | null;
   start: ReadyStart;
   /** « Changer d'écran »: opens the picker in their place. */
   onChange(instantly: boolean): void;
@@ -13,7 +15,7 @@ interface ReadySourcesProps {
 }
 
 /** The chips and the screen line: what the picker replaces. */
-export function ReadySources({ ready, start, onChange, changeRef }: ReadySourcesProps) {
+export function ReadySources({ ready, screen, start, onChange, changeRef }: ReadySourcesProps) {
   return (
     <div className="island-ready-sources">
       <SourceChips
@@ -24,7 +26,7 @@ export function ReadySources({ ready, start, onChange, changeRef }: ReadySources
         onToggle={start.toggle}
       />
       <ReadyScreenLine
-        screen={ready.screen}
+        screen={screen}
         screenCount={ready.screens.length}
         screenOn={start.selection.screen}
         error={start.error}

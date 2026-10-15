@@ -116,6 +116,29 @@ describe('the ready island', () => {
     expect(ports.switchScreen).not.toHaveBeenCalled();
   });
 
+  it('lands the latest of two picks whose listings cross', async () => {
+    const { island, ports, opened: current } = await opened();
+    let slow: (listed: typeof screens) => void = () => {};
+    ports.ready.screens.mockReturnValueOnce(new Promise((resolve) => (slow = resolve)));
+    const first = island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    await island.request({ type: 'select-screen', screenId: 'screen:1:0' });
+    slow(screens);
+    await first;
+    expect(readyOf(lastState(current().sent)).screen?.id).toBe('screen:1:0');
+  });
+
+  it('keeps the screen of a start under way when a pick lands', async () => {
+    const { island, ports } = await opened();
+    let listed: (value: typeof screens) => void = () => {};
+    ports.ready.screens.mockReturnValueOnce(new Promise((resolve) => (listed = resolve)));
+    const picked = island.request({ type: 'select-screen', screenId: 'screen:2:0' });
+    ports.ready.start.mockReturnValueOnce(new Promise(() => {}));
+    island.request(start);
+    listed(screens);
+    await picked;
+    expect(readyOf(island.ready()).screen?.id).toBe('screen:1:0');
+  });
+
   it('falls back to the main screen when the picked one is gone', async () => {
     const { island, ports, opened: current } = await opened();
     await island.request({ type: 'select-screen', screenId: 'screen:2:0' });
@@ -125,16 +148,6 @@ describe('the ready island', () => {
       screen: { id: 'screen:1:0' },
       screens: [{ id: 'screen:1:0', name: 'Écran 1' }],
     });
-  });
-
-  it('closes on Escape only once its picker is closed', async () => {
-    const { island, opened: current } = await opened();
-    island.request('picker-opened');
-    current().key('Escape');
-    expect(island.window()).not.toBeNull();
-    island.request('picker-closed');
-    current().key('Escape');
-    expect(island.window()).toBeNull();
   });
 });
 
