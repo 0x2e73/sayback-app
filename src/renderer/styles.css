@@ -294,7 +294,8 @@ p {
 .field textarea,
 .field-control,
 .search input,
-.onboarding-progress span {
+.onboarding-progress span,
+.switch-track {
   transition:
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
@@ -322,7 +323,20 @@ p {
     color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
-.button:active:not(:disabled, [aria-disabled='true']) {
+.switch-thumb {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.chip[data-size='md'] {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.button:active:not(:disabled, [aria-disabled='true']),
+.chip[data-size='md']:active:not(:disabled) {
   transform: scale(0.97);
 }
 .button[aria-busy='true'] .button-label {
@@ -376,8 +390,12 @@ p {
   .spin {
     animation: none;
   }
-  .button:active:not(:disabled, [aria-disabled='true']) {
+  .button:active:not(:disabled, [aria-disabled='true']),
+  .chip[data-size='md']:active:not(:disabled) {
     transform: none;
+  }
+  .switch-thumb {
+    transition: none;
   }
   .button[aria-busy='true'] .button-label {
     opacity: 0.4;

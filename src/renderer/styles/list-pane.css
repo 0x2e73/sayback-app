@@ -12,13 +12,13 @@
   height: var(--header-height);
   padding: 0 var(--space-3) 0 max(var(--space-3), var(--traffic-inset));
 }
-.list-search {
+.search-compact {
   width: 100%;
 }
-.list-search > svg {
+.search-compact > svg {
   left: 10px;
 }
-.list-search input {
+.search-compact input {
   min-height: 28px;
   padding-block: 4px;
   padding-left: 30px;
@@ -80,14 +80,4 @@
   display: grid;
   gap: var(--space-2);
   padding: var(--space-2) 0;
-}
-.skeleton-line {
-  display: block;
-  height: 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-}
-.skeleton-line-short {
-  width: 60%;
-  background: var(--color-surface);
 }

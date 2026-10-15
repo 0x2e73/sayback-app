@@ -1,5 +1,5 @@
 import type { Meeting } from '../../../shared/contracts';
-import { Button } from '../../components/ui';
+import { Button, Skeleton } from '../../components/ui';
 import { AnalysisPrompt } from './AnalysisPrompt';
 import { Clarifications, type TimestampHandler } from './Clarifications';
 import { NoteSection } from './NoteSection';
@@ -16,13 +16,12 @@ interface NotesViewProps {
   onClarify(at: number, text: string): Promise<boolean>;
 }
 
-// Static: skeletons never animate. The classes come from the list pane sheet.
 function NotesSkeleton() {
   return (
     <div className="notes-skeleton" aria-hidden="true">
-      <span className="skeleton-line" />
-      <span className="skeleton-line" />
-      <span className="skeleton-line skeleton-line-short" />
+      <Skeleton />
+      <Skeleton />
+      <Skeleton short />
     </div>
   );
 }
