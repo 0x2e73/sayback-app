@@ -151,7 +151,7 @@ describe('IslandApp', () => {
     const bars = [...screen.getByTestId('level-meter').children] as HTMLElement[];
     expect(bars).toHaveLength(4);
     island.level(1);
-    expect(bars[1]?.style.transform).toBe('scaleY(1.000)');
+    expect(bars[1]?.style.transform).toBe('scaleY(0.974)');
   });
 
   it('draws nothing once the recording is over', async () => {

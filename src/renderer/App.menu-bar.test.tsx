@@ -22,7 +22,7 @@ class FakeSession {
   displayStream = null;
   source = undefined;
   meeting = { ...finished, status: 'recording' as const };
-  analyser = { frequencyBinCount: 4, getByteFrequencyData: () => {} };
+  analyser = { fftSize: 4, getFloatTimeDomainData: () => {} };
   stop = vi.fn(async () => finished);
   pauseListeners = new Set<() => void>();
   togglePause = vi.fn(() => {

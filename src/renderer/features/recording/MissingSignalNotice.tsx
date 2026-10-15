@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Presence } from '../../components/Presence';
-import { Notice, type LevelFeed } from '../../components/ui';
+import { Notice } from '../../components/ui';
+import type { SignalListener } from './recording-feed';
 
 export const MISSING_SIGNAL_DELAY = 10_000;
-// A mean of the spectrum under this is digital silence: no signal at all, not a quiet room.
-const SIGNAL_LEVEL = 0.01;
+
+/** Says whether any signal arrives, a quiet room included; returns the unsubscribe function. */
+export interface SignalFeed {
+  onSignal(listener: SignalListener): () => void;
+}
 
 export interface AudioSources {
   microphone: boolean;
@@ -18,7 +22,7 @@ export function missingSignalText({ microphone, systemAudio }: AudioSources): st
 }
 
 interface MissingSignalNoticeProps {
-  feed: LevelFeed;
+  feed: SignalFeed;
   sources: AudioSources;
 }
 
@@ -27,8 +31,8 @@ export function MissingSignalNotice({ feed, sources }: MissingSignalNoticeProps)
   const [missing, setMissing] = useState(false);
   useEffect(() => {
     let timer = setTimeout(() => setMissing(true), MISSING_SIGNAL_DELAY);
-    const stopListening = feed.onLevel((level) => {
-      if (level < SIGNAL_LEVEL) return;
+    const stopListening = feed.onSignal((present) => {
+      if (!present) return;
       clearTimeout(timer);
       setMissing(false);
       timer = setTimeout(() => setMissing(true), MISSING_SIGNAL_DELAY);

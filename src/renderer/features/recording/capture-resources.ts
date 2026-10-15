@@ -119,7 +119,8 @@ function mixAudio(context: AudioContext, streams: MediaStream[]) {
     sources.set(stream, source);
   }
   const analyser = context.createAnalyser();
-  analyser.fftSize = 256;
+  // About 43 ms of sound at 48 kHz: a steady reading of the level ten times a second.
+  analyser.fftSize = 2048;
   context.createMediaStreamSource(destination.stream).connect(analyser);
   return { audio: destination.stream, analyser, destination, sources };
 }
