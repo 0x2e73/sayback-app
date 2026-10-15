@@ -14,7 +14,8 @@ import { workspaceNotice } from './workspace-notice';
 
 export type CardView = 'meeting' | 'settings';
 
-export function useWorkspace(api: DesktopApi) {
+/** `onboarded`: the welcome is over; until then the menu bar and the island cannot start. */
+export function useWorkspace(api: DesktopApi, onboarded: boolean) {
   const library = useMeetings(api);
   const folders = useFolders(api, library.update, library.refresh);
   const analysis = useAutoAnalysis(api, library.update);
@@ -38,7 +39,7 @@ export function useWorkspace(api: DesktopApi) {
     [clearFilter, runAutoAnalysis, updateMeeting],
   );
   const recording = useRecording(api, onFinished);
-  const entry = useRecordingEntry(api, recording, analysis.clearError);
+  const entry = useRecordingEntry(api, recording, analysis.clearError, onboarded);
 
   const selected = resolveSelection(filter.visible, chosenId);
 

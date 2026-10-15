@@ -162,6 +162,19 @@ describe('a start asked by the island', () => {
     vi.useRealTimers();
   });
 
+  it('refuses a start during the welcome', async () => {
+    const island = islandStartApi();
+    island.api.getSettings = () => ok({ ...settings, onboardingCompleted: false });
+    render(<App api={island.api} />);
+    await waitFor(() => expect(island.order).toContain('announce'));
+    await island.ask(request);
+    expect(island.acknowledge).toHaveBeenCalledWith('start-1');
+    await waitFor(() =>
+      expect(island.answer).toHaveBeenCalledWith('start-1', { ok: false, error: 'failed' }),
+    );
+    expect(capture.start).not.toHaveBeenCalled();
+  });
+
   it('answers failed while a recording already runs', async () => {
     const island = islandStartApi();
     render(<App api={island.api} />);

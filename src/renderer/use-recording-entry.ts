@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DesktopApi } from '../shared/contracts';
-import { answerIslandStart } from './features/recording/island-start';
+import { answerIslandStart, refuseIslandStart } from './features/recording/island-start';
 import type { CaptureSelection } from './features/recording/start-meeting';
 import type { useRecording } from './features/recording/use-recording';
 import { useMenuBar } from './use-menu-bar';
@@ -12,6 +12,7 @@ export function useRecordingEntry(
   api: DesktopApi,
   recording: Recording,
   clearAnalysisError: () => void,
+  onboarded: boolean,
 ) {
   const [newMeeting, setNewMeeting] = useState(false);
 
@@ -31,7 +32,11 @@ export function useRecordingEntry(
     onNewRecording: () => {
       if (!recording.capture) setNewMeeting(true);
     },
-    onStartRequest: (request) => void answerIslandStart(api, request, start),
+    // During the welcome nothing records: the island hears a failure at once.
+    onStartRequest: (request) => {
+      if (onboarded) void answerIslandStart(api, request, start);
+      else void refuseIslandStart(api, request);
+    },
   });
 
   return {

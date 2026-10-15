@@ -114,6 +114,15 @@ export async function answerIslandStart(
   await api.answerStartRequest(request.id, outcome).catch(() => undefined);
 }
 
+/** Acknowledged then refused at once: the page cannot start a recording now. */
+export async function refuseIslandStart(
+  api: Pick<DesktopApi, 'acknowledgeStartRequest' | 'answerStartRequest'>,
+  request: RecordingStartRequest,
+): Promise<void> {
+  api.acknowledgeStartRequest(request.id);
+  await api.answerStartRequest(request.id, FAILED).catch(() => undefined);
+}
+
 /**
  * The dialog's start, asked by the island: the analysis and the habits come from the remembered
  * choices, the screen from the island. Never shows the window.
