@@ -28,7 +28,12 @@ describe('normalizeSearch', () => {
 
 describe('foldText', () => {
   it('keeps, for every folded unit, the source character it comes from', () => {
-    expect(foldText(' Œu')).toEqual({ folded: 'oeu', starts: [1, 1, 2], ends: [2, 2, 3] });
+    expect(foldText(' Œu')).toEqual({
+      folded: 'oeu',
+      starts: [1, 1, 2],
+      ends: [2, 2, 3],
+      clusters: [],
+    });
   });
 });
 
@@ -52,6 +57,15 @@ describe('findMatches', () => {
     ['successive matches without overlap', 'aaaa', 'aa', ['aa', 'aa']],
     ['nothing for an empty query', 'Le budget', '', []],
   ])('finds %s', (_case, text, query, expected) => {
+    expect(highlighted(text, query)).toEqual(expected);
+  });
+
+  it.each([
+    ['a skin tone modifier', 'ok 👍🏽 ok', '👍', ['👍🏽']],
+    ['a family joined by zero-width joiners', 'ok 👨‍👩‍👧 ok', '👨', ['👨‍👩‍👧']],
+    ['a ligature followed by an accent', 'cœ\u0301ur', 'oe', ['œ\u0301']],
+    ['an emoji alone', 'ok 🎉 ok', '🎉', ['🎉']],
+  ])('never cuts a cluster: %s', (_case, text, query, expected) => {
     expect(highlighted(text, query)).toEqual(expected);
   });
 
