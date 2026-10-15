@@ -1,4 +1,11 @@
-import { app, nativeTheme, protocol, safeStorage, type BrowserWindow } from 'electron';
+import {
+  app,
+  nativeTheme,
+  powerSaveBlocker,
+  protocol,
+  safeStorage,
+  type BrowserWindow,
+} from 'electron';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -17,6 +24,7 @@ import { createMenuBarActions } from './menu-bar-actions';
 import { createElectronMenuBar } from './menu-bar-electron';
 import type { MenuBar } from './menu-bar';
 import { createRecordingStateHub, registerRecordingState } from './recording-state-hub';
+import { createRecordingPower } from './recording-power';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
@@ -55,6 +63,10 @@ function isRecording(): boolean {
 
 function applyAppearance(value: Appearance): void {
   nativeTheme.themeSource = value;
+}
+
+function livePage() {
+  return window && !window.isDestroyed() ? window.webContents : null;
 }
 
 function openWindow(): BrowserWindow | null {
@@ -101,6 +113,7 @@ void app.whenReady().then(() => {
   // A single icon for the whole run: `activate` and page reloads never come through here.
   menuBar = createElectronMenuBar(menuBarActions);
   recordingState.subscribe((snapshot) => menuBar?.announce(snapshot));
+  recordingState.subscribe(createRecordingPower({ page: livePage, blocker: powerSaveBlocker }));
   registerRecordingState(handle, recordingState, menuBarActions.rendererReady);
   openWindow();
 });
