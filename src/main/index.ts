@@ -72,8 +72,12 @@ function applyAppearance(value: Appearance): void {
   nativeTheme.themeSource = value;
 }
 
+function liveWindow(): BrowserWindow | null {
+  return window && !window.isDestroyed() ? window : null;
+}
+
 function livePage() {
-  return window && !window.isDestroyed() ? window.webContents : null;
+  return liveWindow()?.webContents ?? null;
 }
 
 function openWindow(): BrowserWindow | null {
@@ -98,7 +102,7 @@ void app.whenReady().then(() => {
   // One switch: the CSS, the vibrancy, the scrollbars, the menus and the system dialogs follow it.
   applyAppearance(desktop.credentials.settings().appearance);
   const registrar = createIpcRegistrar(
-    createWindowRoles({ main: () => window, island: () => island?.window() ?? null }),
+    createWindowRoles({ main: liveWindow, island: () => island?.window() ?? null }),
   );
   const { handle } = registrar;
   registerMeetingHandlers(handle, desktop);
