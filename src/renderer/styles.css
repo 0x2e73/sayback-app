@@ -45,10 +45,12 @@
   --color-island-text-subtle: rgb(255 255 255 / 0.55);
   --color-island-surface: rgb(255 255 255 / 0.08);
   --color-island-surface-raised: rgb(255 255 255 / 0.14);
+  --color-island-border: rgb(255 255 255 / 0.09);
   --color-island-border-strong: rgb(255 255 255 / 0.16);
   --color-island-accent: #8fb6ff;
   --color-island-live: #ff958c;
   --color-island-paused: #f5b94a;
+  --color-island-danger: #ff8077;
   --color-island-action: #f4f6fa;
   --color-island-action-hover: #dfe3ec;
   --color-island-on-action: #0d1017;
@@ -180,10 +182,12 @@
     --color-island-text-subtle: rgb(255 255 255 / 0.55);
     --color-island-surface: rgb(255 255 255 / 0.08);
     --color-island-surface-raised: rgb(255 255 255 / 0.14);
+    --color-island-border: rgb(255 255 255 / 0.09);
     --color-island-border-strong: rgb(255 255 255 / 0.16);
     --color-island-accent: #8fb6ff;
     --color-island-live: #ff958c;
     --color-island-paused: #f5b94a;
+    --color-island-danger: #ff8077;
     --color-island-action: #f4f6fa;
     --color-island-action-hover: #dfe3ec;
     --color-island-on-action: #0d1017;
@@ -466,6 +470,20 @@ button.chip:active:not(:disabled) {
   :root .switch-thumb,
   :root .source-chevron {
     transition: none;
+  }
+  /* The ready island keeps its open size: it fades in and out instead of growing. */
+  :root .island[data-mode='ready'] .island-shell {
+    width: var(--island-open-width);
+    height: var(--island-open-height);
+    border-radius: 0 0 var(--radius-island-open) var(--radius-island-open);
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+  :root .island[data-mode='ready'][data-kind='below-bar'] .island-shell {
+    border-radius: var(--radius-island-open);
+  }
+  :root .island[data-mode='ready'][data-expanded] .island-shell {
+    opacity: 1;
   }
   :root .spin,
   :root .skeleton {

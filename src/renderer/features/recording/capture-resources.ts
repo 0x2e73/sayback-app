@@ -17,6 +17,34 @@ export interface CaptureResources {
   dispose(): Promise<void>;
 }
 
+const REFUSALS = ['NotAllowedError', 'NotReadableError'];
+const REFUSAL_MESSAGE =
+  'Capture refusée ou indisponible. Autorisez l’écran et le microphone dans les réglages système, puis réessayez.';
+
+/**
+ * A capture the browser refused or could not open, with the device it hit: a start from the
+ * island answers with an error code, the dialog shows the message.
+ */
+export class CaptureFailure extends Error {
+  constructor(
+    readonly device: 'screen' | 'microphone',
+    /** The DOMException name: a refusal reads the same for both devices, anything else as is. */
+    readonly reason: string,
+    detail = reason,
+  ) {
+    super(REFUSALS.includes(reason) ? REFUSAL_MESSAGE : detail);
+  }
+}
+
+async function captureOf<T>(device: CaptureFailure['device'], open: () => Promise<T>): Promise<T> {
+  try {
+    return await open();
+  } catch (error) {
+    if (!(error instanceof DOMException)) throw error;
+    throw new CaptureFailure(device, error.name, error.message);
+  }
+}
+
 function stopTracks(streams: MediaStream[]): void {
   for (const stream of streams) {
     for (const track of stream.getTracks()) track.stop();
@@ -26,10 +54,12 @@ function stopTracks(streams: MediaStream[]): void {
 async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
   let display: MediaStream | undefined;
   if (options.screen) {
-    display = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 10, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: options.systemAudio,
-    });
+    display = await captureOf('screen', () =>
+      navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 10, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: options.systemAudio,
+      }),
+    );
     streams.push(display);
     if (options.systemAudio && !display.getAudioTracks().length) {
       throw new Error(
@@ -38,10 +68,12 @@ async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
     }
   }
   if (options.microphone) {
-    const microphone = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true },
-      video: false,
-    });
+    const microphone = await captureOf('microphone', () =>
+      navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+        video: false,
+      }),
+    );
     streams.push(microphone);
     // A dead microphone is a failure, not a silence. The display's own audio ends with its
     // video track, which already stops the meeting.
@@ -112,14 +144,6 @@ export async function openCaptureResources(options: CaptureOptions): Promise<Cap
   } catch (error) {
     stopTracks(streams);
     await context?.close();
-    if (
-      error instanceof DOMException &&
-      ['NotAllowedError', 'NotReadableError'].includes(error.name)
-    ) {
-      throw new Error(
-        'Capture refusée ou indisponible. Autorisez l’écran et le microphone dans les réglages système, puis réessayez.',
-      );
-    }
     throw error;
   }
 }

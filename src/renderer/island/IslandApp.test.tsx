@@ -1,63 +1,9 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IslandApi } from '../../shared/contracts';
-import type { IslandSnapshot } from '../../shared/island';
-import type { RecordingState } from '../../shared/recording-state';
-import { IslandApp } from './IslandApp';
-
-const shape: IslandSnapshot['shape'] = {
-  kind: 'notch',
-  barHeight: 38,
-  notchWidth: 220,
-  compactWidth: 388,
-  openWidth: 560,
-  openHeight: 240,
-};
-
-const recording = (extra: Partial<RecordingState> = {}): RecordingState =>
-  ({ recording: true, elapsed: 12, paused: false, stopping: false, ...extra }) as RecordingState;
-
-function fakeIsland(first: IslandSnapshot) {
-  const listeners: {
-    state(snapshot: IslandSnapshot): void;
-    expanded(expanded: boolean): void;
-    level: Set<(level: number) => void>;
-  } = { state: () => {}, expanded: () => {}, level: new Set() };
-  const request = vi.fn<IslandApi['request']>(async () => ({ ok: true, value: undefined }));
-  const api: IslandApi = {
-    ready: async () => ({ ok: true, value: first }),
-    request,
-    onState: (listener) => {
-      listeners.state = listener;
-      return () => {};
-    },
-    onExpanded: (listener) => {
-      listeners.expanded = listener;
-      return () => {};
-    },
-    onLevel: (listener) => {
-      listeners.level.add(listener);
-      return () => listeners.level.delete(listener);
-    },
-  };
-  return {
-    api,
-    request,
-    push: (snapshot: IslandSnapshot) => act(() => listeners.state(snapshot)),
-    expand: (expanded: boolean) => act(() => listeners.expanded(expanded)),
-    level: (value: number) => act(() => listeners.level.forEach((listener) => listener(value))),
-  };
-}
-
-async function shown(snapshot: IslandSnapshot) {
-  const island = fakeIsland(snapshot);
-  render(<IslandApp api={island.api} now={() => Date.now()} />);
-  await act(async () => {});
-  return island;
-}
+import { recording, shape, shown } from './island-fixture';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -67,22 +13,37 @@ afterEach(() => {
 
 describe('IslandApp', () => {
   it('counts the chrono on from the announced time', async () => {
-    await shown({ recording: recording(), expanded: true, shape });
+    await shown({ recording: recording(), expanded: true, shape, mode: 'recording' });
     expect(screen.getByRole('timer')).toHaveTextContent('00:12');
     await act(async () => vi.advanceTimersByTime(2_000));
     expect(screen.getByRole('timer')).toHaveTextContent('00:14');
   });
 
   it('freezes the chrono while paused', async () => {
-    const island = await shown({ recording: recording(), expanded: true, shape });
-    island.push({ recording: recording({ elapsed: 20, paused: true }), expanded: true, shape });
+    const island = await shown({
+      recording: recording(),
+      expanded: true,
+      shape,
+      mode: 'recording',
+    });
+    island.push({
+      recording: recording({ elapsed: 20, paused: true }),
+      expanded: true,
+      shape,
+      mode: 'recording',
+    });
     await act(async () => vi.advanceTimersByTime(5_000));
     expect(screen.getByRole('timer')).toHaveTextContent('00:20');
     expect(screen.getByText('En pause')).toBeInTheDocument();
   });
 
   it('keeps its buttons out of reach until it opens', async () => {
-    const island = await shown({ recording: recording(), expanded: false, shape });
+    const island = await shown({
+      recording: recording(),
+      expanded: false,
+      shape,
+      mode: 'recording',
+    });
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
     island.expand(true);
     expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
@@ -92,10 +53,20 @@ describe('IslandApp', () => {
   it('asks the main process to pause, resume and stop', async () => {
     vi.useRealTimers();
     const user = userEvent.setup();
-    const island = await shown({ recording: recording(), expanded: true, shape });
+    const island = await shown({
+      recording: recording(),
+      expanded: true,
+      shape,
+      mode: 'recording',
+    });
     await user.click(screen.getByRole('button', { name: 'Pause' }));
     expect(island.request).toHaveBeenLastCalledWith('pause');
-    island.push({ recording: recording({ paused: true }), expanded: true, shape });
+    island.push({
+      recording: recording({ paused: true }),
+      expanded: true,
+      shape,
+      mode: 'recording',
+    });
     await user.click(screen.getByRole('button', { name: 'Reprendre' }));
     expect(island.request).toHaveBeenLastCalledWith('resume');
     await user.click(screen.getByRole('button', { name: 'Terminer' }));
@@ -105,7 +76,12 @@ describe('IslandApp', () => {
   });
 
   it('asks for a second click within 3 s before stopping', async () => {
-    const island = await shown({ recording: recording(), expanded: true, shape });
+    const island = await shown({
+      recording: recording(),
+      expanded: true,
+      shape,
+      mode: 'recording',
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
     expect(screen.getByRole('button', { name: 'Confirmer l’arrêt' })).toBeInTheDocument();
     await act(async () => vi.advanceTimersByTime(3_000));
@@ -115,7 +91,12 @@ describe('IslandApp', () => {
   });
 
   it('forgets a pending confirmation when it closes', async () => {
-    const island = await shown({ recording: recording(), expanded: true, shape });
+    const island = await shown({
+      recording: recording(),
+      expanded: true,
+      shape,
+      mode: 'recording',
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
     island.expand(false);
     island.expand(true);
@@ -125,7 +106,12 @@ describe('IslandApp', () => {
   it('locks pause and shows the end in progress while the recording closes', async () => {
     vi.useRealTimers();
     const user = userEvent.setup();
-    const island = await shown({ recording: recording({ stopping: true }), expanded: true, shape });
+    const island = await shown({
+      recording: recording({ stopping: true }),
+      expanded: true,
+      shape,
+      mode: 'recording',
+    });
     expect(screen.getByText('Arrêt en cours…')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Terminer' }));
@@ -133,7 +119,12 @@ describe('IslandApp', () => {
   });
 
   it('raises the level bars as the level arrives', async () => {
-    const island = await shown({ recording: recording(), expanded: false, shape });
+    const island = await shown({
+      recording: recording(),
+      expanded: false,
+      shape,
+      mode: 'recording',
+    });
     const bars = [...screen.getByTestId('level-meter').children] as HTMLElement[];
     expect(bars).toHaveLength(4);
     island.level(1);
@@ -141,8 +132,13 @@ describe('IslandApp', () => {
   });
 
   it('draws nothing once the recording is over', async () => {
-    const island = await shown({ recording: recording(), expanded: false, shape });
-    island.push({ recording: { recording: false }, expanded: false, shape });
+    const island = await shown({
+      recording: recording(),
+      expanded: false,
+      shape,
+      mode: 'recording',
+    });
+    island.push({ recording: { recording: false }, expanded: false, shape, mode: 'recording' });
     expect(screen.queryByRole('main')).not.toBeInTheDocument();
   });
 });

@@ -20,10 +20,5 @@ export function useCapturePrefs(api: DesktopApi) {
     };
   }, [api]);
 
-  /** Only a recording that really started changes the habits. A failure is not worth a message. */
-  function remember(next: CapturePrefs): void {
-    void api.setCapturePrefs(next).catch(() => undefined);
-  }
-
-  return { prefs, remember };
+  return prefs;
 }

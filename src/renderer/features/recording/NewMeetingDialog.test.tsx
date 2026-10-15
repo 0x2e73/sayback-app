@@ -36,11 +36,10 @@ it('starts with the default title when the title is emptied', async () => {
 });
 
 it('starts with the typed title, the main screen and the habits', async () => {
-  const { within: inDialog, user, onStart, api, startButton } = await openDialog();
+  const { within: inDialog, user, onStart, startButton } = await openDialog();
   await user.clear(inDialog.getByLabelText('Titre'));
   await user.type(inDialog.getByLabelText('Titre'), 'Revue du vendredi');
   await user.click(startButton);
-  expect(api.selectSource).toHaveBeenCalledWith('screen:1:0', true);
   expect(onStart).toHaveBeenCalledWith(
     'Revue du vendredi',
     { screen: true, microphone: true, systemAudio: true, source: mainScreen },
@@ -132,14 +131,18 @@ it('falls back to the main screen when the remembered one is gone', async () => 
     within: inDialog,
     startButton,
     user,
-    api,
+    onStart,
   } = await openDialog({
     getCapturePrefs: () => ok({ ...everything, screenId: 'screen:9:0' }),
   });
   await waitFor(() => expect(startButton).toBeEnabled());
   expect(inDialog.getByText(mainScreen.name)).toBeInTheDocument();
   await user.click(startButton);
-  expect(api.selectSource).toHaveBeenCalledWith('screen:1:0', true);
+  expect(onStart).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({ source: mainScreen }),
+    expect.any(Boolean),
+  );
 });
 
 it('never remembers a window, only the screen that was there', async () => {

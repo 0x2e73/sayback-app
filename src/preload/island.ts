@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { IslandApi } from '../shared/contracts';
 import type { IslandSnapshot } from '../shared/island';
+import type { RecordingStartOutcome } from '../shared/recording-start';
 
 // The sandboxed preload cannot load zod: a light shape check of what the main process sends.
 function isObject(value: unknown): value is object {
@@ -15,7 +16,17 @@ function isSnapshot(value: unknown): value is IslandSnapshot {
     'recording' in value &&
     isObject(value.recording) &&
     'shape' in value &&
-    isObject(value.shape)
+    isObject(value.shape) &&
+    'mode' in value &&
+    (value.mode === 'recording' ||
+      (value.mode === 'ready' && 'ready' in value && isObject(value.ready)))
+  );
+}
+
+function isStartOutcome(value: unknown): value is RecordingStartOutcome {
+  if (!isObject(value) || !('ok' in value)) return false;
+  return (
+    value.ok === true || (value.ok === false && 'error' in value && typeof value.error === 'string')
   );
 }
 
@@ -47,5 +58,6 @@ const api: IslandApi = {
   onState: (listener) => relay('island:state', isSnapshot, listener),
   onExpanded: (listener) => relay('island:expanded', isBoolean, listener),
   onLevel: (listener) => relay('island:level', isLevel, listener),
+  onStartResult: (listener) => relay('island:start-result', isStartOutcome, listener),
 };
 contextBridge.exposeInMainWorld('sayBackIsland', api);

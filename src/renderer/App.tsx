@@ -61,7 +61,7 @@ export function App({ api }: AppProps) {
   const onboarding = useOnboarding(api);
   useFullScreen(api);
   useThemeSwitching();
-  const workspace = useWorkspace(api);
+  const workspace = useWorkspace(api, onboarding.state === 'done');
   const { library, folders, recording, notice } = workspace;
 
   if (onboarding.state !== 'done') return <OnboardingScreen api={api} onboarding={onboarding} />;

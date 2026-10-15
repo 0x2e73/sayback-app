@@ -7,9 +7,59 @@ import {
   type WebContents,
 } from 'electron';
 import { z } from 'zod';
+import type { CaptureSource } from '../shared/contracts';
 import { captureKindSchema } from '../shared/validation';
 import { capturePermission, ownSourceIds, presentSources, type OwnWindow } from './capture-sources';
 import type { RegisterHandler } from './ipc';
+
+type SourceKind = 'screen' | 'window';
+
+function macCaptureApp(): string {
+  return app.isPackaged
+    ? 'SayBack'
+    : 'Terminal.app ou Electron (selon l’application affichée par macOS)';
+}
+
+/** The capture sources without SayBack's own windows, the main screen first as « Écran 1 ». */
+export async function listCaptureSources(
+  own: readonly (OwnWindow | null)[],
+  types: SourceKind[],
+  thumbnailSize = { width: 240, height: 150 },
+): Promise<CaptureSource[]> {
+  let sources;
+  try {
+    sources = await desktopCapturer.getSources({
+      types,
+      thumbnailSize,
+    });
+  } catch {
+    throw new Error(
+      process.platform === 'darwin'
+        ? `Impossible de lister les écrans. Vérifiez ${macCaptureApp()} dans Réglages Système > Confidentialité et sécurité > Enregistrement de l’écran et des sons du système, puis réessayez.`
+        : 'Impossible de lister les écrans. Vérifiez les autorisations de capture, puis réessayez.',
+    );
+  }
+  if (!sources.length) {
+    throw new Error(
+      process.platform === 'darwin'
+        ? `Aucun écran disponible. Activez ${macCaptureApp()} dans Réglages Système > Confidentialité et sécurité > Enregistrement de l’écran et des sons du système, puis relancez l’application.`
+        : 'Aucun écran disponible. Vérifiez les autorisations de capture.',
+    );
+  }
+  const primaryDisplayId = String(screen.getPrimaryDisplay().id);
+  return presentSources(sources, primaryDisplayId, ownSourceIds(own));
+}
+
+/** The screens for the ready island, without thumbnails; empty when they cannot be listed. */
+export async function listScreens(): Promise<Pick<CaptureSource, 'id' | 'name' | 'primary'>[]> {
+  try {
+    // The island shows no thumbnail: none is drawn.
+    const sources = await listCaptureSources([], ['screen'], { width: 0, height: 0 });
+    return sources.map(({ id, name, primary }) => (primary ? { id, name, primary } : { id, name }));
+  } catch {
+    return [];
+  }
+}
 
 interface SourceSelection {
   id: string;
@@ -32,33 +82,7 @@ export function registerCapture(
   ]);
   const canUsePermission = (contents: WebContents | null, permission: string) =>
     contents === getWindow()?.webContents && allowedPermissions.has(permission);
-  const macCaptureApp = app.isPackaged
-    ? 'SayBack'
-    : 'Terminal.app ou Electron (selon l’application affichée par macOS)';
-  handle('capture:sources', async () => {
-    let sources;
-    try {
-      sources = await desktopCapturer.getSources({
-        types: ['screen', 'window'],
-        thumbnailSize: { width: 240, height: 150 },
-      });
-    } catch {
-      throw new Error(
-        process.platform === 'darwin'
-          ? `Impossible de lister les écrans. Vérifiez ${macCaptureApp} dans Réglages Système > Confidentialité et sécurité > Enregistrement de l’écran et des sons du système, puis réessayez.`
-          : 'Impossible de lister les écrans. Vérifiez les autorisations de capture, puis réessayez.',
-      );
-    }
-    if (!sources.length) {
-      throw new Error(
-        process.platform === 'darwin'
-          ? `Aucun écran disponible. Activez ${macCaptureApp} dans Réglages Système > Confidentialité et sécurité > Enregistrement de l’écran et des sons du système, puis relancez l’application.`
-          : 'Aucun écran disponible. Vérifiez les autorisations de capture.',
-      );
-    }
-    const primaryDisplayId = String(screen.getPrimaryDisplay().id);
-    return presentSources(sources, primaryDisplayId, ownSourceIds(ownWindows()));
-  });
+  handle('capture:sources', () => listCaptureSources(ownWindows(), ['screen', 'window']));
   handle('capture:permission', (kind) => capturePermission(captureKindSchema.parse(kind)));
   handle('capture:select', (id, systemAudio) => {
     chosenSource = z

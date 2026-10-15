@@ -2,7 +2,8 @@ import { errorMessage } from '../../../shared/format';
 import { useCallback, useRef, useState } from 'react';
 import type { DesktopApi, Meeting } from '../../../shared/contracts';
 
-import { CaptureSession, type CaptureOptions } from './capture-session';
+import { captureHold, useCaptureOpener } from './capture-opener';
+import type { CaptureOptions, CaptureSession } from './capture-session';
 
 export function useRecording(
   api: DesktopApi,
@@ -13,6 +14,7 @@ export function useRecording(
   const [interrupted, setInterrupted] = useState(false);
   const [error, setError] = useState('');
   const active = useRef<CaptureSession | null>(null);
+  const openCapture = useCaptureOpener(api);
   const finishing = useRef(false);
   const interruption = useRef<{ meeting?: Meeting } | null>(null);
   const autoAnalyze = useRef(false);
@@ -71,12 +73,11 @@ export function useRecording(
     title: string,
     options: Omit<CaptureOptions, 'onFailure' | 'onEnded'>,
     analyzeAfterStop: boolean,
+    deadline?: number,
   ) {
-    const session = await CaptureSession.start(api, title, {
-      ...options,
-      onFailure: interrupt,
-      onEnded: stop,
-    });
+    const handlers = { onFailure: interrupt, onEnded: stop };
+    const hold = captureHold(active.current !== null, interruption.current !== null);
+    const session = await openCapture(hold, title, { ...options, ...handlers }, deadline);
     active.current = session;
     autoAnalyze.current = analyzeAfterStop;
     setCapture(session);

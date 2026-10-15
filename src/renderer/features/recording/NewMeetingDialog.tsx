@@ -8,7 +8,8 @@ import { MeetingSource } from './MeetingSource';
 import { NewMeetingFooter } from './NewMeetingFooter';
 import { SourceChips } from './SourceChips';
 import { SourceNotices } from './SourceNotices';
-import { useNewMeeting, type StartMeeting } from './use-new-meeting';
+import type { StartMeeting } from './start-meeting';
+import { useNewMeeting } from './use-new-meeting';
 import { useSourcePanel } from './use-source-panel';
 import { useSubmitShortcut } from './use-submit-shortcut';
 

@@ -69,6 +69,44 @@ it('passes pause, resume and stop requests to the page, ignoring anything else',
   expect(electron.listeners.has('recording:request')).toBe(false);
 });
 
+it('passes a well-formed start request to the page, and sends its answer back', async () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  const request = {
+    id: 'a1',
+    title: 'Réunion',
+    deadline: 1_000,
+    selection: { microphone: true, systemAudio: false, screen: false },
+  };
+  const seen: unknown[] = [];
+  const stop = api.onStartRequest((received) => seen.push(received));
+  const relay = electron.listeners.get('recording:start-request');
+  const malformed = [
+    null,
+    { ...request, id: 3 },
+    { ...request, selection: {} },
+    { ...request, deadline: undefined },
+  ];
+  for (const value of [request, ...malformed]) {
+    relay?.({}, value);
+  }
+  expect(seen).toEqual([request]);
+  stop();
+  expect(electron.listeners.has('recording:start-request')).toBe(false);
+  api.acknowledgeStartRequest('a1');
+  api.acknowledgeStartRequest(3 as unknown as string);
+  expect(electron.send.mock.calls).toContainEqual(['recording:start-accepted', { id: 'a1' }]);
+  expect(
+    electron.send.mock.calls.filter(([channel]) => channel === 'recording:start-accepted'),
+  ).toHaveLength(1);
+  electron.send.mockClear();
+  await api.answerStartRequest('a1', { ok: false, error: 'no-screen' });
+  expect(ipcRenderer.invoke).toHaveBeenCalledWith('recording:start-result', {
+    id: 'a1',
+    outcome: { ok: false, error: 'no-screen' },
+  });
+});
+
 it('sends the chosen appearance on its own channel', async () => {
   const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
   if (!api) throw new Error('the preload exposed nothing');

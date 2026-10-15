@@ -6,17 +6,16 @@ import { useListFilter } from './features/list/use-list-filter';
 import { useFolders } from './features/list/use-folders';
 import { useMeetings } from './features/list/use-meetings';
 import { useAutoAnalysis } from './features/meetings/use-auto-analysis';
-import type { CaptureOptions } from './features/recording/capture-session';
 import { useRecording } from './features/recording/use-recording';
 import { useUpdateInstall } from './features/updates/use-update-install';
 import { useUpdateStatus } from './features/updates/use-update-status';
-import { useMenuBar } from './use-menu-bar';
+import { useRecordingEntry } from './use-recording-entry';
 import { workspaceNotice } from './workspace-notice';
 
 export type CardView = 'meeting' | 'settings';
-type StartOptions = Omit<CaptureOptions, 'onFailure' | 'onEnded'>;
 
-export function useWorkspace(api: DesktopApi) {
+/** `onboarded`: the welcome is over; until then the menu bar and the island cannot start. */
+export function useWorkspace(api: DesktopApi, onboarded: boolean) {
   const library = useMeetings(api);
   const folders = useFolders(api, library.update, library.refresh);
   const analysis = useAutoAnalysis(api, library.update);
@@ -27,7 +26,6 @@ export function useWorkspace(api: DesktopApi) {
   const [chosenId, setChosenId] = useState<string | null>(null);
   // An arrow key, the first selection or a deletion change the card without an entrance.
   const [instant, setInstant] = useState(false);
-  const [newMeeting, setNewMeeting] = useState(false);
   const { run: runAutoAnalysis } = analysis;
   const updateMeeting = library.update;
   const { clear: clearFilter } = filter;
@@ -44,16 +42,7 @@ export function useWorkspace(api: DesktopApi) {
     [clearFilter, runAutoAnalysis, updateMeeting],
   );
   const recording = useRecording(api, onFinished);
-  // One recording at a time: the pane is locked meanwhile.
-  useMenuBar(api, recording, () => {
-    if (!recording.capture) setNewMeeting(true);
-  });
-
-  async function start(title: string, options: StartOptions, autoAnalyze: boolean) {
-    analysis.clearError();
-    await recording.start(title, options, autoAnalyze);
-    setNewMeeting(false);
-  }
+  const entry = useRecordingEntry(api, recording, analysis.clearError, onboarded);
 
   const selected = resolveSelection(filter.visible, chosenId);
 
@@ -82,7 +71,7 @@ export function useWorkspace(api: DesktopApi) {
       onInstall: () => void updateInstall.install(),
     },
     card,
-    newMeeting,
+    newMeeting: entry.newMeeting,
     selected,
     instantCard: instant || chosenId === null,
     notice: workspaceNotice({
@@ -92,15 +81,15 @@ export function useWorkspace(api: DesktopApi) {
       folders: folders.error,
       update: updateInstall.error,
     }),
-    start,
+    start: entry.start,
     select,
     deleted,
     toggleSettings: () => setCard((current) => (current === 'settings' ? 'meeting' : 'settings')),
     showSettings: () => setCard('settings'),
-    openNewMeeting: () => setNewMeeting(true),
-    closeNewMeeting: () => setNewMeeting(false),
+    openNewMeeting: entry.openNewMeeting,
+    closeNewMeeting: entry.closeNewMeeting,
     configureAnalysis: () => {
-      setNewMeeting(false);
+      entry.closeNewMeeting();
       setCard('settings');
     },
   };

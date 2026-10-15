@@ -8,16 +8,9 @@ import {
   type Settings,
 } from '../../../shared/contracts';
 import { analysisConfigured } from '../../../shared/analysis-settings';
-import type { CaptureOptions } from './capture-session';
 import { openPrivacySettings } from './open-privacy-settings';
+import { launchMeeting, rememberedScreenId, type StartMeeting } from './start-meeting';
 import { useMeetingSelection } from './use-meeting-selection';
-
-export type CaptureSelection = Omit<CaptureOptions, 'onFailure' | 'onEnded'>;
-export type StartMeeting = (
-  title: string,
-  options: CaptureSelection,
-  autoAnalyze: boolean,
-) => Promise<void>;
 
 export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
   const choice = useMeetingSelection(api);
@@ -56,13 +49,16 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
     setError('');
     setBusy(true);
     try {
-      if (selection.screen) unwrap(await api.selectSource(choice.sourceId, selection.systemAudio));
-      const source = selection.screen ? choice.source : undefined;
-      await onStart(titleToStart(), { ...selection, source }, choice.autoAnalyze && analysisReady);
-      choice.remember({
-        ...choice.toggles,
-        autoAnalyze: choice.autoAnalyze,
-        screenId: rememberedScreen(),
+      await launchMeeting(api, onStart, {
+        title: titleToStart(),
+        selection,
+        source: choice.source,
+        autoAnalyze: choice.autoAnalyze && analysisReady,
+        remembered: {
+          ...choice.toggles,
+          autoAnalyze: choice.autoAnalyze,
+          screenId: rememberedScreenId(selection, choice.sourceId, choice.habits.screenId),
+        },
       });
     } catch (failure) {
       setError(errorMessage(failure));
@@ -74,12 +70,6 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
   // Left as it was offered, the title names the moment the recording starts, not the opening.
   function titleToStart(): string {
     return typedTitle?.trim() || defaultMeetingTitle(new Date());
-  }
-
-  // A window gets a new identifier each time: only a screen is worth remembering.
-  function rememberedScreen(): string | undefined {
-    if (selection.screen && choice.sourceId.startsWith('screen:')) return choice.sourceId;
-    return choice.habits.screenId;
   }
 
   async function openSettings(kind: CapturePermissionKind): Promise<void> {

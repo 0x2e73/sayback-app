@@ -1,4 +1,5 @@
-import type { CapturePrefs, CaptureSource } from './contracts';
+import type { CapturePermission, CapturePrefs, CaptureSource } from './contracts';
+import type { RecordingStartError } from './recording-start';
 
 export interface SourceToggles {
   microphone: boolean;
@@ -64,4 +65,18 @@ export function defaultScreenId(sources: readonly SourceRef[], rememberedId?: st
   const remembered = screens.find((source) => source.id === rememberedId);
   const main = screens.find((source) => source.primary);
   return (remembered ?? main ?? screens[0])?.id ?? '';
+}
+
+export type ScreenProblem = Extract<RecordingStartError, 'screen-denied' | 'no-screen'>;
+
+/**
+ * Why the screen line shows an error, or null. macOS reports a refusal for a right it never asked
+ * about: only a missing screen proves it, so listed screens mean no problem.
+ */
+export function screenProblem(
+  screensListed: boolean,
+  permission: CapturePermission,
+): ScreenProblem | null {
+  if (screensListed) return null;
+  return permission === 'denied' ? 'screen-denied' : 'no-screen';
 }

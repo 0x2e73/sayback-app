@@ -4,6 +4,8 @@ import type { IslandApi } from '../../shared/contracts';
 import { IslandApp } from './IslandApp';
 import '../styles.css';
 import '../styles/shared.css';
+import '../styles/chip.css';
+import '../styles/source-picker.css';
 import '../styles/island.css';
 
 declare global {

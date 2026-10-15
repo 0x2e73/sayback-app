@@ -5,6 +5,7 @@ import {
   defaultScreenId,
   hasAudioSource,
   normalizeSelection,
+  screenProblem,
 } from './capture-selection';
 
 describe('defaultMeetingTitle', () => {
@@ -107,5 +108,17 @@ it('offers every source and the analysis by default, on no particular screen', (
     systemAudio: true,
     screen: true,
     autoAnalyze: true,
+  });
+});
+
+describe('screenProblem', () => {
+  it.each([
+    [true, 'denied', null],
+    [true, 'granted', null],
+    [false, 'denied', 'screen-denied'],
+    [false, 'granted', 'no-screen'],
+    [false, 'not-determined', 'no-screen'],
+  ] as const)('listed %s with %s permission gives %s', (listed, permission, problem) => {
+    expect(screenProblem(listed, permission)).toBe(problem);
   });
 });

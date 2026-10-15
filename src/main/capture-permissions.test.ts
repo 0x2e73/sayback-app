@@ -31,7 +31,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { registerCapture } from './capture-permissions';
+import { listScreens, registerCapture } from './capture-permissions';
 
 it('lists capture sources even when the cached macOS status says denied', async () => {
   const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
@@ -218,4 +218,16 @@ it('keeps the windows after the screens, in the order of the system', async () =
     'window:5:0',
     'window:4:0',
   ]);
+});
+
+it('lists the screens alone for the island, and nothing when the listing fails', async () => {
+  await expect(listScreens()).resolves.toEqual([
+    { id: 'screen:1:0', name: 'Écran 1', primary: true },
+  ]);
+  expect(electron.getSources).toHaveBeenLastCalledWith({
+    types: ['screen'],
+    thumbnailSize: { width: 0, height: 0 },
+  });
+  electron.getSources.mockRejectedValueOnce(new Error('denied'));
+  await expect(listScreens()).resolves.toEqual([]);
 });

@@ -1,10 +1,27 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { DesktopApi, UpdateStatus } from '../shared/contracts';
 import type { RecordingRequest } from '../shared/recording-state';
+import type { RecordingStartRequest } from '../shared/recording-start';
 
 // The sandboxed preload cannot load zod: payloads are checked by hand.
 function isRecordingRequest(value: unknown): value is RecordingRequest {
   return value === 'pause' || value === 'resume' || value === 'stop';
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+// The main process validated the selection with zod before relaying it.
+function isStartRequest(value: unknown): value is RecordingStartRequest {
+  if (!isObject(value) || !isObject(value.selection)) return false;
+  const { microphone, systemAudio, screen } = value.selection;
+  return (
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.deadline === 'number' &&
+    [microphone, systemAudio, screen].every((toggle) => typeof toggle === 'boolean')
+  );
 }
 
 // Payload-free event: the page is only told that it happened.
@@ -69,6 +86,20 @@ const api: DesktopApi = {
       ipcRenderer.removeListener('recording:request', relay);
     };
   },
+  onStartRequest: (listener) => {
+    const relay = (_event: IpcRendererEvent, request: unknown) => {
+      if (isStartRequest(request)) listener(request);
+    };
+    ipcRenderer.on('recording:start-request', relay);
+    return () => {
+      ipcRenderer.removeListener('recording:start-request', relay);
+    };
+  },
+  acknowledgeStartRequest: (id) => {
+    if (typeof id === 'string') ipcRenderer.send('recording:start-accepted', { id });
+  },
+  answerStartRequest: (id, outcome) =>
+    ipcRenderer.invoke('recording:start-result', { id, outcome }),
   getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
   checkForUpdate: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),

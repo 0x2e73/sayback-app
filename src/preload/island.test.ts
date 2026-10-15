@@ -32,13 +32,27 @@ const snapshot = {
   recording: { recording: true, elapsed: 3, paused: false, stopping: false },
   expanded: false,
   shape: { kind: 'notch' },
+  mode: 'recording',
+};
+const readySnapshot = {
+  ...snapshot,
+  recording: { recording: false },
+  mode: 'ready',
+  ready: { title: 'Réunion', screen: null, screenCount: 0, error: null },
 };
 
-it('exposes only the two island channels to call', () => {
+it('exposes only the two island channels to call, and listens to four', () => {
   void api.ready();
   void api.request('pause');
   expect(electron.invoke.mock.calls).toEqual([['island:ready'], ['island:request', 'pause']]);
-  expect(Object.keys(api).sort()).toEqual(['onExpanded', 'onLevel', 'onState', 'ready', 'request']);
+  expect(Object.keys(api).sort()).toEqual([
+    'onExpanded',
+    'onLevel',
+    'onStartResult',
+    'onState',
+    'ready',
+    'request',
+  ]);
 });
 
 function relayed<T>(
@@ -55,8 +69,22 @@ function relayed<T>(
 }
 
 it('passes a state snapshot, ignoring malformed ones, until it unsubscribes', () => {
-  const sent = [snapshot, null, 'state', { recording: {}, shape: {} }];
-  expect(relayed(api.onState, 'island:state', sent)).toEqual([snapshot]);
+  const sent = [
+    snapshot,
+    null,
+    'state',
+    { recording: {}, shape: {} },
+    { ...snapshot, mode: 'other' },
+    { ...readySnapshot, ready: undefined },
+    readySnapshot,
+  ];
+  expect(relayed(api.onState, 'island:state', sent)).toEqual([snapshot, readySnapshot]);
+});
+
+it('passes the outcome of a start, ignoring malformed ones', () => {
+  const failed = { ok: false, error: 'no-screen' };
+  const sent = [{ ok: true }, failed, { ok: false }, 'ok', null, { ok: 'yes' }];
+  expect(relayed(api.onStartResult, 'island:start-result', sent)).toEqual([{ ok: true }, failed]);
 });
 
 it('passes the opening and closing, ignoring anything but a boolean', () => {

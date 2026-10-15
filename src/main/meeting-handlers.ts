@@ -68,16 +68,22 @@ export function registerFolderHandlers(handle: RegisterHandler, services: Deskto
 // Opening a system pane twice a second is a stuck button, not a person.
 const PRIVACY_PER_SECOND = 3;
 
-function handlePrivacyPane(handle: RegisterHandler, channel: string, pane: string): void {
-  handle(
-    channel,
-    async () => {
-      if (process.platform !== 'darwin') throw new Error('Action disponible uniquement sur macOS.');
-      await shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${pane}`);
-    },
-    ['main'],
-    PRIVACY_PER_SECOND,
+const privacyPanes = { screen: 'Privacy_ScreenCapture', microphone: 'Privacy_Microphone' } as const;
+
+/** Opens the system settings pane of one capture right; macOS only. */
+export async function openPrivacyPane(kind: keyof typeof privacyPanes): Promise<void> {
+  if (process.platform !== 'darwin') throw new Error('Action disponible uniquement sur macOS.');
+  await shell.openExternal(
+    `x-apple.systempreferences:com.apple.preference.security?${privacyPanes[kind]}`,
   );
+}
+
+function handlePrivacyPane(
+  handle: RegisterHandler,
+  channel: string,
+  kind: keyof typeof privacyPanes,
+): void {
+  handle(channel, () => openPrivacyPane(kind), ['main'], PRIVACY_PER_SECOND);
 }
 
 export function registerSettingsHandlers(
@@ -98,8 +104,8 @@ export function registerSettingsHandlers(
   handle('settings:clear-key', (provider) =>
     credentials.clear(settingsSchema.shape.notesProvider.exclude(['ollama']).parse(provider)),
   );
-  handlePrivacyPane(handle, 'privacy:open-screen-settings', 'Privacy_ScreenCapture');
-  handlePrivacyPane(handle, 'privacy:open-microphone-settings', 'Privacy_Microphone');
+  handlePrivacyPane(handle, 'privacy:open-screen-settings', 'screen');
+  handlePrivacyPane(handle, 'privacy:open-microphone-settings', 'microphone');
   handle('setup:check', () => services.localSetup.check());
   handle('setup:open-guide', (guide) =>
     shell.openExternal(setupGuides[setupGuideSchema.parse(guide)]),

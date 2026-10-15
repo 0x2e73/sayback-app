@@ -1,16 +1,23 @@
 import { BrowserWindow, dialog, nativeTheme } from 'electron';
 import { join } from 'node:path';
-import { guardClose } from './close-guard';
+import { guardClose, revealForSheet } from './close-guard';
 import { relayFullScreen } from './full-screen';
 import { followThemeBackground, windowChrome } from './window-chrome';
 
 interface WindowOptions {
   rendererUrl: string;
   isRecording(): boolean;
+  /** False for a window that only carries a capture started from the island. */
+  show?: boolean;
 }
 
-export function createWindow({ rendererUrl, isRecording }: WindowOptions): BrowserWindow {
+export function createWindow({
+  rendererUrl,
+  isRecording,
+  show = true,
+}: WindowOptions): BrowserWindow {
   const window = new BrowserWindow({
+    show,
     width: 1320,
     height: 870,
     minWidth: 900,
@@ -32,6 +39,7 @@ export function createWindow({ rendererUrl, isRecording }: WindowOptions): Brows
   });
   window.on('close', (event) => {
     guardClose(isRecording, event, () => {
+      revealForSheet(window);
       void dialog.showMessageBox(window, {
         type: 'info',
         message: 'Arrêtez l’enregistrement avant de fermer SayBack.',

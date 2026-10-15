@@ -1,95 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RecordingState } from '../shared/recording-state';
-import {
-  CLICK_GUARD,
-  createIsland,
-  ISLAND_SETTLE,
-  type IslandWindowPort,
-} from './island-controller';
+import { CLICK_GUARD } from './island-controller';
+import { fixture, layout, running } from './island-controller.fixture';
 import type { IslandLayout } from './island-geometry';
-import type { HoverArea } from './island-hover';
-import { createRecordingStateHub } from './recording-state-hub';
-
-const layout: IslandLayout = {
-  displayId: 1,
-  window: { x: 600, y: 0, width: 600, height: 280 },
-  compact: { x: 706, y: 0, width: 388, height: 38 },
-  open: { x: 620, y: 0, width: 560, height: 240 },
-  shape: {
-    kind: 'notch',
-    barHeight: 38,
-    notchWidth: 220,
-    compactWidth: 388,
-    openWidth: 560,
-    openHeight: 240,
-  },
-};
-const running: RecordingState = { recording: true, elapsed: 10, paused: false, stopping: false };
-
-function fakeWindow() {
-  let destroyed = false;
-  const sent: [string, unknown][] = [];
-  const crash = { listener: () => {} };
-  const window = {
-    webContents: {
-      mainFrame: {},
-      send: (channel: string, payload: unknown) => sent.push([channel, payload]),
-      isDestroyed: () => destroyed,
-      on: (_event: 'render-process-gone', listener: () => void) => (crash.listener = listener),
-    },
-    showInactive: vi.fn(),
-    getMediaSourceId: () => 'window:99:0',
-    setBounds: vi.fn(),
-    setIgnoreMouseEvents: vi.fn(),
-    isDestroyed: () => destroyed,
-    destroy: vi.fn(() => {
-      destroyed = true;
-    }),
-  } satisfies IslandWindowPort;
-  return { window, sent, crash: () => crash.listener() };
-}
-
-function fixture(nextLayout: IslandLayout | null = layout) {
-  let time = 0;
-  const hub = createRecordingStateHub(() => time);
-  let opened = fakeWindow();
-  const hover: { stop: () => void; area(): HoverArea | null; change(open: boolean): void } = {
-    stop: vi.fn(),
-    area: () => null,
-    change: () => {},
-  };
-  const ports = {
-    hub,
-    layout: vi.fn(async () => nextLayout),
-    openWindow: vi.fn(() => {
-      opened = fakeWindow();
-      return opened.window;
-    }),
-    startHover: vi.fn((area: () => HoverArea | null, onChange: (open: boolean) => void) => {
-      hover.area = area;
-      hover.change = onChange;
-      return { stop: hover.stop };
-    }),
-    openApp: vi.fn(),
-    request: vi.fn(),
-  };
-  const island = createIsland(ports);
-  const settle = () => vi.advanceTimersByTimeAsync(ISLAND_SETTLE);
-  const start = async (state: RecordingState = running) => {
-    hub.publish(state);
-    await settle();
-  };
-  return {
-    hub,
-    island,
-    ports,
-    hover,
-    start,
-    settle,
-    opened: () => opened,
-    advance: (ms: number) => (time += ms),
-  };
-}
+import { RECORDING_HOVER } from './island-hover';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -124,6 +37,7 @@ describe('createIsland', () => {
       recording: { ...running, elapsed: 13 },
       expanded: false,
       shape: layout.shape,
+      mode: 'recording',
     });
     expect(opened().window.showInactive).toHaveBeenCalledOnce();
     expect(opened().window.setBounds).toHaveBeenCalledWith(layout.window);
@@ -139,6 +53,7 @@ describe('createIsland', () => {
         recording: { ...running, elapsed: 20, paused: true },
         expanded: false,
         shape: layout.shape,
+        mode: 'recording',
       },
     ]);
   });
@@ -146,6 +61,10 @@ describe('createIsland', () => {
   it('opens on the visible shell only, never on the whole transparent window', async () => {
     const { hover, start } = fixture();
     await start();
+    expect(hover.options).toMatchObject({
+      delays: RECORDING_HOVER,
+      initial: { expanded: false, entered: false },
+    });
     expect(hover.area()).toEqual({ compact: layout.compact, open: layout.open });
     expect(hover.area()?.open).not.toEqual(layout.window);
   });
