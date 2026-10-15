@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServices, type DesktopServices } from './services';
 import { createIpcRegistrar } from './ipc';
+import { createWindowRoles } from './window-roles';
 import {
   registerFolderHandlers,
   registerMeetingHandlers,
@@ -74,7 +75,9 @@ void app.whenReady().then(() => {
   services = desktop;
   // One switch: the CSS, the vibrancy, the scrollbars, the menus and the system dialogs follow it.
   applyAppearance(desktop.credentials.settings().appearance);
-  const handle = createIpcRegistrar(() => window);
+  const { handle } = createIpcRegistrar(
+    createWindowRoles({ main: () => window, island: () => null }),
+  );
   registerMeetingHandlers(handle, desktop);
   registerFolderHandlers(handle, desktop);
   registerSettingsHandlers(handle, desktop, root, applyAppearance);
