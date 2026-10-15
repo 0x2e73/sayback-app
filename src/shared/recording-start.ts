@@ -31,9 +31,16 @@ export interface RecordingStartRequest extends StartPayload {
 
 /**
  * screen-denied: macOS refuses the screen capture; no-audio-source: neither microphone nor
- * system audio; no-screen: the chosen screen is gone; failed: anything else, timeouts included.
+ * system audio; no-screen: the chosen screen is gone; interrupted: an interrupted recording still
+ * waits for the user in the main window; failed: anything else, timeouts included.
  */
-export const startErrorSchema = z.enum(['screen-denied', 'no-audio-source', 'no-screen', 'failed']);
+export const startErrorSchema = z.enum([
+  'screen-denied',
+  'no-audio-source',
+  'no-screen',
+  'interrupted',
+  'failed',
+]);
 export type RecordingStartError = z.infer<typeof startErrorSchema>;
 
 export const startOutcomeSchema = z.discriminatedUnion('ok', [

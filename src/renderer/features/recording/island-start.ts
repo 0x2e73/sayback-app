@@ -11,6 +11,7 @@ import type {
   RecordingStartRequest,
   StartPayload,
 } from '../../../shared/recording-start';
+import { CaptureBusy } from './capture-opener';
 import { CaptureFailure } from './capture-resources';
 import { launchMeeting, rememberedScreenId, type StartMeeting } from './start-meeting';
 
@@ -26,8 +27,9 @@ type IslandStartApi = Pick<
 
 const refused = (error: RecordingStartError): RecordingStartOutcome => ({ ok: false, error });
 
-/** The screen capture names its error; any other failure is `failed`. */
+/** An unseen interruption and the screen capture name their error; anything else is `failed`. */
 export function startErrorOf(failure: unknown): RecordingStartError {
+  if (failure instanceof CaptureBusy && failure.hold === 'interrupted') return 'interrupted';
   if (!(failure instanceof CaptureFailure) || failure.device !== 'screen') return 'failed';
   if (failure.reason === 'NotAllowedError') return 'screen-denied';
   if (failure.reason === 'NotFoundError') return 'no-screen';

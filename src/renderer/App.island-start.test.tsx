@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DesktopApi } from '../shared/contracts';
 import type { RecordingStartRequest } from '../shared/recording-start';
 import { App } from './App';
-import { CaptureFailure } from './features/recording/capture-resources';
+import { CaptureFailure, type CaptureOptions } from './features/recording/capture-resources';
 import { apiFor, meetingFixture, ok, settings } from './test-api';
 
 const capture = vi.hoisted(() => ({ start: vi.fn() }));
@@ -168,6 +168,21 @@ describe('a start asked by the island', () => {
     await island.ask({ ...request, id: 'start-2' });
     await waitFor(() =>
       expect(island.answer).toHaveBeenCalledWith('start-2', { ok: false, error: 'failed' }),
+    );
+    expect(capture.start).toHaveBeenCalledOnce();
+  });
+
+  it('answers interrupted while an interrupted recording waits to be seen', async () => {
+    const island = islandStartApi();
+    render(<App api={island.api} />);
+    await screen.findByRole('button', { name: 'Démarrer l’enregistrement' });
+    await island.ask(request);
+    await waitFor(() => expect(island.answer).toHaveBeenCalledWith('start-1', { ok: true }));
+    const [, , options] = capture.start.mock.calls[0] as [unknown, unknown, CaptureOptions];
+    await act(async () => options.onFailure(new Error('Le microphone s’est arrêté.')));
+    await island.ask({ ...request, id: 'start-2' });
+    await waitFor(() =>
+      expect(island.answer).toHaveBeenCalledWith('start-2', { ok: false, error: 'interrupted' }),
     );
     expect(capture.start).toHaveBeenCalledOnce();
   });

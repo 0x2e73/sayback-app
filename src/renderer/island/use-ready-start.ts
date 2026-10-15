@@ -26,7 +26,8 @@ export function readyLineError(
   reported: RecordingStartError | null,
 ): RecordingStartError | null {
   if (!hasAudioSource(selection)) return 'no-audio-source';
-  if (!selection.screen) return reported === 'failed' ? 'failed' : null;
+  if (reported === 'failed' || reported === 'interrupted') return reported;
+  if (!selection.screen) return null;
   if (!screen) return 'no-screen';
   return reported === 'no-audio-source' ? null : reported;
 }

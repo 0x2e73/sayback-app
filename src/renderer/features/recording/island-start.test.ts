@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CaptureSource } from '../../../shared/contracts';
 import type { StartPayload } from '../../../shared/recording-start';
 import { apiFor, ok, settings } from '../../test-api';
+import { CaptureBusy } from './capture-opener';
 import { CaptureFailure } from './capture-resources';
 import { startErrorOf, startFromIsland } from './island-start';
 
@@ -154,6 +155,8 @@ describe('startErrorOf', () => {
     [new CaptureFailure('screen', 'NotFoundError'), 'no-screen'],
     [new CaptureFailure('screen', 'NotReadableError'), 'failed'],
     [new CaptureFailure('microphone', 'NotAllowedError'), 'failed'],
+    [new CaptureBusy('interrupted'), 'interrupted'],
+    [new CaptureBusy('running'), 'failed'],
     [new Error('Une autre panne.'), 'failed'],
     ['pas une erreur', 'failed'],
   ])('maps %o to %s', (failure, expected) => {

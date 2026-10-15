@@ -149,6 +149,16 @@ describe('ready island errors', () => {
     expect(screen.getByRole('button', { name: 'Démarrer' })).toBeDisabled();
   });
 
+  it('points to an interrupted recording waiting in SayBack', async () => {
+    const island = await opened(readySnapshot());
+    press('Démarrer');
+    island.result({ ok: false, error: 'interrupted' });
+    const line = screen.getByRole('alert');
+    expect(line).toHaveTextContent('Un enregistrement interrompu attend dans SayBack.');
+    fireEvent.click(within(line).getByRole('button', { name: 'Ouvrir SayBack' }));
+    expect(island.request).toHaveBeenLastCalledWith('open');
+  });
+
   it('clears the error of the last start when starting again', async () => {
     const island = await opened(readySnapshot());
     press('Démarrer');

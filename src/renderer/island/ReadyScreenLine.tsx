@@ -18,6 +18,10 @@ const ERRORS: Record<RecordingStartError, ErrorCopy> = {
     text: 'Aucun écran détecté.',
     action: { label: 'Réessayer', request: 'cycle-screen' },
   },
+  interrupted: {
+    text: 'Un enregistrement interrompu attend dans SayBack.',
+    action: { label: 'Ouvrir SayBack', request: 'open' },
+  },
   failed: { text: 'L’enregistrement n’a pas démarré.' },
 };
 
