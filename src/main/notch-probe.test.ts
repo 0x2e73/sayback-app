@@ -81,6 +81,32 @@ describe('notchesOf', () => {
     expect([...notches]).toEqual([[11, { x: 790, width: 220, height: 38 }]]);
   });
 
+  // AppKit documents the auxiliary areas in global screen coordinates.
+  it('keeps the notch in global coordinates for a built-in screen away from the origin', () => {
+    const external = { ...measured[1]!, frame: { x: 0, y: 0, width: 1920, height: 1080 } };
+    const builtIn = {
+      ...measured[0]!,
+      frame: { x: 1920, y: 0, width: 1800, height: 1169 },
+      left: { x: 1920, y: 1131, width: 790, height: 38 },
+      right: { x: 2930, y: 1131, width: 790, height: 38 },
+    };
+    const right: DisplayInfo = {
+      ...retina,
+      bounds: { x: 1920, y: -89, width: 1800, height: 1169 },
+    };
+    const notches = notchesOf([right], [external, builtIn]);
+    expect(notches.get(11)).toEqual({ x: 2710, width: 220, height: 38 });
+  });
+
+  it('moves areas given relative to their screen into global coordinates', () => {
+    const builtIn = {
+      ...measured[0]!,
+      frame: { x: 1920, y: 0, width: 1800, height: 1169 },
+    };
+    const right: DisplayInfo = { ...retina, bounds: { x: 1920, y: 0, width: 1800, height: 1169 } };
+    expect(notchesOf([right], [builtIn]).get(11)).toEqual({ x: 2710, width: 220, height: 38 });
+  });
+
   it('ignores a probed screen that matches no display', () => {
     expect(notchesOf([hp], measured).size).toBe(0);
   });
@@ -101,7 +127,12 @@ describe('createNotchProbe', () => {
   it.each([
     ['fails', () => Promise.reject(new Error('osascript: timeout'))],
     ['answers nonsense', () => Promise.resolve('[{"frame":1}]')],
-  ])('reports nothing when osascript %s', async (_case, run) => {
-    expect(await createNotchProbe(run).read()).toBeNull();
+  ])('reports nothing when osascript %s, and asks again next time', async (_case, failing) => {
+    const run = vi.fn(failing);
+    const probe = createNotchProbe(run);
+    expect(await probe.read()).toBeNull();
+    run.mockResolvedValueOnce(JSON.stringify(measured));
+    expect(await probe.read()).toEqual(measured);
+    expect(run).toHaveBeenCalledTimes(2);
   });
 });

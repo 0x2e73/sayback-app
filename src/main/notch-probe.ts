@@ -22,6 +22,8 @@ JSON.stringify(out);
 `;
 // Measured at 0.13 s; beyond this the island falls back to the menu bar.
 const PROBE_TIMEOUT = 2_000;
+// Sixteen screens of JSON stay far below this.
+const PROBE_OUTPUT_LIMIT = 16_384;
 const MATCH_TOLERANCE = 1;
 
 const rectSchema = z.object({
@@ -63,11 +65,20 @@ function sameRect(a: Rect, b: Rect): boolean {
   );
 }
 
-function notchOf({ left, right }: ProbedScreen): NotchArea | null {
+// AppKit documents global screen coordinates; areas found relative to their screen are moved.
+function globalOffset(frame: Rect, left: Rect, right: Rect): number {
+  const inside =
+    left.x >= frame.x - MATCH_TOLERANCE &&
+    right.x + right.width <= frame.x + frame.width + MATCH_TOLERANCE;
+  return inside ? 0 : frame.x;
+}
+
+function notchOf({ frame, left, right }: ProbedScreen): NotchArea | null {
   if (!left || !right || left.width === 0 || right.width === 0) return null;
   const start = left.x + left.width;
   if (right.x <= start) return null;
-  return { x: start, width: right.x - start, height: left.height };
+  const x = start + globalOffset(frame, left, right);
+  return { x, width: right.x - start, height: left.height };
 }
 
 /** Notches by Electron display id, screens matched on their frame. */
@@ -89,9 +100,14 @@ export function notchesOf(
 function runOsascript(): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
-      'osascript',
+      '/usr/bin/osascript',
       ['-l', 'JavaScript', '-e', PROBE_SCRIPT],
-      { timeout: PROBE_TIMEOUT, encoding: 'utf8' },
+      {
+        timeout: PROBE_TIMEOUT,
+        maxBuffer: PROBE_OUTPUT_LIMIT,
+        env: { PATH: '/usr/bin:/bin' },
+        encoding: 'utf8',
+      },
       (error, stdout) => (error ? reject(error) : resolve(stdout)),
     );
   });
@@ -108,10 +124,16 @@ export function createNotchProbe(run: () => Promise<string> = runOsascript): Not
   let cached: Promise<ProbedScreen[] | null> | undefined;
   return {
     read() {
-      cached ??= run()
+      if (cached) return cached;
+      // A failure is not kept: the next opening asks AppKit again.
+      const reading = run()
         .then(parseProbe)
-        .catch(() => null);
-      return cached;
+        .catch(() => {
+          if (cached === reading) cached = undefined;
+          return null;
+        });
+      cached = reading;
+      return reading;
     },
     invalidate() {
       cached = undefined;
