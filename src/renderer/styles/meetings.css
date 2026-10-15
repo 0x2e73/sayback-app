@@ -45,64 +45,6 @@
   color: var(--color-accent);
   text-decoration: underline;
 }
-.transcript {
-  display: grid;
-  gap: var(--space-4);
-}
-.transcript-turns {
-  display: grid;
-  align-content: start;
-  gap: var(--space-2);
-}
-.transcript-turn {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-3);
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  scroll-margin: 8px;
-  text-align: left;
-}
-.transcript-turn time {
-  padding-top: 2px;
-  color: var(--color-text-subtle);
-  font-size: var(--text-caption);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  line-height: 1.5;
-}
-.transcript-turn span {
-  min-width: 0;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.transcript-turn strong {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--color-text-muted);
-  font-size: var(--text-caption);
-}
-/* Une relance tient sur une ligne et ne doit pas peser autant qu'un échange. */
-.transcript-turn.brief {
-  padding: 6px 16px;
-  background: transparent;
-}
-.transcript-turn.brief strong {
-  display: inline;
-  margin-right: 7px;
-}
-.transcript-turn:hover {
-  background: var(--color-surface-raised);
-}
-.transcript-turn.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-tint);
-}
 .appearance-choice {
   max-width: 360px;
 }

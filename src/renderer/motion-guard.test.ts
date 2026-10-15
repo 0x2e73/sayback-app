@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { declarations, read, sheets, tokenBlock } from './design-tokens-support';
 
 const motionProperty = /^(?:-webkit-)?(?:transition|animation)(?:-[a-z-]+)?$/;
-const allowedVars = /var\(--(?:duration-fast|duration-base|duration-loop|ease-out|ease-linear)\)/g;
+const allowedVars =
+  /var\(--(?:duration-fast|duration-base|duration-loop|duration-ambient|ease-out|ease-linear)\)/g;
 // The island shell alone animates its size, on its own curve (exception in frontend.md).
 const islandSheet = 'styles/island.css';
 const islandVars = /var\(--(?:duration-island|ease-island)\)/g;
@@ -25,6 +26,7 @@ const declaredMotionTokens = [
   '--duration-fast',
   '--duration-base',
   '--duration-loop',
+  '--duration-ambient',
   '--ease-out',
   '--ease-linear',
   '--duration-island',
@@ -89,6 +91,7 @@ describe('motion guard', () => {
     'transition-duration: var(--duration-fast)',
     'animation: spin var(--duration-loop) var(--ease-linear) infinite',
     'animation: state-enter var(--duration-base) var(--ease-out)',
+    'animation: turn-target var(--duration-ambient) var(--ease-out)',
   ])('lets %s through', (declaration) => {
     expect(motionViolations(`.x { ${declaration}; }`)).toEqual([]);
   });

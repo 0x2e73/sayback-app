@@ -121,7 +121,7 @@ it('scrolls the meeting in one container under a sticky tab bar, above a fixed p
 });
 
 it('no longer nests a scrolling frame in the transcript', () => {
-  expect(read('styles/meetings.css')).not.toMatch(
+  expect(read('styles/transcript.css')).not.toMatch(
     /\.transcript-turns\s*\{[^}]*(?:max-height|overflow-y)/,
   );
 });
@@ -159,4 +159,41 @@ it('draws the meta line separator before a slot, never before a badge or chip', 
   const detail = read('styles/meeting-detail.css');
   expect(detail).toMatch(/\.detail-meta-item:not\(:first-child\)::before\s*\{[^}]*content:\s*'·'/);
   expect(detail).not.toMatch(/\.detail-meta\s*>\s*:not/);
+});
+
+it('lets the transcript text be selected and copied without its times', () => {
+  const sheet = read('styles/transcript.css');
+  expect(sheet).toMatch(/\.transcript-text\s*\{[^}]*user-select:\s*text/);
+  expect(sheet).toMatch(/\.transcript-time\s*\{[^}]*user-select:\s*none/);
+});
+
+it('skips the layout of the turns out of view', () => {
+  expect(read('styles/transcript.css')).toMatch(
+    /\.transcript-turn\s*\{[^}]*content-visibility:\s*auto;[^}]*contain-intrinsic-size:\s*auto var\(--transcript-turn-estimate\)/,
+  );
+  expect(tokenValue('--transcript-turn-estimate')).toBe('72px');
+});
+
+it('keeps a turn scrolled to clear of the tab bar and the sticky search', () => {
+  expect(read('styles/meeting-detail.css')).toMatch(
+    /\.detail-scroll:has\(\.transcript-search\)\s*\{[^}]*scroll-padding-top:\s*calc\(\s*var\(--detail-tabs-height\) \+ var\(--transcript-bar-height\)/,
+  );
+  expect(read('styles/transcript.css')).toMatch(
+    /\.transcript-search\s*\{[^}]*position:\s*sticky;[^}]*top:\s*var\(--detail-tabs-height\)/,
+  );
+});
+
+it('flashes a passage reached from a note, then hands back to the active ground', () => {
+  expect(css()).toMatch(
+    /@keyframes turn-target\s*\{\s*0%,\s*40%\s*\{\s*background-color:\s*var\(--color-accent-tint\);\s*\}\s*\}/,
+  );
+  expect(read('styles/transcript.css')).toMatch(
+    /\.transcript-turn-flash\s*\{[^}]*animation:\s*turn-target var\(--duration-ambient\) var\(--ease-out\)/,
+  );
+  expect(tokenValue('--duration-ambient')).toBe('1.6s');
+});
+
+it('never smooths the transcript scroll', () => {
+  expect(read('styles/transcript.css')).not.toMatch(/scroll-behavior/);
+  expect(read('styles/meeting-detail.css')).not.toMatch(/scroll-behavior/);
 });
