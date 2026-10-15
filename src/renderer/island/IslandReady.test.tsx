@@ -89,7 +89,10 @@ describe('ready island', () => {
     expect(island.request).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Démarrer' })).toHaveAttribute('aria-busy', 'true');
     expect(chip('Microphone')).toBeDisabled();
+    // Main ignores a close while busy: the × says so.
+    expect(screen.getByRole('button', { name: 'Fermer' })).toBeDisabled();
     island.result({ ok: false, error: 'failed' });
+    expect(screen.getByRole('button', { name: 'Fermer' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Démarrer' })).not.toHaveAttribute('aria-busy');
     expect(chip('Microphone')).toBeEnabled();
   });

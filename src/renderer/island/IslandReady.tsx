@@ -51,6 +51,7 @@ export function IslandReady({
           shape="round"
           className="island-close"
           aria-label="Fermer"
+          disabled={start.busy}
           onClick={() => onRequest('close')}
         >
           <X size={16} aria-hidden="true" />
