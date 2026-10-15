@@ -3,7 +3,7 @@ import type { Folder } from '../backend/domain/folder';
 import type { RecordingRequest, RecordingState } from './recording-state';
 import type { IslandRequest, IslandSnapshot } from './island';
 import type { RecordingStartOutcome, RecordingStartRequest } from './recording-start';
-import type { LiveTrack } from './live';
+import type { IslandLiveSnapshot, LiveSegment, LiveTrack } from './live';
 import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
 export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
@@ -185,6 +185,12 @@ export interface IslandApi {
   onLevel(listener: (level: number) => void): () => void;
   /** The end of a `start`: busy is over; on failure, the error to show. */
   onStartResult(listener: (outcome: RecordingStartOutcome) => void): () => void;
+  /** The live text now; asked once the listeners below are set, and after any reload. */
+  liveSnapshot(): Promise<Result<IslandLiveSnapshot>>;
+  /** Replaces everything: on a status change, at the end of a recording, when the setting moves. */
+  onLive(listener: (snapshot: IslandLiveSnapshot) => void): () => void;
+  /** One utterance, new or revised: replaces the segment of the same id with a lower revision. */
+  onLiveSegment(listener: (segment: LiveSegment) => void): () => void;
 }
 /** The answer of a channel that was called too fast; the page may drop it silently. */
 export const RATE_LIMITED = 'Trop de demandes. Réessayez dans un instant.';

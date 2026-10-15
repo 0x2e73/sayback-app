@@ -69,6 +69,9 @@ export function fakeIsland(first: IslandSnapshot) {
       listeners.startResult = listener;
       return () => {};
     },
+    liveSnapshot: async () => ({ ok: true, value: { enabled: false } }),
+    onLive: () => () => {},
+    onLiveSegment: () => () => {},
   };
   return {
     api,

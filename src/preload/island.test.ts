@@ -41,13 +41,21 @@ const readySnapshot = {
   ready: { title: 'Réunion', screen: null, screenCount: 0, error: null },
 };
 
-it('exposes only the two island channels to call, and listens to four', () => {
+it('exposes only the three island channels to call, and listens to six', () => {
   void api.ready();
   void api.request('pause');
-  expect(electron.invoke.mock.calls).toEqual([['island:ready'], ['island:request', 'pause']]);
+  void api.liveSnapshot();
+  expect(electron.invoke.mock.calls).toEqual([
+    ['island:ready'],
+    ['island:request', 'pause'],
+    ['island:live-snapshot'],
+  ]);
   expect(Object.keys(api).sort()).toEqual([
+    'liveSnapshot',
     'onExpanded',
     'onLevel',
+    'onLive',
+    'onLiveSegment',
     'onStartResult',
     'onState',
     'ready',

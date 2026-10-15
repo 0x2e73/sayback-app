@@ -10,7 +10,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServices, type DesktopServices } from './services';
-import { createIpcRegistrar } from './ipc';
+import { createIpcRegistrar, type IpcRegistrar } from './ipc';
 import { registerMeetingMenu } from './meeting-menu';
 import { createWindowRoles } from './window-roles';
 import {
@@ -36,6 +36,7 @@ import { createElectronIsland } from './island-window';
 import { createStartRelay, registerStartRelay } from './start-relay';
 import { composeLive } from './live-composition';
 import { registerLiveHandlers } from './live-handlers';
+import { createIslandLiveRelay, registerIslandLive } from './island-live';
 import type { LiveServices } from './live-services';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
@@ -106,6 +107,25 @@ function openWindow(show = true): BrowserWindow | null {
     window = null;
   });
   return opened;
+}
+
+// The live engine, and its draft relayed to the island while the setting allows it.
+function startLive(registrar: IpcRegistrar, desktop: DesktopServices, root: string): LiveServices {
+  const engine = composeLive(
+    recordingState,
+    root,
+    () => desktop.credentials.settings().whisperModelPath,
+  );
+  registerLiveHandlers(registrar, engine.live);
+  const islandLive = createIslandLiveRelay({
+    transcript: engine.transcript,
+    enabled: () => desktop.credentials.settings().islandLiveText,
+    window: () => island?.window() ?? null,
+  });
+  registerIslandLive(registrar.handle, islandLive, {
+    set: (value) => desktop.credentials.setIslandLiveText(value),
+  });
+  return engine.live;
 }
 
 void app.whenReady().then(() => {
@@ -182,12 +202,7 @@ void app.whenReady().then(() => {
     request: menuBarActions.request,
   });
   if (island) registerIslandHandlers(registrar, island);
-  live = composeLive(
-    recordingState,
-    root,
-    () => desktop.credentials.settings().whisperModelPath,
-  ).live;
-  registerLiveHandlers(registrar, live);
+  live = startLive(registrar, desktop, root);
   openWindow();
 });
 

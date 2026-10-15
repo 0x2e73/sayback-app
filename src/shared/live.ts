@@ -55,3 +55,6 @@ export interface LiveTranscriptSnapshot {
   availability: LiveAvailability;
   segments: LiveSegment[];
 }
+
+/** What the island receives: nothing of the transcript, not even its state, when turned off. */
+export type IslandLiveSnapshot = { enabled: false } | ({ enabled: true } & LiveTranscriptSnapshot);
