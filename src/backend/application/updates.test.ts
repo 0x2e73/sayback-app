@@ -196,11 +196,23 @@ describe('détection et annonces', () => {
   });
 
   it('sans rien demander : le canal est relu à intervalle régulier', async () => {
-    const updates = f.create({ pollMs: 20 });
-    await updates.start();
-    await f.publish();
-    await vi.waitFor(() => expect(f.published).toHaveLength(1));
-    expect(f.published[0]?.available).toEqual(NEXT);
+    // The interval is frozen while publishing: a real tick could read a half-written manifest
+    // and announce it before the update.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const updates = f.create({ pollMs: 20 });
+      await updates.start();
+      await updates.status();
+      await f.publish();
+      const before = updates.readCount();
+      expect(f.published).toEqual([]);
+      vi.advanceTimersByTime(20);
+      await vi.waitFor(() => expect(f.published).toHaveLength(1));
+      expect(updates.readCount()).toBeGreaterThan(before);
+      expect(f.published[0]?.available).toEqual(NEXT);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('après `stop`, plus rien n’est lu ni annoncé', async () => {
