@@ -168,3 +168,14 @@ it('leaves a failed analysis to the band above the tabs', () => {
   );
   expect(container).toBeEmptyDOMElement();
 });
+
+it('writes the time of a turn past the first hour with its hours', () => {
+  render(
+    <TranscriptHarness
+      meeting={meetingWith([{ id: '2-0', start: 3723, end: 3725, text: 'Tard.', speaker: 'A' }])}
+    />,
+  );
+  expect(screen.getByRole('button', { name: 'Lire à partir de 1:02:03' })).toHaveTextContent(
+    '1:02:03',
+  );
+});

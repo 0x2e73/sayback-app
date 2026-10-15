@@ -70,6 +70,7 @@
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   user-select: none;
+  white-space: nowrap;
 }
 .transcript-time svg {
   display: none;

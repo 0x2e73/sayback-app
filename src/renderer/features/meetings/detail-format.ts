@@ -1,3 +1,5 @@
+import { chronoLabel } from '../../../shared/format';
+
 const mediumDate = new Intl.DateTimeFormat('fr-CH', {
   day: 'numeric',
   month: 'short',
@@ -18,8 +20,9 @@ export function durationLabel(seconds: number): string {
   return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
 }
 
-/** Note timestamps drop the leading zero: « 4:12 », « 0:31 ». */
+/** Note timestamps drop the leading zero: « 4:12 », « 0:31 »; from one hour, « 1:02:03 ». */
 export function shortTimeLabel(seconds: number): string {
   const total = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  if (total >= 3600) return chronoLabel(total);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }

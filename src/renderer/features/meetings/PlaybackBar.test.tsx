@@ -114,3 +114,9 @@ it('moves in fractions of a second', () => {
   render(<PlaybackBar playback={playbackOf()} />);
   expect(slider()).toHaveAttribute('step', 'any');
 });
+
+it('writes hours from the first hour on', () => {
+  render(<PlaybackBar playback={playbackOf({ duration: 3700 })} />);
+  expect(screen.getByText('1:01:40')).toBeInTheDocument();
+  expect(slider()).toHaveAttribute('aria-valuetext', '04:12 sur 1:01:40');
+});
