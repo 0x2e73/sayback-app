@@ -21,12 +21,16 @@ export function restoredScroll(
   return saved.kind === 'above' ? saved.top : anchorTop + saved.beyond;
 }
 
-/** One scroll container for every tab; each tab gets its own position back. */
-export function useTabScroll<T extends string>(initial: T) {
+/** One scroll container for every tab; each tab gets its own position back, then `onRestored` runs. */
+export function useTabScroll<T extends string>(
+  initial: T,
+  onRestored?: (tab: T, scroller: HTMLElement) => void,
+) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const positions = useRef(new Map<T, SavedScroll>());
   const leftAt = useRef<number | null>(null);
+  const restored = useRef(onRestored);
   const [tab, setTab] = useState(initial);
 
   const anchorTop = () => anchorRef.current?.offsetTop ?? 0;
@@ -41,12 +45,18 @@ export function useTabScroll<T extends string>(initial: T) {
     setTab(next);
   }
 
+  // Declared first, so the restoring effect below calls the latest callback.
+  useLayoutEffect(() => {
+    restored.current = onRestored;
+  });
+
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     const previous = leftAt.current;
     if (!scroller || previous === null) return;
     leftAt.current = null;
     scroller.scrollTop = restoredScroll(positions.current.get(tab), previous, anchorTop());
+    restored.current?.(tab, scroller);
   }, [tab]);
 
   return { tab, select, scrollerRef, anchorRef };
