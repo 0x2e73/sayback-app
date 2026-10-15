@@ -3,10 +3,12 @@ import type { Meeting } from '../../../shared/contracts';
 import { usePlaybackSelector, type PlaybackClock } from './playback-clock';
 import { activeTurnIndex, partStarts, transcriptRows } from './transcript-rows';
 import { TranscriptList } from './TranscriptList';
+import { TranscriptPills } from './TranscriptPills';
 import { TranscriptSearchBar } from './TranscriptSearchBar';
 import { TranscriptEmpty, TranscriptWaiting } from './TranscriptStates';
 import type { TranscriptView } from './use-detail-view';
 import { useStableTurns } from './use-stable-turns';
+import { scrollToActive, useActiveOutOfView, useFollowActive } from './use-transcript-follow';
 import { useTranscriptSearch } from './use-transcript-search';
 
 interface TranscriptProps {
@@ -18,16 +20,23 @@ interface TranscriptProps {
 }
 
 /** Moves to the current search result when it changes, not when the tab opens on it. */
-function useCurrentMatchInView(list: RefObject<HTMLDivElement | null>, key: string | null): void {
+function useCurrentMatchInView(
+  list: RefObject<HTMLDivElement | null>,
+  key: string | null,
+  onRelease: () => void,
+): void {
   const mounted = useRef(false);
   useLayoutEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
       return;
     }
-    if (key === null) return;
-    list.current?.querySelector('mark[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
-  }, [list, key]);
+    const mark = key === null ? null : list.current?.querySelector('mark[aria-current="true"]');
+    if (!mark) return;
+    mark.scrollIntoView({ block: 'nearest' });
+    // Going to a result is a move of the reader: the playback must not pull the view back.
+    onRelease();
+  }, [list, key, onRelease]);
 }
 
 function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) {
@@ -39,13 +48,26 @@ function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) 
   const playing = useCallback((at: number) => activeTurnIndex(turns, at), [turns]);
   // Re-renders when the active turn changes, not at every tick of the clock.
   const active = usePlaybackSelector(clock, playing);
-  useCurrentMatchInView(list, found.currentKey);
+  useCurrentMatchInView(list, found.currentKey, view.onRelease);
+  useFollowActive(list, active, view.following);
+  const outOfView = useActiveOutOfView(view.scrollerRef, list, active);
+
+  function resume(): void {
+    view.onFollow();
+    scrollToActive(list.current);
+  }
 
   return (
     <div className="transcript">
       <TranscriptSearchBar found={found} />
       <TranscriptList ref={list} rows={rows} active={active} found={found} onSeek={view.onSeek} />
       {analyzing && <p className="caption">La transcription arrive au fur et à mesure.</p>}
+      <TranscriptPills
+        showFollow={!view.following && outOfView}
+        onFollow={resume}
+        showBack={false}
+        onBack={view.onBackToNotes}
+      />
     </div>
   );
 }
