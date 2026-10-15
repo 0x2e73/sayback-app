@@ -101,9 +101,11 @@ export class Credentials {
     };
   }
 
-  private persist(): Settings {
-    writeFileSync(`${this.path}.tmp`, JSON.stringify(this.data), { mode: 0o600 });
+  // The new values replace the old ones only once they are on disk.
+  private persist(next: StoredSettings): Settings {
+    writeFileSync(`${this.path}.tmp`, JSON.stringify(next), { mode: 0o600 });
     renameSync(`${this.path}.tmp`, this.path);
+    this.data = next;
     return this.settings();
   }
 
@@ -139,7 +141,7 @@ export class Credentials {
     }
     const encryptedKeys = this.encryptedKeysFor(settings);
     if (endpointChanged && !settings.compatibleKey) encryptedKeys.compatible = '';
-    this.data = {
+    return this.persist({
       ...this.data,
       encryptedKeys,
       notesProvider: settings.notesProvider,
@@ -147,8 +149,7 @@ export class Credentials {
       whisperModelPath: settings.whisperModelPath,
       compatibleBaseUrl: baseUrl,
       model: settings.model,
-    };
-    return this.persist();
+    });
   }
 
   private validateCompatibleKey(
@@ -165,18 +166,18 @@ export class Credentials {
   }
 
   clear(provider: KeyProvider): Settings {
-    this.data.encryptedKeys[provider] = '';
-    return this.persist();
+    return this.persist({
+      ...this.data,
+      encryptedKeys: { ...this.data.encryptedKeys, [provider]: '' },
+    });
   }
 
   setAppearance(value: Appearance): void {
-    this.data.appearance = appearanceSchema.parse(value);
-    this.persist();
+    this.persist({ ...this.data, appearance: appearanceSchema.parse(value) });
   }
 
   completeOnboarding(): void {
-    this.data.onboardingCompleted = true;
-    this.persist();
+    this.persist({ ...this.data, onboardingCompleted: true });
   }
 
   key(provider: KeyProvider): string {
