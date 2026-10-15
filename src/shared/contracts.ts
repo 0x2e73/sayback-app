@@ -3,6 +3,7 @@ import type { Folder } from '../backend/domain/folder';
 import type { RecordingRequest, RecordingState } from './recording-state';
 import type { IslandRequest, IslandSnapshot } from './island';
 import type { RecordingStartOutcome, RecordingStartRequest } from './recording-start';
+import type { LiveTrack } from './live';
 import type { UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
 export type { Folder } from '../backend/domain/folder';
 export type { UpdateInfo, UpdateInstallOutcome, UpdateStatus } from '../backend/domain/update';
@@ -138,6 +139,11 @@ export interface DesktopApi {
   onMenuBarNewRecording(listener: () => void): () => void;
   /** Audio level of the recording, 0 to 1, ten times a second; the island draws it. */
   sendLevel(level: number): void;
+  /**
+   * A 16 kHz mono block of one track for the live draft, starting `offset` samples into the
+   * track, pauses excluded; nothing is stored.
+   */
+  sendPcm(track: LiveTrack, samples: Int16Array, offset: number): void;
   /** Pause, resume or stop asked from the menu bar or the island. Returns the unsubscribe function. */
   onRecordingRequest(listener: (request: RecordingRequest) => void): () => void;
   /**

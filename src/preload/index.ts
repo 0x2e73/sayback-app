@@ -24,6 +24,21 @@ function isStartRequest(value: unknown): value is RecordingStartRequest {
   );
 }
 
+// Mirrors `livePcmSchema`, checked again in the main process.
+const MAX_PCM_SAMPLES = 16_000;
+const MAX_PCM_OFFSET = 86_400 * 16_000;
+function isPcmBlock(track: unknown, samples: unknown, offset: unknown): boolean {
+  return (
+    (track === 'microphone' || track === 'system') &&
+    samples instanceof Int16Array &&
+    samples.length >= 1 &&
+    samples.length <= MAX_PCM_SAMPLES &&
+    Number.isSafeInteger(offset) &&
+    (offset as number) >= 0 &&
+    (offset as number) <= MAX_PCM_OFFSET
+  );
+}
+
 // Payload-free event: the page is only told that it happened.
 function listenTo(channel: string, listener: () => void): () => void {
   const relay = () => listener();
@@ -77,6 +92,11 @@ const api: DesktopApi = {
   onMenuBarNewRecording: (listener) => listenTo('menu-bar:new-recording', listener),
   sendLevel: (level) => {
     if (typeof level === 'number' && Number.isFinite(level)) ipcRenderer.send('live:level', level);
+  },
+  sendPcm: (track, samples, offset) => {
+    if (isPcmBlock(track, samples, offset)) {
+      ipcRenderer.send('live:pcm', { track, samples, offset });
+    }
   },
   onRecordingRequest: (listener) => {
     const relay = (_event: IpcRendererEvent, request: unknown) => {

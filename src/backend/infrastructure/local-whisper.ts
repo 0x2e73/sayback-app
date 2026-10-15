@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import type { AudioChunk, Segment } from '../../shared/contracts';
@@ -22,7 +22,8 @@ export function locateBinary(name: string): string | undefined {
   const paths = [
     '/opt/homebrew/bin',
     '/usr/local/bin',
-    ...(process.env.PATH ?? '').split(':').filter(Boolean),
+    // A relative entry would resolve against whatever folder the app was started from.
+    ...(process.env.PATH ?? '').split(':').filter((entry) => isAbsolute(entry)),
   ];
   return paths.map((path) => join(path, name)).find((path) => existsSync(path));
 }
