@@ -53,13 +53,21 @@ export function startIslandHover({
   now = () => performance.now(),
 }: HoverDeps): IslandHover {
   let state: HoverState = { expanded: false };
-  const timer = setInterval(() => {
-    const point = cursor();
+  const tick = () => {
     const current = area();
     if (!current) return;
-    const next = nextHover(state, point, current, now());
-    if (next.expanded !== state.expanded) onChange(next.expanded);
+    const next = nextHover(state, cursor(), current, now());
+    const changed = next.expanded !== state.expanded;
     state = next;
+    if (changed) onChange(next.expanded);
+  };
+  const timer = setInterval(() => {
+    // A failed read skips one tick; the island keeps following the cursor.
+    try {
+      tick();
+    } catch (error) {
+      console.error('[island] hover tick failed', error);
+    }
   }, POLL_INTERVAL);
   return {
     stop: () => clearInterval(timer),

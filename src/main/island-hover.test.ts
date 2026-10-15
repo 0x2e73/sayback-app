@@ -90,6 +90,28 @@ describe('startIslandHover', () => {
     hover.stop();
   });
 
+  it('keeps polling after a failed read, and reports it', () => {
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let fail = true;
+    const hover = startIslandHover({
+      cursor: () => {
+        if (fail) throw new Error('no cursor');
+        return cursor;
+      },
+      area: () => area,
+      onChange: (expanded) => changes.push(expanded),
+      now: () => Date.now(),
+    });
+    expect(() => vi.advanceTimersByTime(50)).not.toThrow();
+    expect(report).toHaveBeenCalledOnce();
+    fail = false;
+    cursor = inCompact;
+    vi.advanceTimersByTime(250);
+    expect(changes).toEqual([true]);
+    hover.stop();
+    report.mockRestore();
+  });
+
   it('stops reading the cursor once stopped', () => {
     const hover = start();
     hover.stop();

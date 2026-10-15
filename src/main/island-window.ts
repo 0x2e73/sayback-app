@@ -1,10 +1,13 @@
 import { BrowserWindow, screen, type BrowserWindowConstructorOptions } from 'electron';
 import type { RecordingRequest } from '../shared/recording-state';
-import { createIsland, type Island } from './island-handlers';
+import { debounce } from './debounce';
+import { createIsland, type Island } from './island-controller';
 import { islandLayout, type DisplayInfo, type IslandLayout, type Rect } from './island-geometry';
 import { startIslandHover } from './island-hover';
 import { createNotchProbe, notchesOf, type NotchProbe } from './notch-probe';
 import type { RecordingStateHub } from './recording-state-hub';
+
+const SCREENS_SETTLE = 250;
 
 export function islandWindowOptions(
   preload: string,
@@ -91,12 +94,15 @@ export function createElectronIsland(deps: ElectronIslandDeps): Island | null {
     openApp: deps.openApp,
     request: deps.request,
   });
-  const screensChanged = () => {
+  // Plugging a screen fires several events: the probe runs once they settle.
+  const screensChanged = debounce(() => {
     probe.invalidate();
-    void island.screensChanged();
-  };
-  screen.on('display-added', screensChanged);
-  screen.on('display-removed', screensChanged);
-  screen.on('display-metrics-changed', screensChanged);
+    island.screensChanged().catch((error: unknown) => {
+      console.error('[island] moving to the new screens failed', error);
+    });
+  }, SCREENS_SETTLE);
+  screen.on('display-added', screensChanged.call);
+  screen.on('display-removed', screensChanged.call);
+  screen.on('display-metrics-changed', screensChanged.call);
   return island;
 }
