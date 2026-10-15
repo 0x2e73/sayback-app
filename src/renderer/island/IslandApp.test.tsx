@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IslandApi } from '../../shared/contracts';
@@ -99,7 +99,27 @@ describe('IslandApp', () => {
     await user.click(screen.getByRole('button', { name: 'Reprendre' }));
     expect(island.request).toHaveBeenLastCalledWith('resume');
     await user.click(screen.getByRole('button', { name: 'Terminer' }));
+    expect(island.request).not.toHaveBeenCalledWith('stop');
+    await user.click(screen.getByRole('button', { name: 'Confirmer l’arrêt' }));
     expect(island.request).toHaveBeenLastCalledWith('stop');
+  });
+
+  it('asks for a second click within 3 s before stopping', async () => {
+    const island = await shown({ recording: recording(), expanded: true, shape });
+    fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
+    expect(screen.getByRole('button', { name: 'Confirmer l’arrêt' })).toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTime(3_000));
+    expect(screen.queryByRole('button', { name: 'Confirmer l’arrêt' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
+    expect(island.request).not.toHaveBeenCalled();
+  });
+
+  it('forgets a pending confirmation when it closes', async () => {
+    const island = await shown({ recording: recording(), expanded: true, shape });
+    fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
+    island.expand(false);
+    island.expand(true);
+    expect(screen.getByRole('button', { name: 'Terminer' })).toBeInTheDocument();
   });
 
   it('locks pause and shows the end in progress while the recording closes', async () => {

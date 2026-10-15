@@ -1,6 +1,8 @@
+import { useCallback } from 'react';
 import { Pause, Play, Square } from 'lucide-react';
 import type { IslandRequest } from '../../shared/island';
 import { Button } from '../components/ui';
+import { useConfirmation } from './use-confirmation';
 
 interface IslandOpenProps {
   expanded: boolean;
@@ -18,6 +20,9 @@ function stateLabel(paused: boolean, stopping: boolean): string {
 
 // Laid out at its final size, revealed by the growing shell: never measured, never moved.
 export function IslandOpen({ expanded, chrono, paused, stopping, onRequest }: IslandOpenProps) {
+  const stop = useCallback(() => onRequest('stop'), [onRequest]);
+  // A stray click on a panel that appears under the cursor must not end the meeting.
+  const confirmation = useConfirmation(stop, expanded);
   return (
     <div className="island-open" inert={!expanded} aria-hidden={!expanded}>
       <header className="island-open-header">
@@ -43,9 +48,9 @@ export function IslandOpen({ expanded, chrono, paused, stopping, onRequest }: Is
           {paused ? <Play size={14} /> : <Pause size={14} />}
           {paused ? 'Reprendre' : 'Pause'}
         </Button>
-        <Button shape="pill" busy={stopping} onClick={() => onRequest('stop')}>
+        <Button shape="pill" busy={stopping} onClick={confirmation.press}>
           <Square size={12} fill="currentColor" />
-          Terminer
+          {confirmation.armed ? 'Confirmer l’arrêt' : 'Terminer'}
         </Button>
       </div>
     </div>
