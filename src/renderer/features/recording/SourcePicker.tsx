@@ -26,14 +26,16 @@ function Screens({ sources, selectedId, onSelect, onConfirm }: SourcePickerProps
       <legend>Écrans</legend>
       <div className="source-tiles">
         {sources.map((source) => (
-          <SourceOption
-            key={source.id}
-            source={source}
-            layout="tile"
-            selected={source.id === selectedId}
-            onSelect={onSelect}
-            onConfirm={onConfirm}
-          />
+          // The slot carries the staggered entrance, the tile keeps its hover and press.
+          <div key={source.id} className="source-tile-slot">
+            <SourceOption
+              source={source}
+              layout="tile"
+              selected={source.id === selectedId}
+              onSelect={onSelect}
+              onConfirm={onConfirm}
+            />
+          </div>
         ))}
       </div>
     </fieldset>
