@@ -56,8 +56,12 @@ export function Onboarding({ api, busy, error, onComplete }: OnboardingProps) {
   const current = steps[step]!;
   const last = step === steps.length - 1;
 
+  // The title takes the focus on every change of step, going back included, not on arrival.
+  const shown = useRef(step);
   useEffect(() => {
-    if (step > 0) heading.current?.focus();
+    if (shown.current === step) return;
+    shown.current = step;
+    heading.current?.focus();
   }, [step]);
 
   return (

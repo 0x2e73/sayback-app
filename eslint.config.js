@@ -65,6 +65,34 @@ export default ts.config(
               ],
               message: 'Le renderer utilise exclusivement l’API typée du preload.',
             },
+            {
+              group: ['**/*.test-support', '**/*.test-support.*'],
+              message: 'Les aides de test ne sont jamais importées par le code livré.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/renderer/**/*.test.{ts,tsx}', 'src/renderer/**/*.test-support.{ts,tsx}'],
+    ignores: ['src/renderer/design-tokens.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                'node:*',
+                'electron',
+                'openai',
+                'openai/*',
+                '**/backend/infrastructure/**',
+                '**/main/**',
+              ],
+              message: 'Le renderer utilise exclusivement l’API typée du preload.',
+            },
           ],
         },
       ],

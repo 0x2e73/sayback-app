@@ -5,7 +5,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../../App';
 import { apiFor, ok, settings } from '../../test-api';
-import { chooseOption } from '../../select-harness';
+import { chooseOption } from '../../select.test-support';
 
 afterEach(cleanup);
 

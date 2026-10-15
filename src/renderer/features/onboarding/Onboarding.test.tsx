@@ -48,3 +48,12 @@ it('can be skipped from the first step', async () => {
   await user.click(screen.getByRole('button', { name: 'Passer' }));
   expect(complete).toHaveBeenCalledOnce();
 });
+
+it('puts the focus back on the title when going back to the first step', async () => {
+  const user = userEvent.setup();
+  show();
+  expect(screen.getByRole('heading', { level: 1 })).not.toHaveFocus();
+  await user.click(screen.getByRole('button', { name: 'Continuer' }));
+  await user.click(screen.getByRole('button', { name: 'Retour' }));
+  expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+});

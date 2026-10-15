@@ -5,7 +5,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { newMeetingDialog } from './new-meeting-harness';
-import { chooseOption } from './select-harness';
+import { chooseOption } from './select.test-support';
 import { apiFor, ok, settings } from './test-api';
 
 afterEach(cleanup);
