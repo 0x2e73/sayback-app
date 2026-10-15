@@ -92,6 +92,9 @@ export class CaptureSession {
   get paused(): boolean {
     return this.pausedAt > 0;
   }
+  get audioSources(): { microphone: boolean; systemAudio: boolean } {
+    return { microphone: this.options.microphone, systemAudio: this.options.systemAudio };
+  }
   get displayStream(): MediaStream | undefined {
     return this.resources.display;
   }

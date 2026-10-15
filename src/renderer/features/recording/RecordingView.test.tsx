@@ -17,6 +17,7 @@ function fakeCapture(changes: Partial<Record<'paused' | 'elapsed', number | bool
     source: undefined,
     meeting: { title: 'Revue du vendredi' },
     analyser: { frequencyBinCount: 4, getByteFrequencyData: () => {} },
+    audioSources: { microphone: true, systemAudio: false },
     togglePause: vi.fn(),
     onPauseChange: () => () => {},
     ...changes,

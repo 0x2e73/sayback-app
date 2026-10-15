@@ -43,6 +43,14 @@
   width: min(100%, var(--reading-width));
   text-align: left;
 }
+/* Reserves the notice's height so nothing below it moves when it appears. */
+.recording-signal {
+  width: min(100%, var(--reading-width));
+  min-height: 48px;
+}
+.recording-signal > .notice {
+  text-align: left;
+}
 .finalizing-line {
   position: relative;
   width: min(100%, var(--reading-width));

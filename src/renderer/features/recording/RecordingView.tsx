@@ -8,7 +8,7 @@ import { RECORDING_LIMIT_NOTE } from './recording-limit';
 import { RecordingPreview } from './RecordingPreview';
 import { RecordingSourceDialog } from './RecordingSourceDialog';
 import { RecordingStatus, type RecordingPhase } from './RecordingStatus';
-import { SilenceNotice } from './SilenceNotice';
+import { MissingSignalNotice } from './MissingSignalNotice';
 import { useCapturePaused } from './use-capture-paused';
 import { useRecordingClock } from './use-recording-clock';
 import { useRecordingFeed } from './use-recording-feed';
@@ -52,7 +52,11 @@ export function RecordingView({
         {chronoLabel(elapsed)}
       </div>
       <LevelMeter feed={feed} bars={24} className="level-meter-large" />
-      {phase === 'recording' && <SilenceNotice feed={feed} />}
+      <div className="recording-signal">
+        {phase === 'recording' && (
+          <MissingSignalNotice feed={feed} sources={capture.audioSources} />
+        )}
+      </div>
       {stopping && <div className="finalizing-line" aria-hidden="true" />}
       {failed && <RecordingFailure opening={stopping} onOpen={onOpenInterrupted} />}
       {capture.displayStream && !failed && (

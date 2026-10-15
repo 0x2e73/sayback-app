@@ -20,6 +20,7 @@ class FakeSession {
   elapsed = 723;
   paused = false;
   displayStream = null;
+  audioSources = { microphone: true, systemAudio: false };
   source = undefined;
   meeting = { ...finished, status: 'recording' as const };
   analyser = { frequencyBinCount: 4, getByteFrequencyData: () => {} };

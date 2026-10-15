@@ -38,12 +38,16 @@ async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
     }
   }
   if (options.microphone) {
-    streams.push(
-      await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-        video: false,
-      }),
-    );
+    const microphone = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+      video: false,
+    });
+    streams.push(microphone);
+    // A dead microphone is a failure, not a silence. The display's own audio ends with its
+    // video track, which already stops the meeting.
+    for (const track of microphone.getAudioTracks()) {
+      track.onended = () => options.onFailure(new Error('Le microphone s’est arrêté.'));
+    }
   }
   return display;
 }
