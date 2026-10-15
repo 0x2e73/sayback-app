@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { IslandApi } from '../../shared/contracts';
 import type { IslandRequest, IslandShape } from '../../shared/island';
 import { IslandReady } from './IslandReady';
@@ -11,6 +11,9 @@ interface IslandAppProps {
 }
 
 type ShapeStyle = CSSProperties & Record<`--${string}`, string>;
+
+// The fade lasts --duration-base: past this, the ready content goes even if no transition ended.
+const HANDOVER_FALLBACK = 400;
 
 // The sizes come from the geometry of the main process, through the declared island tokens.
 function shapeStyle(shape: IslandShape): ShapeStyle {
@@ -37,7 +40,14 @@ function IslandShell({ api, view, now, onRequest }: IslandShellProps) {
   const [handedOver, setHandedOver] = useState(false);
   const { recording, shape } = snapshot;
   const recordingMode = snapshot.mode === 'recording';
-  const arriving = recordingMode && ready !== null;
+  const arriving = recordingMode && ready !== null && !handedOver;
+
+  useEffect(() => {
+    if (!arriving) return;
+    const timer = setTimeout(() => setHandedOver(true), HANDOVER_FALLBACK);
+    return () => clearTimeout(timer);
+  }, [arriving]);
+
   return (
     <main
       className="island"
@@ -49,7 +59,7 @@ function IslandShell({ api, view, now, onRequest }: IslandShellProps) {
       data-arriving={arriving || undefined}
     >
       <div className="island-shell" style={shapeStyle(shape)}>
-        {ready && !(arriving && handedOver) && (
+        {ready && !(recordingMode && handedOver) && (
           <IslandReady
             api={api}
             ready={ready}

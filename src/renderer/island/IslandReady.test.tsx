@@ -212,6 +212,27 @@ describe('ready island transitions', () => {
     expect(screen.queryByRole('button', { name: 'Démarrer' })).not.toBeInTheDocument();
   });
 
+  it('removes the ready content once the cross-fade is over, ended or not', async () => {
+    const island = await opened(readySnapshot());
+    press('Démarrer');
+    island.push({ mode: 'recording', recording: recording(), expanded: true, shape });
+    expect(screen.getByText('Réunion du 15 octobre, 11 h 00')).toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTime(400));
+    expect(screen.queryByText('Réunion du 15 octobre, 11 h 00')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  });
+
+  it('removes the ready content when its fade is cancelled', async () => {
+    const island = await opened(readySnapshot());
+    island.push({ mode: 'recording', recording: recording(), expanded: true, shape });
+    const panel = screen
+      .getByText('Réunion du 15 octobre, 11 h 00')
+      .closest('[aria-hidden="true"]');
+    if (!panel) throw new Error('The leaving ready content is not drawn.');
+    fireEvent.transitionCancel(panel);
+    expect(screen.queryByText('Réunion du 15 octobre, 11 h 00')).not.toBeInTheDocument();
+  });
+
   it('puts its buttons out of reach as it folds away', async () => {
     const island = await opened(readySnapshot());
     island.expand(false);

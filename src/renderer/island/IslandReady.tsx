@@ -29,6 +29,7 @@ export function IslandReady({
   const start = useReadyStart(api, ready, onRequest);
   const reachable = expanded && !leaving;
 
+  // Ended or cancelled, the fade is over; IslandApp also has a timer if neither comes.
   function faded(event: TransitionEvent<HTMLDivElement>): void {
     if (leaving && event.target === event.currentTarget) onLeft();
   }
@@ -39,6 +40,7 @@ export function IslandReady({
       inert={!reachable}
       aria-hidden={!reachable}
       onTransitionEnd={faded}
+      onTransitionCancel={faded}
     >
       <header className="island-ready-header">
         <h1 className="island-title" title={ready.title}>
