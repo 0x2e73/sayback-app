@@ -1,4 +1,5 @@
 import { useId, useRef, type FocusEvent, type KeyboardEvent } from 'react';
+import { Presence } from './Presence';
 import { keyOutcome, visibleOptions, type SelectOption } from './select-options';
 import { useSelectState } from './use-select-state';
 import { SelectPopover, SelectTrigger } from './SelectPopover';
@@ -80,22 +81,25 @@ export function Select(props: SelectProps) {
         onToggle={() => (open ? setOpen(false) : show(options, value, trigger.current))}
         onOpen={() => show(options, value, trigger.current)}
       />
-      {open && (
-        <SelectPopover
-          listId={listId}
-          labelledBy={labelledBy}
-          value={value}
-          shown={shown}
-          active={at}
-          upward={upward}
-          query={query}
-          searchLabel={searchLabel}
-          emptyMessage={props.emptyMessage}
-          onQuery={search}
-          onKeyDown={handleKeyDown}
-          onChoose={choose}
-        />
-      )}
+      <Presence open={open}>
+        {(presence) => (
+          <SelectPopover
+            presence={presence}
+            listId={listId}
+            labelledBy={labelledBy}
+            value={value}
+            shown={shown}
+            active={at}
+            upward={upward}
+            query={query}
+            searchLabel={searchLabel}
+            emptyMessage={props.emptyMessage}
+            onQuery={search}
+            onKeyDown={handleKeyDown}
+            onChoose={choose}
+          />
+        )}
+      </Presence>
     </div>
   );
 }

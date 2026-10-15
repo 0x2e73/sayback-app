@@ -1,9 +1,12 @@
+import type { PresenceBinding } from '../../components/use-presence';
 import { Button, Dialog, Notice, Skeleton } from '../../components/ui';
 import { SourcePicker } from './SourcePicker';
 import type { useRecordingSource } from './use-recording-source';
 
 interface RecordingSourceDialogProps {
   source: ReturnType<typeof useRecordingSource>;
+  /** From the owner's presence: the dialog plays its exit before it leaves. */
+  presence?: PresenceBinding;
 }
 
 function SourcesLoading() {
@@ -17,9 +20,10 @@ function SourcesLoading() {
   );
 }
 
-export function RecordingSourceDialog({ source }: RecordingSourceDialogProps) {
+export function RecordingSourceDialog({ source, presence }: RecordingSourceDialogProps) {
   return (
     <Dialog
+      presence={presence}
       title="Changer la source capturée"
       busy={source.switching}
       onClose={source.closePicker}

@@ -41,7 +41,6 @@
   /* Only no-drag elements cut through the band, so the text under it needs this. */
   -webkit-app-region: no-drag;
   margin-block: auto;
-  animation: state-enter var(--duration-base) var(--ease-out);
 }
 
 .onboarding-copy h1 {
@@ -80,7 +79,7 @@
   height: 100%;
   background: var(--color-accent);
   transform-origin: left;
-  transition: transform var(--duration-base) var(--ease-out);
+  transition: transform var(--duration-slow) var(--ease-move);
 }
 
 .onboarding-actions {

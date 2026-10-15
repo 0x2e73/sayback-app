@@ -166,7 +166,7 @@ it('leaves a failed analysis to the band above the tabs', () => {
   const { container } = render(
     <TranscriptHarness meeting={meetingWith([], { status: 'error', error: 'Aucune parole.' })} />,
   );
-  expect(container).toBeEmptyDOMElement();
+  expect(container.querySelector('.state-stack')).toBeEmptyDOMElement();
 });
 
 it('writes the time of a turn past the first hour with its hours', () => {

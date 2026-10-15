@@ -1,4 +1,5 @@
 .segmented {
+  position: relative;
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
@@ -8,7 +9,24 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface);
 }
+.segmented-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-thumb);
+  box-shadow: var(--shadow-thumb);
+  pointer-events: none;
+}
+.segmented-thumb[data-ready] {
+  transition: transform var(--duration-slow) var(--ease-move);
+}
 .segmented-tab {
+  position: relative;
+  z-index: 1;
+  transition-duration: var(--duration-base);
   height: 26px;
   border: 0;
   border-radius: var(--radius-sm);
@@ -17,12 +35,12 @@
   font-size: var(--text-control);
   font-weight: 500;
 }
-.segmented-tab:hover {
-  color: var(--color-text);
+@media (hover: hover) and (pointer: fine) {
+  .segmented-tab:hover {
+    color: var(--color-text);
+  }
 }
 .segmented-tab[aria-selected='true'],
 .segmented-tab[aria-checked='true'] {
-  background: var(--color-thumb);
-  box-shadow: var(--shadow-thumb);
   color: var(--color-text);
 }

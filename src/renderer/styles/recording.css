@@ -186,7 +186,6 @@
   z-index: 2;
   background: var(--color-overlay);
   box-shadow: var(--shadow-float);
-  animation: state-enter var(--duration-base) var(--ease-out);
 }
 .badge {
   display: inline-flex;
@@ -241,12 +240,6 @@
 }
 .dialog::backdrop {
   background: var(--color-backdrop);
-}
-.dialog[open] {
-  animation: state-enter var(--duration-base) var(--ease-out);
-}
-.dialog[open]::backdrop {
-  animation: fade-enter var(--duration-base) var(--ease-out);
 }
 /* Heading and footer stay put; only the body scrolls. */
 .dialog-inner {

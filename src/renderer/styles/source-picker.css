@@ -122,8 +122,10 @@
   padding: var(--space-2);
   border-color: var(--color-border);
 }
-.source-option:hover {
-  background: var(--color-surface);
+@media (hover: hover) and (pointer: fine) {
+  .source-option:hover {
+    background: var(--color-surface);
+  }
 }
 .source-option:has(.source-input:checked) {
   border-color: var(--color-accent-soft);

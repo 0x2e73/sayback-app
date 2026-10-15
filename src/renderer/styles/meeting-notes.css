@@ -27,9 +27,11 @@
   font-weight: 500;
   white-space: nowrap;
 }
-.timestamp-link:hover {
-  background: var(--color-surface);
-  color: var(--color-accent);
+@media (hover: hover) and (pointer: fine) {
+  .timestamp-link:hover {
+    background: var(--color-surface);
+    color: var(--color-accent);
+  }
 }
 .clarification-form {
   display: grid;

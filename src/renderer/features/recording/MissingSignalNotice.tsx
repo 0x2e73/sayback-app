@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Presence } from '../../components/Presence';
 import { Notice, type LevelFeed } from '../../components/ui';
 
 export const MISSING_SIGNAL_DELAY = 10_000;
@@ -37,10 +38,13 @@ export function MissingSignalNotice({ feed, sources }: MissingSignalNoticeProps)
       stopListening();
     };
   }, [feed]);
-  if (!missing) return null;
   return (
-    <Notice tone="warning" role="status">
-      {missingSignalText(sources)}
-    </Notice>
+    <Presence open={missing}>
+      {(presence) => (
+        <Notice tone="warning" role="status" presence={presence}>
+          {missingSignalText(sources)}
+        </Notice>
+      )}
+    </Presence>
   );
 }

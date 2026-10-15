@@ -1,5 +1,6 @@
 import { useEffect, useId, type KeyboardEvent, type Ref } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
+import type { PresenceBinding } from './use-presence';
 import type { SelectOption } from './select-options';
 
 function focusElement(element: HTMLElement | null): void {
@@ -7,6 +8,7 @@ function focusElement(element: HTMLElement | null): void {
 }
 
 interface PopoverProps {
+  presence: PresenceBinding;
   listId: string;
   labelledBy: string;
   value: string;
@@ -28,7 +30,13 @@ export function SelectPopover(props: PopoverProps) {
     document.getElementById(`${listId}-${active}`)?.scrollIntoView?.({ block: 'nearest' });
   }, [listId, active]);
   return (
-    <div className="select-popover" data-upward={props.upward ? '' : undefined}>
+    <div
+      ref={props.presence.ref}
+      className="select-popover"
+      data-state={props.presence.state}
+      data-upward={props.upward ? '' : undefined}
+      inert={props.presence.state === 'closing'}
+    >
       {searchLabel !== undefined && (
         <input
           autoFocus

@@ -10,6 +10,8 @@ interface WorkspaceContentProps {
   api: DesktopApi;
   card: CardView;
   selected?: Meeting;
+  /** The card changes without an entrance. */
+  instant?: boolean;
   loading: boolean;
   hasMeetings: boolean;
   folders: Folder[];
@@ -48,6 +50,7 @@ export function WorkspaceContent(props: WorkspaceContentProps) {
       <MeetingDetail
         key={selected.id}
         meeting={selected}
+        instant={props.instant}
         api={props.api}
         folders={props.folders}
         onUpdate={props.onUpdate}

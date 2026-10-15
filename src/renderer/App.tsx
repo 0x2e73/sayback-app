@@ -1,6 +1,8 @@
 import type { DesktopApi } from '../shared/contracts';
+import type { WorkspaceNotice } from './workspace-notice';
 import { AppShell, focusCardContent } from './components/AppShell';
-import { ErrorBoundary, Notice } from './components/ui';
+import { useHeld } from './components/use-held';
+import { ErrorBoundary, FloatingNotice } from './components/ui';
 import { ListPane } from './features/list/ListPane';
 import { Onboarding } from './features/onboarding/Onboarding';
 import { useOnboarding } from './features/onboarding/use-onboarding';
@@ -40,6 +42,21 @@ function OnboardingScreen({ api, onboarding }: OnboardingScreenProps) {
   );
 }
 
+interface NoticeHostProps {
+  notice: WorkspaceNotice | null;
+  onRetry(): void;
+}
+
+// Keeps the last message on screen while the notice fades out.
+function NoticeHost({ notice, onRetry }: NoticeHostProps) {
+  const shown = useHeld(notice);
+  return (
+    <FloatingNotice open={notice !== null} retry={shown?.retryList ? onRetry : undefined}>
+      {shown?.message}
+    </FloatingNotice>
+  );
+}
+
 export function App({ api }: AppProps) {
   const onboarding = useOnboarding(api);
   useFullScreen(api);
@@ -74,11 +91,7 @@ export function App({ api }: AppProps) {
       />
     </ErrorBoundary>
   );
-  const floatingNotice = notice && (
-    <Notice floating retry={notice.retryList ? () => void library.refresh() : undefined}>
-      {notice.message}
-    </Notice>
-  );
+  const floatingNotice = <NoticeHost notice={notice} onRetry={() => void library.refresh()} />;
 
   return (
     <AppShell pane={pane} notice={floatingNotice}>
@@ -87,6 +100,7 @@ export function App({ api }: AppProps) {
           api={api}
           card={workspace.card}
           selected={workspace.selected}
+          instant={workspace.instantCard}
           loading={library.loading}
           hasMeetings={library.meetings.length > 0}
           folders={folders.folders}
@@ -103,14 +117,13 @@ export function App({ api }: AppProps) {
           onShowOnboarding={onboarding.reopen}
         />
       </ErrorBoundary>
-      {workspace.newMeeting && (
-        <NewMeetingDialog
-          api={api}
-          onClose={workspace.closeNewMeeting}
-          onStart={workspace.start}
-          onConfigure={workspace.configureAnalysis}
-        />
-      )}
+      <NewMeetingDialog
+        open={workspace.newMeeting}
+        api={api}
+        onClose={workspace.closeNewMeeting}
+        onStart={workspace.start}
+        onConfigure={workspace.configureAnalysis}
+      />
     </AppShell>
   );
 }

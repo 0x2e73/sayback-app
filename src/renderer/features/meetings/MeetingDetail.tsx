@@ -17,6 +17,8 @@ import { useMeetingActions } from './use-meeting-actions';
 
 interface MeetingDetailProps {
   meeting: Meeting;
+  /** The card appears without an entrance: a key held down, or the first selection. */
+  instant?: boolean;
   api: DesktopApi;
   folders: Folder[];
   onUpdate(meeting: Meeting): void;
@@ -53,8 +55,8 @@ export function MeetingDetail(props: MeetingDetailProps) {
   );
 
   return (
-    <div className="meeting-detail">
-      {actions.analyzing && <AnalysisLine meeting={meeting} />}
+    <div className="meeting-detail" data-instant={props.instant || undefined}>
+      <AnalysisLine meeting={meeting} open={actions.analyzing} />
       <MeetingContent
         header={header}
         view={view}
@@ -89,13 +91,12 @@ export function MeetingDetail(props: MeetingDetailProps) {
           onDelete={() => setConfirmDelete(true)}
         />
       </footer>
-      {confirmDelete && (
-        <DeleteMeetingDialog
-          busy={actions.deleting}
-          onClose={() => setConfirmDelete(false)}
-          onDelete={actions.remove}
-        />
-      )}
+      <DeleteMeetingDialog
+        open={confirmDelete}
+        busy={actions.deleting}
+        onClose={() => setConfirmDelete(false)}
+        onDelete={actions.remove}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Presence } from '../../components/Presence';
 import type { Meeting } from '../../../shared/contracts';
 import { useCurrentDate } from '../list/use-current-date';
 import { PaceTracker, remainingLabel } from './analysis-pace';
@@ -20,14 +21,21 @@ export function AnalysisStatus({ meeting }: { meeting: Meeting }) {
   );
 }
 
-/** 2 px across the top of the card, positioned against .main-card: nothing below moves. */
-export function AnalysisLine({ meeting }: { meeting: Meeting }) {
+/**
+ * 2 px across the top of the card, positioned against .main-card: nothing below moves.
+ * When the analysis ends the bar fills, then the line fades.
+ */
+export function AnalysisLine({ meeting, open }: { meeting: Meeting; open: boolean }) {
   return (
-    <span className="analysis-line" aria-hidden="true">
-      <span
-        className="analysis-line-bar"
-        style={{ transform: `scaleX(${analysisRatio(meeting)})` }}
-      />
-    </span>
+    <Presence open={open}>
+      {({ ref, state }) => (
+        <span ref={ref} className="analysis-line" data-state={state} aria-hidden="true">
+          <span
+            className="analysis-line-bar"
+            style={{ transform: `scaleX(${open ? analysisRatio(meeting) : 1})` }}
+          />
+        </span>
+      )}
+    </Presence>
   );
 }

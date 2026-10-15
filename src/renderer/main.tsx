@@ -26,6 +26,7 @@ import './styles/recording.css';
 import './styles/select.css';
 import './styles/settings.css';
 import './styles/onboarding.css';
+import './styles/motion.css';
 
 declare global {
   interface Window {

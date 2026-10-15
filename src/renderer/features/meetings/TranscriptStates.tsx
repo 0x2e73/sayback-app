@@ -4,7 +4,6 @@ import { Button, EmptyState, Skeleton } from '../../components/ui';
 // Distinct from the notes prompt's id: both panels can be in the DOM at once.
 const NO_AUDIO_ID = 'transcript-no-audio';
 
-// Static: skeletons never animate.
 export function TranscriptWaiting() {
   return (
     <div className="transcript-waiting">

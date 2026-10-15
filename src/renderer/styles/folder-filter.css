@@ -32,7 +32,7 @@
   border-radius: var(--radius-md);
   background: var(--color-overlay);
   box-shadow: var(--shadow-float);
-  animation: menu-enter var(--duration-fast) var(--ease-out);
+  transform-origin: top left;
 }
 .folder-menu button {
   padding: 6px 10px;
@@ -43,9 +43,13 @@
   font-size: var(--text-control);
   text-align: left;
 }
-.folder-menu button:hover,
 .folder-menu button:focus-visible {
   background: var(--color-surface-raised);
+}
+@media (hover: hover) and (pointer: fine) {
+  .folder-menu button:hover {
+    background: var(--color-surface-raised);
+  }
 }
 .folder-name-field {
   padding: var(--space-2) var(--space-3) 0;

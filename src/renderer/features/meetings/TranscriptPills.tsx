@@ -1,3 +1,4 @@
+import { Presence } from '../../components/Presence';
 import { FollowPill } from '../../components/ui';
 
 interface TranscriptPillsProps {
@@ -7,13 +8,18 @@ interface TranscriptPillsProps {
   onBack(): void;
 }
 
-/** Sticks to the bottom of the card above the player bar. */
+/** Sticks to the bottom of the card above the player bar; empty, it takes no room. */
 export function TranscriptPills({ showFollow, onFollow, showBack, onBack }: TranscriptPillsProps) {
-  if (!showFollow && !showBack) return null;
   return (
     <div className="transcript-pills">
-      {showBack && <FollowPill label="Retour aux notes" onClick={onBack} />}
-      {showFollow && <FollowPill label="Revenir au direct" onClick={onFollow} />}
+      <Presence open={showBack}>
+        {(presence) => <FollowPill label="Retour aux notes" onClick={onBack} presence={presence} />}
+      </Presence>
+      <Presence open={showFollow}>
+        {(presence) => (
+          <FollowPill label="Revenir au direct" onClick={onFollow} presence={presence} />
+        )}
+      </Presence>
     </div>
   );
 }

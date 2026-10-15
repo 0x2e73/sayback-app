@@ -1,5 +1,6 @@
 import { chronoLabel } from '../../../shared/format';
 import type { DesktopApi } from '../../../shared/contracts';
+import { Presence } from '../../components/Presence';
 import { Button, LevelMeter } from '../../components/ui';
 import type { CaptureSession } from './capture-session';
 import { RecordingActions } from './RecordingActions';
@@ -78,7 +79,9 @@ export function RecordingView({
           <p className="caption">{RECORDING_LIMIT_NOTE}</p>
         </footer>
       )}
-      {source.open && <RecordingSourceDialog source={source} />}
+      <Presence open={source.open}>
+        {(presence) => <RecordingSourceDialog source={source} presence={presence} />}
+      </Presence>
     </div>
   );
 }

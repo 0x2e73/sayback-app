@@ -1,4 +1,5 @@
 .meeting-list {
+  position: relative;
   display: grid;
   gap: var(--space-2);
   padding: 0 var(--space-2) var(--space-3);
@@ -13,6 +14,7 @@
   font-weight: 600;
 }
 .meeting-row {
+  position: relative;
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
@@ -22,11 +24,15 @@
   cursor: default;
   user-select: none;
 }
-.meeting-row:hover {
-  background: var(--color-surface);
+@media (hover: hover) and (pointer: fine) {
+  .meeting-row:hover {
+    background: var(--color-surface);
+  }
 }
-.meeting-row[aria-selected='true'] {
-  background: var(--color-surface-raised);
+@media (hover: hover) and (pointer: fine) {
+  .meeting-row[aria-selected='true']:hover {
+    background: transparent;
+  }
 }
 .meeting-row[aria-disabled='true'] {
   opacity: 0.55;
@@ -107,10 +113,29 @@
   height: 100%;
   background: var(--color-accent);
   transform-origin: left;
-  transition: transform var(--duration-base) var(--ease-out);
+  transition: transform var(--duration-slow) var(--ease-out);
 }
 .chip-static {
   justify-self: start;
   height: 20px;
   line-height: 18px;
+}
+
+/* One highlight that glides to the selected row: the only box whose height may animate. */
+.meeting-list-selection {
+  position: absolute;
+  top: 0;
+  right: var(--space-2);
+  left: var(--space-2);
+  height: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  opacity: 0;
+  pointer-events: none;
+}
+.meeting-list-selection[data-ready] {
+  transition:
+    transform var(--duration-glide) var(--ease-move),
+    height var(--duration-glide) var(--ease-move),
+    opacity var(--duration-glide) var(--ease-out);
 }

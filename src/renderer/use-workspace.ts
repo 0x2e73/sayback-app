@@ -25,6 +25,8 @@ export function useWorkspace(api: DesktopApi) {
   const filter = useListFilter(library.meetings, folders.folders);
   const [card, setCard] = useState<CardView>('meeting');
   const [chosenId, setChosenId] = useState<string | null>(null);
+  // An arrow key, the first selection or a deletion change the card without an entrance.
+  const [instant, setInstant] = useState(false);
   const [newMeeting, setNewMeeting] = useState(false);
   const { run: runAutoAnalysis } = analysis;
   const updateMeeting = library.update;
@@ -35,6 +37,7 @@ export function useWorkspace(api: DesktopApi) {
       // A new meeting must be listed: the filter that would hide it is dropped.
       clearFilter();
       setChosenId(meeting.id);
+      setInstant(false);
       setCard('meeting');
       if (autoAnalyze) runAutoAnalysis(meeting);
     },
@@ -58,11 +61,13 @@ export function useWorkspace(api: DesktopApi) {
   function deleted(id: string): void {
     const shown = sortNewestFirst(filter.visible).map((meeting) => meeting.id);
     setChosenId(neighbourAfter(shown, id));
+    setInstant(true);
     library.remove(id);
   }
 
-  function select(id: string): void {
+  function select(id: string, by?: 'keyboard'): void {
     setChosenId(id);
+    setInstant(by === 'keyboard');
     setCard('meeting');
   }
 
@@ -79,6 +84,7 @@ export function useWorkspace(api: DesktopApi) {
     card,
     newMeeting,
     selected,
+    instantCard: instant || chosenId === null,
     notice: workspaceNotice({
       recording: recording.interrupted ? '' : recording.error,
       analysis: analysis.error,

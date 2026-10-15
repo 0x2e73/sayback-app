@@ -1,0 +1,521 @@
+/*
+ * Entrances and exits. An entrance is a transition from @starting-style, so it can be
+ * interrupted; an exit is the element's [data-state='closing'] (components/use-presence.ts).
+ * Hover and press live with their components; durations and easings are tokens, and
+ * reduced motion is styles.css alone: it zeroes the --motion-* and --delay-* tokens.
+ */
+
+/* Shell, first mount: the pane fades in, the card rises a moment later. */
+.app-shell > .list-pane {
+  transition: opacity var(--duration-slow) var(--ease-out);
+}
+.app-shell > .main-card {
+  transition:
+    opacity var(--duration-slow) var(--ease-out) var(--delay-2),
+    transform var(--duration-slow) var(--ease-move) var(--delay-2);
+}
+@starting-style {
+  .app-shell > .list-pane {
+    opacity: 0;
+  }
+  .app-shell > .main-card {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .startup-screen {
+    opacity: 0;
+  }
+}
+/* Nothing shows unless the start lasts. */
+.startup-screen {
+  transition: opacity var(--duration-base) var(--ease-out) var(--delay-wait);
+}
+
+/* Dialogs scale and fade in from the centre, and leave faster. */
+.dialog {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+}
+.dialog::backdrop {
+  transition: opacity var(--duration-slow) var(--ease-out);
+}
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    transform: scale(var(--motion-scale-in));
+  }
+  .dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+.dialog[data-state='closing'] {
+  opacity: 0;
+  transform: scale(var(--motion-scale-out));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.dialog[data-state='closing']::backdrop {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+}
+
+/* Notices: in the flow they drop in; over the card they rise from its foot. */
+.notice {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+.notice.notice-floating {
+  transition:
+    opacity var(--duration-slow) var(--ease-move),
+    transform var(--duration-slow) var(--ease-move);
+}
+@starting-style {
+  .notice {
+    opacity: 0;
+    transform: translateY(var(--motion-drop));
+  }
+  .notice.notice-floating {
+    transform: translateY(var(--motion-slide));
+  }
+}
+.notice.notice-floating[data-state='closing'] {
+  opacity: 0;
+  transform: translateY(var(--motion-slide));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+
+/* Folder menu: out of its chip, back into it. */
+.folder-menu {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .folder-menu {
+    opacity: 0;
+    transform: scale(var(--motion-scale-in)) translateY(var(--motion-drop));
+  }
+  .folder-name-field {
+    opacity: 0;
+    transform: translateY(var(--motion-drop));
+  }
+}
+.folder-menu[data-state='closing'] {
+  opacity: 0;
+  transform: scale(var(--motion-scale-out));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.folder-name-field {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+/* List: each state of the list is one view that fades; the rows stagger in once. */
+.list-view {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.list-view[data-state='closing'] {
+  position: absolute;
+  top: var(--space-2);
+  right: 0;
+  left: 0;
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.meeting-row {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.meeting-row:active:not([aria-disabled='true']) {
+  transform: scale(var(--motion-press-soft));
+}
+.meeting-row.is-dragging {
+  transform: scale(var(--motion-scale-out));
+  transition-duration: var(--duration-base);
+}
+.meeting-row[data-new] {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-move),
+    transform var(--duration-slow) var(--ease-move);
+}
+.segmented-tab,
+.source-option {
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.segmented-tab:active,
+.source-option:active {
+  transform: scale(var(--motion-press-soft));
+}
+.meeting-row .row-status,
+.meeting-row .meeting-row-summary,
+.meeting-row .chip-static {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .meeting-row[data-new] {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .meeting-row [data-changed] {
+    opacity: 0;
+  }
+  .meeting-list[data-enter] .meeting-row {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .list-view {
+    opacity: 0;
+  }
+}
+/* Rows 1, 2, then every other row of a group: 0, 50 and 100 ms. The heading is the first child. */
+.meeting-list[data-enter] .meeting-row {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    opacity var(--duration-row) var(--ease-out),
+    transform var(--duration-row) var(--ease-out);
+  will-change: opacity, transform;
+}
+.meeting-list[data-enter] .meeting-row:nth-child(n + 4) {
+  transition-delay: var(--delay-2);
+}
+.meeting-list[data-enter] .meeting-row:nth-child(3) {
+  transition-delay: var(--delay-1);
+}
+
+/* Footer, update line. */
+@starting-style {
+  .list-pane-footer .button-pill {
+    opacity: 0;
+  }
+  .update-line {
+    opacity: 0;
+    transform: translateY(var(--motion-slide));
+  }
+  .update-line .button {
+    opacity: 0;
+  }
+}
+.update-line {
+  transition:
+    opacity var(--duration-slow) var(--ease-move),
+    transform var(--duration-slow) var(--ease-move);
+}
+.update-line .button {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-move) var(--delay-1);
+}
+
+/* Empty and loading states: the message rises, the skeleton waits to be needed. */
+.empty-message {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+}
+.empty-message > :not(.empty-message-title) {
+  transition: opacity var(--duration-slow) var(--ease-out) var(--delay-1);
+}
+.list-pane .empty-message {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .empty-message {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .list-pane .empty-message {
+    transform: none;
+  }
+  .empty-message > :not(.empty-message-title) {
+    opacity: 0;
+  }
+  .list-skeleton,
+  .notes-skeleton {
+    opacity: 0;
+  }
+}
+.list-skeleton,
+.notes-skeleton {
+  transition: opacity var(--duration-base) var(--ease-out) var(--delay-wait);
+}
+.skeleton {
+  animation: skeleton-pulse var(--duration-ambient) var(--ease-ambient) infinite alternate;
+}
+
+/* The card: a new meeting lifts its header, then its panel. */
+.detail-header {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+}
+.detail-panel {
+  transition:
+    opacity var(--duration-slow) var(--ease-out) var(--delay-1),
+    transform var(--duration-slow) var(--ease-out) var(--delay-1);
+}
+.detail-panel[data-direction] {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .detail-header,
+  .detail-panel {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .detail-panel[data-direction='forward'] {
+    transform: translateX(var(--motion-slide));
+  }
+  .detail-panel[data-direction='back'] {
+    transform: translateX(calc(-1 * var(--motion-slide)));
+  }
+}
+/* An arrow key held down must not replay the entrance. */
+.meeting-detail[data-instant] .detail-header,
+.meeting-detail[data-instant] .detail-panel {
+  transition: none;
+}
+
+/* Notes that arrive while they are watched. */
+.notes-view[data-arrived] > * {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+}
+.notes-view[data-arrived] > :nth-child(2) {
+  transition-delay: var(--delay-1);
+}
+.notes-view[data-arrived] > :nth-child(3) {
+  transition-delay: var(--delay-2);
+}
+.notes-view[data-arrived] > :nth-child(n + 4) {
+  transition-delay: var(--delay-3);
+}
+@starting-style {
+  .notes-view[data-arrived] > * {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .clarification-form {
+    opacity: 0;
+    transform: translateY(var(--motion-drop));
+  }
+  .note-section > .button {
+    opacity: 0;
+  }
+  .note-list li[data-new] {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .analysis-line {
+    opacity: 0;
+  }
+  .action-feedback-text {
+    opacity: 0;
+    transform: translateX(var(--motion-drop));
+  }
+}
+.clarification-form {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+.note-list li[data-new] {
+  border-radius: var(--radius-sm);
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+  animation: turn-target var(--duration-ambient) var(--ease-ambient);
+}
+
+/* Analysis line: it fills, then fades. */
+.analysis-line {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.analysis-line[data-state='closing'] {
+  opacity: 0;
+  transition: opacity var(--duration-exit) var(--ease-out) var(--delay-3);
+}
+
+/* Copy feedback. */
+.action-feedback-text {
+  display: inline-block;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+.action-feedback-text[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+}
+
+/* Two icons stacked: one fades and scales away while the other arrives. */
+.icon-swap {
+  display: inline-grid;
+  place-items: center;
+}
+.icon-swap > * {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+.icon-swap > [data-hidden] {
+  opacity: 0;
+  transform: scale(var(--motion-icon));
+}
+
+/* Press on the small controls. */
+.timestamp-link {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.timestamp-link:active {
+  transform: scale(var(--motion-press));
+}
+.badge {
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+
+/* Settings and onboarding: sections and lines come in one after the other. */
+.settings-page > *,
+.onboarding-copy > * {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+}
+.settings-page > :nth-child(2),
+.onboarding-copy > :nth-child(2) {
+  transition-delay: var(--delay-1);
+}
+.settings-page > :nth-child(3),
+.onboarding-copy > :nth-child(3) {
+  transition-delay: var(--delay-2);
+}
+.settings-page > :nth-child(n + 4),
+.onboarding-copy > :nth-child(n + 4) {
+  transition-delay: var(--delay-3);
+}
+@starting-style {
+  .settings-page > *,
+  .onboarding-copy > * {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+}
+
+/* Select: the popover opens out of its trigger and folds back at the exit speed. */
+.select-popover {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .select-popover {
+    opacity: 0;
+    transform: scale(var(--motion-scale-in)) translateY(var(--motion-drop));
+  }
+  .select-popover[data-upward] {
+    transform: scale(var(--motion-scale-in)) translateY(calc(-1 * var(--motion-drop)));
+  }
+}
+.select-popover[data-state='closing'] {
+  opacity: 0;
+  transform: scale(var(--motion-scale-out));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.select-trigger,
+.select-option {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.select-trigger:active:not(:disabled),
+.select-option:active {
+  transform: scale(var(--motion-press-soft));
+}
+
+/* Recording screen: the warning leaves in a fade, the line and the state colours settle. */
+.notice[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.recording-status,
+.recording-dot {
+  transition:
+    color var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+.finalizing-line {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .finalizing-line {
+    opacity: 0;
+  }
+}
+
+/* Transcript: its states share one cell and cross-fade, the pills slide in from below. */
+.state-stack {
+  display: grid;
+}
+.state-view {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.state-view[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+.follow-pill-slot {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+@starting-style {
+  .state-view {
+    opacity: 0;
+  }
+  .follow-pill-slot {
+    opacity: 0;
+    transform: translateY(var(--motion-slide));
+  }
+}
+.follow-pill-slot[data-state='closing'] {
+  opacity: 0;
+  transform: translateY(var(--motion-slide));
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+/* The active turn's ground moves at the pace of a state change, not of a hover. */
+.transcript-turn {
+  transition: background-color var(--duration-base) var(--ease-out);
+}

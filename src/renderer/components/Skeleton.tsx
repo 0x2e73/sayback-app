@@ -4,7 +4,7 @@ interface SkeletonProps {
   short?: boolean;
 }
 
-// Static: a skeleton never animates, and says nothing to assistive technology.
+// Pulses slowly (styles.css), and says nothing to assistive technology.
 export function Skeleton({ variant = 'line', short = false }: SkeletonProps) {
   return (
     <span

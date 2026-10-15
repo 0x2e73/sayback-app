@@ -29,10 +29,15 @@ export function PlaybackProgress({ at, duration, disabled, onSeek }: PlaybackPro
   return (
     <>
       <span className="playback-time">{chronoLabel(shown)}</span>
-      <span className="playback-progress">
+      <span className="playback-progress" data-dragging={dragged !== null || undefined}>
         <span
           className="playback-progress-fill"
           style={{ transform: `scaleX(${ratio})` }}
+          aria-hidden="true"
+        />
+        <span
+          className="playback-progress-thumb"
+          style={{ translate: `${ratio * 100}cqw` }}
           aria-hidden="true"
         />
         <input

@@ -7,6 +7,7 @@ interface ConfirmDialogProps {
   title: string;
   children: ReactNode;
   confirmLabel: string;
+  open?: boolean;
   busy?: boolean;
   /** Resolves true on success. The caller closes the dialog; false or a rejection shows a failure. */
   onConfirm(): boolean | Promise<boolean>;
@@ -14,7 +15,7 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog(props: ConfirmDialogProps) {
-  const { title, children, confirmLabel, busy = false, onConfirm, onClose } = props;
+  const { title, children, confirmLabel, open, busy = false, onConfirm, onClose } = props;
   const [failed, setFailed] = useState(false);
   const running = useRef(false);
 
@@ -34,6 +35,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
   return (
     <Dialog
       title={title}
+      open={open}
       busy={busy}
       onClose={onClose}
       footer={

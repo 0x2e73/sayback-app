@@ -1,4 +1,4 @@
-import { useId, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
 import type { DateGroup } from './date-groups';
 import { MeetingRow } from './MeetingRow';
@@ -10,7 +10,9 @@ interface MeetingListProps {
   selectedId: string | null;
   now: Date;
   locked: boolean;
-  onSelect(id: string): void;
+  arrivedIds: ReadonlySet<string>;
+  /** `keyboard` when an arrow key chose the row: the card then changes without an entrance. */
+  onSelect(id: string, by?: 'keyboard'): void;
 }
 
 function hasModifier(event: KeyboardEvent): boolean {
@@ -28,9 +30,63 @@ function focusOption(list: HTMLElement, id: string): void {
   }
 }
 
+/**
+ * The highlight is one element that glides to the selected row, placed by hand like the
+ * segmented thumb. It glides only from one row to another: the first placement, a placement
+ * after no row was selected, and a resize all jump.
+ */
+function useSelectionThumb(selectedId: string | null, groups: unknown) {
+  const list = useRef<HTMLDivElement>(null);
+  const thumb = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const box = list.current;
+    const mark = thumb.current;
+    if (!box || !mark) return;
+    function place(glide: boolean): void {
+      const row = box?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
+      if (!mark) return;
+      if (!row) {
+        mark.style.opacity = '0';
+        delete mark.dataset.ready;
+        return;
+      }
+      if (!glide) delete mark.dataset.ready;
+      mark.style.height = `${row.offsetHeight}px`;
+      mark.style.transform = `translateY(${row.offsetTop}px)`;
+      if (!('ready' in mark.dataset)) {
+        void mark.offsetHeight;
+        mark.dataset.ready = '';
+      }
+      mark.style.opacity = '1';
+    }
+    place(true);
+    if (typeof ResizeObserver === 'undefined') return;
+    // The observer reports once on start: only a real change of width is a resize.
+    let width = box.offsetWidth;
+    const observer = new ResizeObserver(() => {
+      if (box.offsetWidth === width) return;
+      width = box.offsetWidth;
+      place(false);
+    });
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [selectedId, groups]);
+  return { list, thumb };
+}
+
+// Rows have stopped entering once the longest delay and duration have passed.
+const ENTRANCE_MS = 600;
+
 export function MeetingList(props: MeetingListProps) {
-  const { groups, folders, selectedId, now, locked, onSelect } = props;
+  const { groups, folders, selectedId, now, locked, arrivedIds, onSelect } = props;
   const baseId = useId();
+  const { list, thumb } = useSelectionThumb(selectedId, groups);
+  // The rows stagger in once, when the list appears; rows added later do not replay it.
+  const [entering, setEntering] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setEntering(false), ENTRANCE_MS);
+    return () => clearTimeout(timer);
+  }, []);
   const ids = groups.flatMap((group) => group.items.map((meeting) => meeting.id));
   const tabStop = selectedId !== null && ids.includes(selectedId) ? selectedId : ids[0];
 
@@ -40,12 +96,23 @@ export function MeetingList(props: MeetingListProps) {
     if (!next) return;
     event.preventDefault();
     if (next === selectedId) return;
-    onSelect(next);
+    onSelect(next, 'keyboard');
     focusOption(event.currentTarget, next);
   }
 
   return (
-    <div role="listbox" aria-label="Réunions" className="meeting-list" onKeyDown={handleKeyDown}>
+    <div
+      ref={list}
+      role="listbox"
+      aria-label="Réunions"
+      className="meeting-list"
+      data-enter={entering || undefined}
+      onKeyDown={handleKeyDown}
+      onTransitionEnd={(event) => {
+        if (event.target === event.currentTarget) setEntering(false);
+      }}
+    >
+      <span ref={thumb} className="meeting-list-selection" aria-hidden="true" />
       {groups.map((group) => (
         <div
           key={group.key}
@@ -63,6 +130,7 @@ export function MeetingList(props: MeetingListProps) {
               folder={folders.find((folder) => folder.id === meeting.folderId)}
               selected={meeting.id === selectedId}
               focusable={meeting.id === tabStop}
+              arrived={arrivedIds.has(meeting.id)}
               locked={locked}
               now={now}
               onSelect={onSelect}

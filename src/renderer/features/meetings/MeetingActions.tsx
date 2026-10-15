@@ -1,6 +1,8 @@
-import { Copy, Download, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, Trash2 } from 'lucide-react';
 import type { Meeting } from '../../../shared/contracts';
-import { Button } from '../../components/ui';
+import { Presence } from '../../components/Presence';
+import { useHeld } from '../../components/use-held';
+import { Button, IconSwap } from '../../components/ui';
 import { downloadMeeting } from './download-meeting';
 import { useCopyNotes } from './use-copy-notes';
 
@@ -19,6 +21,7 @@ function holdBack(busy: boolean, ready: boolean, missing: string): string | null
 
 export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps) {
   const copy = useCopyNotes(meeting);
+  const message = useHeld(copy.message || null);
   const hasNotes = meeting.notes !== null || meeting.clarifications.length > 0;
   const copyHint = holdBack(busy, hasNotes, 'Aucune note à copier pour le moment.');
   const exportHint = holdBack(
@@ -30,7 +33,13 @@ export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps)
   return (
     <div className="meeting-actions">
       <span className="action-feedback" role="status">
-        {copy.message}
+        <Presence open={copy.message !== ''}>
+          {({ ref, state }) => (
+            <span ref={ref} className="action-feedback-text" data-state={state}>
+              {message}
+            </span>
+          )}
+        </Presence>
       </span>
       <div className="action-pill" role="group" aria-label="Actions de la réunion">
         <Button
@@ -41,7 +50,11 @@ export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps)
           disabled={copyHint !== null}
           onClick={() => void copy.copy()}
         >
-          <Copy size={16} aria-hidden="true" />
+          <IconSwap
+            active={copy.state === 'done'}
+            on={<Check size={16} />}
+            off={<Copy size={16} />}
+          />
         </Button>
         <Button
           variant="ghost"

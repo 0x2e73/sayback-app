@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Segmented, tabId, type SegmentedOption } from '../../components/ui';
 import type { DetailTab, DetailView } from './use-detail-view';
 
@@ -19,6 +19,8 @@ interface MeetingContentProps {
 interface DetailPanelProps {
   id: string;
   active: boolean;
+  /** Which way the indicator went: the panel arrives from the same side. */
+  direction?: 'forward' | 'back';
   /** Stays mounted while hidden: the clarification draft must survive a tab change. */
   keepMounted?: boolean;
   children: ReactNode;
@@ -28,7 +30,7 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // Both panels exist for aria-controls; the transcript only renders while it is shown.
-function DetailPanel({ id, active, keepMounted = false, children }: DetailPanelProps) {
+function DetailPanel({ id, active, direction, keepMounted = false, children }: DetailPanelProps) {
   const panel = useRef<HTMLDivElement>(null);
 
   // A panel with nothing to focus is itself reachable, so the keyboard can scroll it.
@@ -47,6 +49,7 @@ function DetailPanel({ id, active, keepMounted = false, children }: DetailPanelP
       aria-labelledby={tabId(id)}
       hidden={!active}
       className="detail-panel"
+      data-direction={direction}
     >
       {(active || keepMounted) && children}
     </div>
@@ -55,6 +58,12 @@ function DetailPanel({ id, active, keepMounted = false, children }: DetailPanelP
 
 /** The one scroll of the card: the header scrolls away, the tab bar sticks, each tab keeps its place. */
 export function MeetingContent({ header, notes, transcript, view }: MeetingContentProps) {
+  const [direction, setDirection] = useState<'forward' | 'back'>();
+  function change(next: DetailTab): void {
+    const order = tabs.map((option) => option.value);
+    setDirection(order.indexOf(next) > order.indexOf(view.tab) ? 'forward' : 'back');
+    view.selectTab(next);
+  }
   return (
     <div className="detail-scroll" ref={view.scrollerRef}>
       <div className="detail-column">
@@ -65,13 +74,18 @@ export function MeetingContent({ header, notes, transcript, view }: MeetingConte
             label="Contenu de la réunion"
             options={tabs}
             value={view.tab}
-            onChange={view.selectTab}
+            onChange={change}
           />
         </div>
-        <DetailPanel id={NOTES_PANEL} active={view.tab === 'notes'} keepMounted>
+        <DetailPanel
+          id={NOTES_PANEL}
+          active={view.tab === 'notes'}
+          direction={direction}
+          keepMounted
+        >
           {notes}
         </DetailPanel>
-        <DetailPanel id={TRANSCRIPT_PANEL} active={view.tab === 'transcript'}>
+        <DetailPanel id={TRANSCRIPT_PANEL} active={view.tab === 'transcript'} direction={direction}>
           {transcript}
         </DetailPanel>
       </div>

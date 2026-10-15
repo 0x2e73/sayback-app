@@ -22,6 +22,8 @@ interface ClarificationsProps {
 export function Clarifications(props: ClarificationsProps) {
   const { meeting, currentTime, disabled, saving, submitError, onTimestamp, onSubmit } = props;
   const [openedAt, setOpenedAt] = useState<number | null>(null);
+  // Precisions saved while the notes are open enter and flash; the ones already there do not.
+  const [initial] = useState(() => new Set(meeting.clarifications.map((item) => item.id)));
 
   return (
     <section className="note-section">
@@ -29,7 +31,7 @@ export function Clarifications(props: ClarificationsProps) {
       {meeting.clarifications.length > 0 && (
         <ul className="note-list">
           {meeting.clarifications.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} data-new={!initial.has(item.id) || undefined}>
               <span className="note-text">{item.text}</span>
               <button
                 type="button"

@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
+import { Presence } from './Presence';
+import type { PresenceBinding } from './use-presence';
 
 interface DialogProps {
   title: string;
+  /** Closing plays the exit before the dialog leaves; omit it when the owner unmounts the dialog. */
+  open?: boolean;
+  /** For an owner that runs the presence itself, so its own state leaves with the dialog. */
+  presence?: PresenceBinding;
   children: ReactNode;
   footer?: ReactNode;
   busy?: boolean;
@@ -14,16 +20,34 @@ interface DialogProps {
   onClose(): void;
 }
 
-export function Dialog({
+export function Dialog({ open = true, presence, ...props }: DialogProps) {
+  if (presence) return <DialogSurface {...props} presence={presence} />;
+  return (
+    <Presence open={open}>{(binding) => <DialogSurface {...props} presence={binding} />}</Presence>
+  );
+}
+
+type SurfaceProps = Omit<DialogProps, 'open' | 'presence'> & { presence: PresenceBinding };
+
+function DialogSurface({
   title,
+  presence,
   children,
   footer,
   busy = false,
   initialFocus,
   onEscape,
   onClose,
-}: DialogProps) {
+}: SurfaceProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { ref: presenceRef } = presence;
+  const attach = useCallback(
+    (node: HTMLDialogElement | null) => {
+      ref.current = node;
+      presenceRef(node);
+    },
+    [presenceRef],
+  );
   const pressTarget = useRef<EventTarget | null>(null);
   // Read during the first render, before autoFocus moves the focus into the dialog.
   const [opener] = useState(() => document.activeElement);
@@ -53,8 +77,11 @@ export function Dialog({
 
   return (
     <dialog
-      ref={ref}
+      ref={attach}
       className="dialog"
+      data-state={presence.state}
+      // Nothing answers during the exit: no second Enter on the confirm button, no second Escape.
+      inert={presence.state === 'closing'}
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();

@@ -31,9 +31,11 @@
   align-items: center;
   gap: var(--space-1);
 }
-.folder-control:hover .folder-control-face {
-  background: var(--color-surface);
-  color: var(--color-text);
+@media (hover: hover) and (pointer: fine) {
+  .folder-control:hover .folder-control-face {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
 }
 .folder-control:has(:focus-visible) .folder-control-face {
   outline: 2px solid var(--color-focus);
@@ -149,7 +151,7 @@
   height: 100%;
   background: var(--color-accent);
   transform-origin: left;
-  transition: transform var(--duration-base) var(--ease-out);
+  transition: transform var(--duration-slow) var(--ease-out);
 }
 /* Above the player bar, never over it. */
 .main-card:has(.playback-bar) .notice.notice-floating {

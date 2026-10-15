@@ -1,5 +1,7 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { DesktopApi } from '../../../shared/contracts';
+import { Presence } from '../../components/Presence';
+import type { PresenceBinding } from '../../components/use-presence';
 import { Dialog, Notice } from '../../components/ui';
 import { AnalysisOption } from './AnalysisOption';
 import { MeetingSource } from './MeetingSource';
@@ -12,6 +14,8 @@ import { useSubmitShortcut } from './use-submit-shortcut';
 
 interface NewMeetingDialogProps {
   api: DesktopApi;
+  /** False plays the exit: the form and its state leave with the dialog. */
+  open?: boolean;
   onClose(): void;
   onStart: StartMeeting;
   /** « Configurer » : closes the dialog and opens the settings. */
@@ -29,26 +33,50 @@ function useFocusWhenReady(ready: boolean, field: RefObject<HTMLInputElement | n
   }, [ready, field]);
 }
 
-export function NewMeetingDialog({ api, onClose, onStart, onConfigure }: NewMeetingDialogProps) {
+export function NewMeetingDialog({ open = true, ...props }: NewMeetingDialogProps) {
+  // Each opening is a generation: reopening during the exit starts a clean form, not the old one.
+  const [wasOpen, setWasOpen] = useState(open);
+  const [generation, setGeneration] = useState(0);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setGeneration(generation + 1);
+  }
+  return (
+    <Presence open={open}>
+      {(presence) => <NewMeetingBody key={generation} {...props} presence={presence} />}
+    </Presence>
+  );
+}
+
+type BodyProps = Omit<NewMeetingDialogProps, 'open'> & { presence: PresenceBinding };
+
+// A folded list must not come back open with another list, or with the screen.
+function resets(panel: ReturnType<typeof useSourcePanel>, form: ReturnType<typeof useNewMeeting>) {
+  return {
+    withoutScreen(): void {
+      panel.reset();
+      form.withoutScreen();
+    },
+    reload(): void {
+      panel.reset();
+      form.reloadSources();
+    },
+  };
+}
+
+function NewMeetingBody({ api, presence, onClose, onStart, onConfigure }: BodyProps) {
   const form = useNewMeeting(api, onStart);
   const panel = useSourcePanel();
   const titleField = useRef<HTMLInputElement>(null);
   useSubmitShortcut(FORM_ID);
   useFocusWhenReady(form.ready, titleField);
 
-  // A folded list must not come back open with another list, or with the screen.
-  function withoutScreen(): void {
-    panel.reset();
-    form.withoutScreen();
-  }
-  function reload(): void {
-    panel.reset();
-    form.reloadSources();
-  }
+  const { withoutScreen, reload } = resets(panel, form);
 
   return (
     <Dialog
       title="Nouvelle réunion"
+      presence={presence}
       busy={form.busy}
       initialFocus={titleField}
       onEscape={() => panel.escape(form.selection.screen && form.sources.status === 'ready')}

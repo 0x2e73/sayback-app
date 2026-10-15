@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import type { Meeting } from '../../../shared/contracts';
+import { Presence } from '../../components/Presence';
 import { usePlaybackSelector, type PlaybackClock } from './playback-clock';
 import {
   activeTurnIndex,
@@ -106,11 +107,43 @@ function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) 
   );
 }
 
-export function Transcript(props: TranscriptProps) {
-  const { meeting, analyzing, onAnalyze } = props;
-  if (meeting.transcript.length > 0) return <TranscriptReader {...props} />;
-  if (analyzing) return <TranscriptWaiting />;
+type TranscriptState = 'reader' | 'waiting' | 'empty' | null;
+
+function stateOf({ meeting, analyzing }: TranscriptProps): TranscriptState {
+  if (meeting.transcript.length > 0) return 'reader';
+  if (analyzing) return 'waiting';
   // A failed analysis speaks through the amber band above the tabs.
   if (meeting.status === 'error') return null;
-  return <TranscriptEmpty canAnalyze={meeting.audioChunks.length > 0} onAnalyze={onAnalyze} />;
+  return 'empty';
+}
+
+/** Waiting, empty and loaded cross-fade: the one that leaves lies under the one that arrives. */
+export function Transcript(props: TranscriptProps) {
+  const state = stateOf(props);
+  const { meeting, onAnalyze } = props;
+  return (
+    <div className="state-stack">
+      <Presence open={state === 'waiting'}>
+        {({ ref, state: phase }) => (
+          <div ref={ref} className="state-view" data-state={phase}>
+            <TranscriptWaiting />
+          </div>
+        )}
+      </Presence>
+      <Presence open={state === 'empty'}>
+        {({ ref, state: phase }) => (
+          <div ref={ref} className="state-view" data-state={phase}>
+            <TranscriptEmpty canAnalyze={meeting.audioChunks.length > 0} onAnalyze={onAnalyze} />
+          </div>
+        )}
+      </Presence>
+      <Presence open={state === 'reader'}>
+        {({ ref, state: phase }) => (
+          <div ref={ref} className="state-view" data-state={phase}>
+            <TranscriptReader {...props} />
+          </div>
+        )}
+      </Presence>
+    </div>
+  );
 }

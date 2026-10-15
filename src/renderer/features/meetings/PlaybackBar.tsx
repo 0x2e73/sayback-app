@@ -1,6 +1,6 @@
 import { Pause, Play } from 'lucide-react';
 import { chronoLabel } from '../../../shared/format';
-import { Button } from '../../components/ui';
+import { Button, IconSwap } from '../../components/ui';
 import { usePlaybackTime } from './playback-clock';
 import { PlaybackProgress } from './PlaybackProgress';
 import type { Playback } from './use-media-playback';
@@ -26,7 +26,7 @@ export function PlaybackBar({ playback }: PlaybackBarProps) {
         disabled={!available}
         onClick={playback.toggle}
       >
-        {playing ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+        <IconSwap active={playing} on={<Pause size={16} />} off={<Play size={16} />} />
       </Button>
       <PlaybackProgress at={at} duration={duration} disabled={!available} onSeek={playback.seek} />
       <span className="playback-time">{chronoLabel(duration)}</span>

@@ -262,8 +262,10 @@ describe('design tokens', () => {
         expect(themeBlock(read('styles.css'), theme)).toContain(`${token}:`);
       }
     }
+    expect(read('styles/segmented.css')).toMatch(/\.segmented-thumb\s*\{[^}]*--color-thumb/);
+    // The selected state keeps its text colour while the thumb carries the surface.
     for (const state of ['aria-selected', 'aria-checked']) {
-      const rule = new RegExp(`${state}='true'\\][^{]*\\{[^}]*--color-thumb`);
+      const rule = new RegExp(`${state}='true'\\][^{]*\\{[^}]*color: var\\(--color-text\\)`);
       expect(read('styles/segmented.css')).toMatch(rule);
     }
     expect(read('styles/recording.css')).toMatch(/\.recording-preview\s*\{[^}]*--color-media/);
