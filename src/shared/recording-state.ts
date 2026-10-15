@@ -9,9 +9,27 @@ export const recordingStateSchema = z.discriminatedUnion('recording', [
     recording: z.literal(true),
     elapsed: z.number().finite().min(0).max(MAX_ELAPSED),
     paused: z.boolean(),
+    stopping: z.boolean(),
   }),
 ]);
 
-/** What the page tells the main process about the recording: seconds recorded at that instant. */
+/**
+ * What the page tells the main process about the recording: seconds recorded at that instant,
+ * paused, or closing (stop asked, files being finished).
+ */
 export type RecordingState =
-  { recording: false } | { recording: true; elapsed: number; paused: boolean };
+  { recording: false } | { recording: true; elapsed: number; paused: boolean; stopping: boolean };
+
+/** Asked by the main process (menu bar, island) to the page that owns the capture. */
+export const recordingRequestSchema = z.enum(['pause', 'resume', 'stop']);
+export type RecordingRequest = z.infer<typeof recordingRequestSchema>;
+
+/**
+ * Seconds recorded at `now`, for a state received at `receivedAt` (same monotonic clock, in ms).
+ * The count is frozen while paused or closing.
+ */
+export function elapsedAt(state: RecordingState, receivedAt: number, now: number): number {
+  if (!state.recording) return 0;
+  if (state.paused || state.stopping) return state.elapsed;
+  return state.elapsed + Math.max(0, now - receivedAt) / 1000;
+}

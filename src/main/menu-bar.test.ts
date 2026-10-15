@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RegisterHandler } from './ipc';
-import { createMenuBar, registerMenuBarHandlers, type TrayPort } from './menu-bar';
+import type { RecordingState } from '../shared/recording-state';
+import { createMenuBar, type TrayPort } from './menu-bar';
 import type { MenuBarActions, MenuBarEntry } from './menu-bar-menu';
 
 const actions: MenuBarActions = {
@@ -25,9 +25,15 @@ function fixture() {
       return template;
     },
     actions,
+    now: () => Date.now(),
   });
-  return { titles, menus, tray, menuBar };
+  // The hub stamps each state when it receives it.
+  const announce = (state: RecordingState) => menuBar.announce({ state, receivedAt: Date.now() });
+  return { titles, menus, tray, menuBar, announce };
 }
+
+const running = (elapsed: number, extra: Partial<RecordingState> = {}): RecordingState =>
+  ({ recording: true, elapsed, paused: false, stopping: false, ...extra }) as RecordingState;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -44,98 +50,68 @@ describe('createMenuBar', () => {
   });
 
   it('counts from the announced elapsed time every second, then clears the title', () => {
-    const { menuBar, titles, menus } = fixture();
-    menuBar.announce({ recording: true, elapsed: 5, paused: false });
+    const { announce, titles, menus } = fixture();
+    announce(running(5));
     expect(menus.at(-1)?.[0]?.label).toBe('Arrêter l’enregistrement');
     vi.advanceTimersByTime(2000);
     expect(titles).toEqual(['00:05', '00:06', '00:07']);
-    menuBar.announce({ recording: false });
+    announce({ recording: false });
     vi.advanceTimersByTime(5000);
     expect(titles.at(-1)).toBe('');
     expect(titles).toHaveLength(4);
     expect(menus.at(-1)?.[0]?.label).toBe('Nouvel enregistrement…');
   });
 
-  it('freezes the title while paused, then resumes from the announced time', () => {
+  it('counts from the reception time of the hub, not from the announcement call', () => {
     const { menuBar, titles } = fixture();
-    menuBar.announce({ recording: true, elapsed: 30, paused: false });
+    const receivedAt = Date.now();
+    vi.advanceTimersByTime(3000);
+    menuBar.announce({ state: running(5), receivedAt });
+    expect(titles).toEqual(['00:08']);
+  });
+
+  it('freezes the title while paused, then resumes from the announced time', () => {
+    const { announce, titles } = fixture();
+    announce(running(30));
     vi.advanceTimersByTime(2000);
-    menuBar.announce({ recording: true, elapsed: 32, paused: true });
+    announce(running(32, { paused: true }));
     vi.advanceTimersByTime(60_000);
     expect(titles).toEqual(['00:30', '00:31', '00:32', '00:32']);
-    menuBar.announce({ recording: true, elapsed: 32, paused: false });
+    announce(running(32));
     vi.advanceTimersByTime(1000);
     expect(titles.slice(-2)).toEqual(['00:32', '00:33']);
   });
 
+  it('freezes the title and disables the stop entry while the recording closes', () => {
+    const { announce, titles, menus } = fixture();
+    announce(running(40, { stopping: true }));
+    vi.advanceTimersByTime(5000);
+    expect(titles).toEqual(['00:40']);
+    expect(menus.at(-1)?.[0]).toEqual({ label: 'Arrêt en cours…', enabled: false });
+  });
+
   it('keeps the stop entry while paused', () => {
-    const { menuBar, menus } = fixture();
-    menuBar.announce({ recording: true, elapsed: 3, paused: true });
+    const { announce, menus } = fixture();
+    announce(running(3, { paused: true }));
     expect(menus.at(-1)?.[0]?.label).toBe('Arrêter l’enregistrement');
   });
 
   it('runs a single timer when the state is announced twice', () => {
-    const { menuBar, titles } = fixture();
-    menuBar.announce({ recording: true, elapsed: 0, paused: false });
-    menuBar.announce({ recording: true, elapsed: 0, paused: false });
+    const { announce, titles } = fixture();
+    announce(running(0));
+    announce(running(0));
     titles.length = 0;
     vi.advanceTimersByTime(1000);
     expect(titles).toEqual(['00:01']);
   });
 
   it('stops the timer and removes the icon when destroyed', () => {
-    const { menuBar, tray, titles } = fixture();
-    menuBar.announce({ recording: true, elapsed: 0, paused: false });
+    const { announce, menuBar, tray, titles } = fixture();
+    announce(running(0));
     menuBar.destroy();
     titles.length = 0;
     vi.advanceTimersByTime(3000);
     expect(titles).toEqual([]);
     expect(tray.destroy).toHaveBeenCalledOnce();
-  });
-});
-
-describe('registerMenuBarHandlers', () => {
-  function registered() {
-    const announce = vi.fn();
-    const ready = vi.fn();
-    const handlers = new Map<string, (...args: unknown[]) => unknown>();
-    const handle: RegisterHandler = (channel, action) => {
-      handlers.set(channel, action);
-    };
-    registerMenuBarHandlers(handle, { announce }, ready);
-    const call = (input: unknown) => handlers.get('recording:state')?.(input);
-    return { announce, ready, call };
-  }
-
-  it('passes a valid announcement on and tells the page is ready', () => {
-    const { announce, ready, call } = registered();
-    call({ recording: true, elapsed: 12.5, paused: true });
-    call({ recording: false });
-    expect(announce.mock.calls).toEqual([
-      [{ recording: true, elapsed: 12.5, paused: true }],
-      [{ recording: false }],
-    ]);
-    expect(ready).toHaveBeenCalledTimes(2);
-  });
-
-  it.each([
-    undefined,
-    null,
-    {},
-    'recording',
-    { recording: 'yes' },
-    { recording: true },
-    { recording: true, elapsed: 3 },
-    { recording: true, paused: false },
-    { recording: true, elapsed: -1, paused: false },
-    { recording: true, elapsed: '3', paused: false },
-    { recording: true, elapsed: Infinity, paused: false },
-    { recording: true, elapsed: 1e9, paused: false },
-    { recording: true, elapsed: 3, paused: 'no' },
-  ])('refuses %j without touching the menu bar', (input) => {
-    const { announce, ready, call } = registered();
-    expect(() => call(input)).toThrow();
-    expect(announce).not.toHaveBeenCalled();
-    expect(ready).not.toHaveBeenCalled();
   });
 });

@@ -15,7 +15,8 @@ import { registerWindowHandlers } from './full-screen';
 import { createWindow } from './window';
 import { createMenuBarActions } from './menu-bar-actions';
 import { createElectronMenuBar } from './menu-bar-electron';
-import { registerMenuBarHandlers, type MenuBar } from './menu-bar';
+import type { MenuBar } from './menu-bar';
+import { createRecordingStateHub, registerRecordingState } from './recording-state-hub';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
@@ -46,6 +47,7 @@ let window: BrowserWindow | null = null;
 let services: DesktopServices | undefined;
 let updates: UpdateService | undefined;
 let menuBar: MenuBar | null = null;
+const recordingState = createRecordingStateHub();
 
 function isRecording(): boolean {
   return services?.meetings.list().some((meeting) => meeting.status === 'recording') ?? false;
@@ -59,6 +61,7 @@ function openWindow(): BrowserWindow | null {
   if (!services) return null;
   const opened = createWindow({ rendererUrl, isRecording });
   window = opened;
+  recordingState.watch(opened.webContents);
   opened.on('closed', () => {
     window = null;
   });
@@ -97,11 +100,8 @@ void app.whenReady().then(() => {
   });
   // A single icon for the whole run: `activate` and page reloads never come through here.
   menuBar = createElectronMenuBar(menuBarActions);
-  registerMenuBarHandlers(
-    handle,
-    { announce: (state) => menuBar?.announce(state) },
-    menuBarActions.rendererReady,
-  );
+  recordingState.subscribe((snapshot) => menuBar?.announce(snapshot));
+  registerRecordingState(handle, recordingState, menuBarActions.rendererReady);
   openWindow();
 });
 

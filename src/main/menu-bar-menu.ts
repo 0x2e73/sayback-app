@@ -1,3 +1,5 @@
+import type { RecordingState } from '../shared/recording-state';
+
 export interface MenuBarActions {
   newRecording(): void;
   stopRecording(): void;
@@ -8,27 +10,21 @@ export interface MenuBarActions {
 export interface MenuBarEntry {
   label?: string;
   type?: 'separator';
+  enabled?: boolean;
   click?: () => void;
 }
 
-export function menuBarTemplate(recording: boolean, actions: MenuBarActions): MenuBarEntry[] {
-  const first: MenuBarEntry = recording
-    ? { label: 'Arrêter l’enregistrement', click: actions.stopRecording }
-    : { label: 'Nouvel enregistrement…', click: actions.newRecording };
+function firstEntry(state: RecordingState, actions: MenuBarActions): MenuBarEntry {
+  if (!state.recording) return { label: 'Nouvel enregistrement…', click: actions.newRecording };
+  if (state.stopping) return { label: 'Arrêt en cours…', enabled: false };
+  return { label: 'Arrêter l’enregistrement', click: actions.stopRecording };
+}
+
+export function menuBarTemplate(state: RecordingState, actions: MenuBarActions): MenuBarEntry[] {
   return [
-    first,
+    firstEntry(state, actions),
     { label: 'Ouvrir SayBack', click: actions.open },
     { type: 'separator' },
     { label: 'Quitter SayBack', click: actions.quit },
   ];
-}
-
-// mm:ss, then h:mm:ss from the first hour.
-export function chronoLabel(seconds: number): string {
-  const total = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const rest = (total % 60).toString().padStart(2, '0');
-  if (hours === 0) return `${minutes.toString().padStart(2, '0')}:${rest}`;
-  return `${hours}:${minutes.toString().padStart(2, '0')}:${rest}`;
 }

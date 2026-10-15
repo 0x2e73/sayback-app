@@ -99,6 +99,7 @@ describe('Menu bar events in the page', () => {
         recording: true,
         elapsed: 90,
         paused: false,
+        stopping: false,
       }),
     );
     menu.stopRecording();
@@ -115,9 +116,37 @@ describe('Menu bar events in the page', () => {
     await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
     await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
     await user.click(await screen.findByRole('button', { name: 'Pause' }));
-    expect(menu.announce).toHaveBeenLastCalledWith({ recording: true, elapsed: 90, paused: true });
+    expect(menu.announce).toHaveBeenLastCalledWith({
+      recording: true,
+      elapsed: 90,
+      paused: true,
+      stopping: false,
+    });
     await user.click(screen.getByRole('button', { name: 'Reprendre' }));
-    expect(menu.announce).toHaveBeenLastCalledWith({ recording: true, elapsed: 90, paused: false });
+    expect(menu.announce).toHaveBeenLastCalledWith({
+      recording: true,
+      elapsed: 90,
+      paused: false,
+      stopping: false,
+    });
+  });
+
+  it('announces the closing of the recording until its files are finished', async () => {
+    const user = userEvent.setup();
+    const menu = menuBarApi();
+    let finish: (meeting: typeof finished) => void = () => {};
+    session.stop.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+    render(<App api={menu.api} />);
+    menu.newRecording();
+    await user.type(await screen.findByLabelText('Titre de la réunion'), 'Revue du vendredi');
+    await screen.findByRole('checkbox', { name: /Transcrire et créer le compte rendu/ });
+    await user.click(screen.getByRole('button', { name: 'Commencer l’enregistrement' }));
+    await user.click(await screen.findByRole('button', { name: 'Terminer la réunion' }));
+    await waitFor(() =>
+      expect(menu.announce).toHaveBeenLastCalledWith(expect.objectContaining({ stopping: true })),
+    );
+    await act(async () => finish(finished));
+    await waitFor(() => expect(menu.announce).toHaveBeenLastCalledWith({ recording: false }));
   });
 
   it('ignores a stop request when nothing is recording', async () => {

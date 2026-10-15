@@ -17,6 +17,7 @@ type MenuBarApi = Pick<
 export function useMenuBar(
   api: MenuBarApi,
   capture: CaptureSession | null,
+  stopping: boolean,
   handlers: MenuBarHandlers,
 ): void {
   const latest = useRef(handlers);
@@ -37,11 +38,11 @@ export function useMenuBar(
   useEffect(() => {
     const announce = () => {
       const state: RecordingState = capture
-        ? { recording: true, elapsed: capture.elapsed, paused: capture.paused }
+        ? { recording: true, elapsed: capture.elapsed, paused: capture.paused, stopping }
         : { recording: false };
       void api.announceRecordingState(state).catch(() => undefined);
     };
     announce();
     return capture?.onPauseChange(announce);
-  }, [api, capture]);
+  }, [api, capture, stopping]);
 }
