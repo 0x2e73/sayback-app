@@ -35,6 +35,11 @@ function isFile(path: string): boolean {
   return Boolean(path) && existsSync(path) && statSync(path).isFile();
 }
 
+/** The live always runs locally: the chosen model, else the first one found, else ''. */
+export function liveWhisperModel(chosen: string, folders: string[]): string {
+  return isFile(chosen) ? chosen : findWhisperModel(folders);
+}
+
 interface LocalSetupDependencies {
   locate(name: string): string | undefined;
   whisperModelPath(): string;

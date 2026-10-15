@@ -85,3 +85,21 @@ it('sends the audio level to the main process without waiting for an answer', ()
   api.sendLevel('0.5' as unknown as number);
   expect(electron.send.mock.calls).toEqual([['live:level', 0.25]]);
 });
+
+it('sends a live audio block of a known track and a bounded size, and nothing else', () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  electron.send.mockClear();
+  const block = new Int16Array(3_200);
+  api.sendPcm('microphone', block);
+  api.sendPcm('system', new Int16Array(16_000));
+  api.sendPcm('microphone', new Int16Array(0));
+  api.sendPcm('microphone', new Int16Array(16_001));
+  api.sendPcm('speaker' as 'system', block);
+  api.sendPcm('system', new Float32Array(3_200) as unknown as Int16Array);
+  expect(electron.send.mock.calls.map(([channel, payload]) => [channel, payload.track])).toEqual([
+    ['live:pcm', 'microphone'],
+    ['live:pcm', 'system'],
+  ]);
+  expect(electron.send.mock.calls[0]?.[1].samples).toBe(block);
+});

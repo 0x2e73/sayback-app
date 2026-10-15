@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findWhisperModel, LocalSetup } from './local-setup';
+import { findWhisperModel, liveWhisperModel, LocalSetup } from './local-setup';
 
 let root: string;
 
@@ -94,4 +94,15 @@ it('accepts an untagged notes model installed as latest', async () => {
     request: tags(['qwen3-vl:latest']),
   });
   expect(await setup.check()).toMatchObject({ notesModel: true });
+});
+
+it('gives the live the chosen model, else the first one found, else nothing', () => {
+  const chosen = modelFile('chosen', 'ggml-large-v3-turbo-q5_0.bin');
+  const found = modelFile('found', 'ggml-base.bin');
+  const folders = [join(root, 'found')];
+
+  expect(liveWhisperModel(chosen, folders)).toBe(chosen);
+  expect(liveWhisperModel(join(root, 'renamed.bin'), folders)).toBe(found);
+  expect(liveWhisperModel('', folders)).toBe(found);
+  expect(liveWhisperModel(join(root, 'chosen'), [join(root, 'missing')])).toBe('');
 });

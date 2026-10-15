@@ -90,6 +90,7 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     announceRecordingState: () => ok(undefined),
     onMenuBarNewRecording: () => () => {},
     sendLevel: () => undefined,
+    sendPcm: () => undefined,
     onRecordingRequest: () => () => {},
     getUpdateStatus: () => ok(upToDate),
     checkForUpdate: () => ok(upToDate),

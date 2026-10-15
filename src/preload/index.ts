@@ -7,6 +7,17 @@ function isRecordingRequest(value: unknown): value is RecordingRequest {
   return value === 'pause' || value === 'resume' || value === 'stop';
 }
 
+// Mirrors `livePcmSchema`, checked again in the main process.
+const MAX_PCM_SAMPLES = 16_000;
+function isPcmBlock(track: unknown, samples: unknown): boolean {
+  return (
+    (track === 'microphone' || track === 'system') &&
+    samples instanceof Int16Array &&
+    samples.length >= 1 &&
+    samples.length <= MAX_PCM_SAMPLES
+  );
+}
+
 // Payload-free event: the page is only told that it happened.
 function listenTo(channel: string, listener: () => void): () => void {
   const relay = () => listener();
@@ -59,6 +70,9 @@ const api: DesktopApi = {
   onMenuBarNewRecording: (listener) => listenTo('menu-bar:new-recording', listener),
   sendLevel: (level) => {
     if (typeof level === 'number' && Number.isFinite(level)) ipcRenderer.send('live:level', level);
+  },
+  sendPcm: (track, samples) => {
+    if (isPcmBlock(track, samples)) ipcRenderer.send('live:pcm', { track, samples });
   },
   onRecordingRequest: (listener) => {
     const relay = (_event: IpcRendererEvent, request: unknown) => {

@@ -30,6 +30,9 @@ import { createRecordingPower } from './recording-power';
 import type { Island } from './island-controller';
 import { registerIslandHandlers } from './island-handlers';
 import { createElectronIsland } from './island-window';
+import { composeLive } from './live-composition';
+import { registerLiveHandlers } from './live-handlers';
+import type { LiveServices } from './live-services';
 import { serveMedia } from './media-protocol';
 import { createUpdateService } from './updates';
 import { registerUpdateHandlers } from './update-handlers';
@@ -64,6 +67,8 @@ let services: DesktopServices | undefined;
 let updates: UpdateService | undefined;
 let menuBar: MenuBar | null = null;
 let island: Island | null = null;
+let live: LiveServices | null = null;
+let liveEnded = false;
 const recordingState = createRecordingStateHub();
 
 function isRecording(): boolean {
@@ -142,6 +147,12 @@ void app.whenReady().then(() => {
     request: menuBarActions.request,
   });
   if (island) registerIslandHandlers(registrar, island);
+  live = composeLive(
+    recordingState,
+    root,
+    () => desktop.credentials.settings().whisperModelPath,
+  ).live;
+  registerLiveHandlers(registrar, live);
   openWindow();
 });
 
@@ -153,7 +164,16 @@ app.on('window-all-closed', () => {
 });
 // Back in the foreground: the update channel is re-read.
 app.on('browser-window-focus', () => updates?.windowFocused());
-app.on('will-quit', () => {
+app.on('will-quit', (event) => {
+  // The quit waits for the live server to be gone: no process outlives the app.
+  if (live && !liveEnded) {
+    event.preventDefault();
+    void live.shutdown().finally(() => {
+      liveEnded = true;
+      app.quit();
+    });
+    return;
+  }
   island?.close();
   menuBar?.destroy();
   void updates?.stop();
