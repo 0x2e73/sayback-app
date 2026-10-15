@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { RecordingState } from '../shared/recording-state';
 import { createRecordingPower, type PowerPorts } from './recording-power';
+import { createRecordingStateHub } from './recording-state-hub';
 
 const running: RecordingState = { recording: true, elapsed: 1, paused: false, stopping: false };
 
@@ -65,5 +66,51 @@ describe('createRecordingPower', () => {
     announce({ recording: false });
     expect(page.setBackgroundThrottling).not.toHaveBeenCalled();
     expect(ports.blocker.stop).not.toHaveBeenCalled();
+  });
+});
+
+describe('createRecordingPower on the recording state hub', () => {
+  function wired() {
+    const listeners = new Map<string, () => void>();
+    let destroyed = false;
+    const page = {
+      setBackgroundThrottling: vi.fn(),
+      isDestroyed: () => destroyed,
+      on: (event: string, listener: () => void) => listeners.set(event, listener),
+    };
+    const blocker = { start: vi.fn(() => 5), stop: vi.fn() };
+    const hub = createRecordingStateHub(() => 0);
+    hub.watch(page);
+    hub.subscribe(createRecordingPower({ page: () => page, blocker }));
+    const fire = (event: string) => {
+      if (event === 'destroyed') destroyed = true;
+      listeners.get(event)?.();
+    };
+    return { hub, page, blocker, fire };
+  }
+
+  it('runs the hidden page at full speed while recording, and restores it on stop', () => {
+    const { hub, page, blocker } = wired();
+    hub.publish(running);
+    expect(page.setBackgroundThrottling).toHaveBeenLastCalledWith(false);
+    hub.publish({ recording: false });
+    expect(page.setBackgroundThrottling).toHaveBeenLastCalledWith(true);
+    expect(blocker.stop).toHaveBeenCalledWith(5);
+  });
+
+  it('restores throttling when the page crashes during a recording', () => {
+    const { hub, page, blocker, fire } = wired();
+    hub.publish(running);
+    fire('render-process-gone');
+    expect(page.setBackgroundThrottling).toHaveBeenLastCalledWith(true);
+    expect(blocker.stop).toHaveBeenCalledWith(5);
+  });
+
+  it('lets the app sleep again when the window is destroyed during a recording', () => {
+    const { hub, page, blocker, fire } = wired();
+    hub.publish(running);
+    fire('destroyed');
+    expect(blocker.stop).toHaveBeenCalledWith(5);
+    expect(page.setBackgroundThrottling).toHaveBeenCalledOnce();
   });
 });
