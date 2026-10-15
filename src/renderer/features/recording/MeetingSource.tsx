@@ -90,7 +90,20 @@ export function MeetingSource(props: MeetingSourceProps) {
     return <p className="source-line caption">Sans écran, les notes n’auront pas d’image.</p>;
   }
   if (sources.status === 'loading') return <SourceLoading />;
-  if (sources.status === 'error') return <Notice retry={props.onReload}>{sources.message}</Notice>;
+  if (sources.status === 'error') {
+    return (
+      <Notice
+        retry={props.onReload}
+        action={
+          <Button variant="ghost" onClick={props.onWithoutScreen}>
+            Continuer sans écran
+          </Button>
+        }
+      >
+        {sources.message}
+      </Notice>
+    );
+  }
   if (!sources.sources.length) return <NoSource {...props} />;
   return <SourceChoice {...props} />;
 }
