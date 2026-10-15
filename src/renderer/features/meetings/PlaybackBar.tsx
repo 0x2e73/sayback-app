@@ -1,6 +1,7 @@
 import { Pause, Play } from 'lucide-react';
 import { timeLabel } from '../../../shared/format';
 import { Button } from '../../components/ui';
+import { usePlaybackTime } from './playback-clock';
 import { PlaybackProgress } from './PlaybackProgress';
 import type { Playback } from './use-media-playback';
 
@@ -9,7 +10,8 @@ interface PlaybackBarProps {
 }
 
 export function PlaybackBar({ playback }: PlaybackBarProps) {
-  const { at, duration, playing, available, failed } = playback;
+  const { duration, playing, available, failed } = playback;
+  const at = usePlaybackTime(playback.clock);
   const label = playing ? 'Mettre en pause' : 'Lire';
 
   return (

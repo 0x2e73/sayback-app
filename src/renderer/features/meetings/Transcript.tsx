@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Search } from 'lucide-react';
 import type { Meeting, MeetingStatus } from '../../../shared/contracts';
+import { usePlaybackTime, type PlaybackClock } from './playback-clock';
 import { speakerTurns, type Turn } from './speaker-turns';
 import { TranscriptTurn } from './TranscriptTurn';
 
@@ -12,7 +13,7 @@ export interface TranscriptSearch {
 
 interface TranscriptProps extends TranscriptSearch {
   meeting: Meeting;
-  at: number;
+  clock: PlaybackClock;
   onSeek(at: number): void;
 }
 
@@ -32,7 +33,8 @@ function TranscriptEmpty({ status }: { status: MeetingStatus }) {
   );
 }
 
-export function Transcript({ meeting, at, onSeek, search, onSearch }: TranscriptProps) {
+export function Transcript({ meeting, clock, onSeek, search, onSearch }: TranscriptProps) {
+  const at = usePlaybackTime(clock);
   const playing = useRef<HTMLButtonElement>(null);
   const turns = useMemo(() => speakerTurns(meeting.transcript), [meeting.transcript]);
   const shown = useMemo(() => matching(turns, search), [turns, search]);

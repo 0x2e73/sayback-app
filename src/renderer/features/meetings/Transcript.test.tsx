@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import type { Meeting, Segment } from '../../../shared/contracts';
 import { Transcript as ControlledTranscript } from './Transcript';
 import { meetingMarkdown } from './meeting-format';
+import { createPlaybackClock } from './playback-clock';
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -17,7 +18,16 @@ afterEach(cleanup);
 // The search lives in the tab container; this stands in for it.
 function Transcript(props: { meeting: Meeting; at: number; onSeek(at: number): void }) {
   const [search, setSearch] = useState('');
-  return <ControlledTranscript {...props} search={search} onSearch={setSearch} />;
+  const [clock] = useState(() => createPlaybackClock(props.at));
+  return (
+    <ControlledTranscript
+      meeting={props.meeting}
+      clock={clock}
+      onSeek={props.onSeek}
+      search={search}
+      onSearch={setSearch}
+    />
+  );
 }
 
 function meetingWith(transcript: Segment[]): Meeting {

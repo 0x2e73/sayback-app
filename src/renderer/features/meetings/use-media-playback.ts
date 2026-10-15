@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Meeting } from '../../../shared/contracts';
 import { followerVideoProps, mediaElementProps } from './media-element-props';
 import { MediaDriver } from './media-driver';
-import { INITIAL_VIEW, PlaybackController } from './playback-controller';
+import { createPlaybackClock } from './playback-clock';
+import { INITIAL_STATE, PlaybackController } from './playback-controller';
 import { drivesFromVideo, playbackSources, timelineEnd, videoSource } from './playback-timeline';
 import type { Playback } from './playback-types';
 import { VideoFollower } from './video-follower';
@@ -13,9 +14,19 @@ export function useMediaPlayback(meeting: Meeting): Playback {
   // Rebuilt each render: the 2 s poll hands over equal sources, so `src` does not change.
   const sources = playbackSources(meeting);
   const duration = timelineEnd(sources, meeting.duration);
-  const [view, setView] = useState(INITIAL_VIEW);
+  const [state, setState] = useState(INITIAL_STATE);
+  const [clock] = useState(() => createPlaybackClock());
   const [controller] = useState(
-    () => new PlaybackController(new MediaDriver(), new VideoFollower(), setView),
+    () => new PlaybackController(new MediaDriver(), new VideoFollower(), clock, setState),
+  );
+  // Stable: the memoised transcript turns receive them.
+  const actions = useMemo(
+    () => ({
+      toggle: () => controller.toggle(),
+      seek: (time: number) => controller.seek(time),
+      playAt: (time: number) => controller.goTo(time, true),
+    }),
+    [controller],
   );
   const video = videoSource(meeting);
   const onVideo = drivesFromVideo(meeting);
@@ -25,15 +36,13 @@ export function useMediaPlayback(meeting: Meeting): Playback {
 
   return {
     available: sources.length > 0,
-    playing: view.playing,
-    failed: view.failed,
-    at: view.at,
+    playing: state.playing,
+    failed: state.failed,
+    clock,
     duration,
     timeline: onVideo ? 'video' : 'audio',
-    mediaProps: mediaElementProps(controller, sources[view.position]?.src),
+    mediaProps: mediaElementProps(controller, sources[state.position]?.src),
     videoProps: video && !onVideo ? followerVideoProps(controller, video) : null,
-    toggle: () => controller.toggle(),
-    seek: (time) => controller.seek(time),
-    playAt: (time) => controller.goTo(time, true),
+    ...actions,
   };
 }

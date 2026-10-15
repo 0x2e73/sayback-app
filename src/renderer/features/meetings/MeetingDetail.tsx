@@ -61,7 +61,7 @@ export function MeetingDetail(props: MeetingDetailProps) {
         notes={
           <NotesView
             meeting={meeting}
-            at={playback.at}
+            currentTime={playback.clock.now}
             analyzing={actions.analyzing}
             saving={actions.saving}
             clarifyError={actions.clarifyError}
@@ -72,7 +72,12 @@ export function MeetingDetail(props: MeetingDetailProps) {
           />
         }
         transcript={(search) => (
-          <Transcript meeting={meeting} at={playback.at} onSeek={playback.playAt} {...search} />
+          <Transcript
+            meeting={meeting}
+            clock={playback.clock}
+            onSeek={playback.playAt}
+            {...search}
+          />
         )}
       />
       <footer className="playback-bar">

@@ -23,7 +23,7 @@ function renderSection(
   render(
     <Clarifications
       meeting={extra.meeting ?? meeting}
-      at={30}
+      currentTime={() => 30}
       disabled={extra.disabled ?? false}
       saving={false}
       submitError={extra.submitError ?? ''}

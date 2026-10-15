@@ -41,7 +41,7 @@ function renderNotes(meeting: Meeting, analyzing = false) {
   render(
     <NotesView
       meeting={meeting}
-      at={0}
+      currentTime={() => 0}
       analyzing={analyzing}
       saving={false}
       clarifyError=""
