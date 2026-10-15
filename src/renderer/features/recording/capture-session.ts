@@ -81,14 +81,12 @@ export class CaptureSession {
     }, 60_000);
   }
 
-  // A timer of the capture, not of the view: a hidden window throttles its own.
   private armLimit() {
     clearTimeout(this.limitTimer);
     if (this.paused || this.stopPromise) return;
     const remaining = Math.max(0, MAX_RECORDING_SECONDS - this.elapsed) * 1000;
     this.limitTimer = setTimeout(() => this.options.onEnded(), remaining);
   }
-
   get paused(): boolean {
     return this.pausedAt > 0;
   }
@@ -211,15 +209,14 @@ export class CaptureSession {
     if (this.paused) {
       this.pausedDuration += performance.now() - this.pausedAt;
       this.pausedAt = 0;
-      this.armLimit();
       if (this.audioRecorder?.state === 'paused') this.audioRecorder.resume();
       if (this.videoRecorder?.state === 'paused') this.videoRecorder.resume();
     } else {
       this.pausedAt = performance.now();
-      clearTimeout(this.limitTimer);
       if (this.audioRecorder?.state === 'recording') this.audioRecorder.pause();
       if (this.videoRecorder?.state === 'recording') this.videoRecorder.pause();
     }
+    this.armLimit();
     this.pauseListeners.forEach((listener) => listener());
   }
   /** Called on every pause and resume. Returns the unsubscribe function. */

@@ -131,6 +131,7 @@
 }
 .recording-time {
   font-size: var(--text-timer-lg);
+  min-width: 7ch;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   line-height: 1;
