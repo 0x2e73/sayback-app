@@ -12,7 +12,7 @@
   },
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build && node scripts/build-info.ts",
+    "build": "electron-vite build && node scripts/build-info.ts && node scripts/build-output-cli.ts",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
