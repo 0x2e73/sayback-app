@@ -281,12 +281,42 @@ body {
   grid-area: 1 / 1;
   min-width: 0;
   min-height: 0;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
 }
-.island-swap-base[data-state='closing'],
-.island-swap-picker[data-state='closing'] {
+.island-swap-base[data-state='closing'] {
   opacity: 0;
+  transform: translateY(var(--motion-drop));
+  transition-duration: var(--duration-exit);
   pointer-events: none;
 }
+@starting-style {
+  .island-swap-picker {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .island-tile-body {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  .island-tile-check {
+    opacity: 0;
+    transform: scale(var(--motion-scale-in));
+  }
+}
+.island-swap-picker[data-state='closing'] {
+  opacity: 0;
+  transition-duration: var(--duration-exit);
+  pointer-events: none;
+}
+/* Opened or closed from the keyboard: the layers swap at once. */
+.island-swap[data-instant] .island-swap-base,
+.island-swap[data-instant] .island-swap-picker,
+.island-swap[data-instant] .island-tile-body {
+  transition: none;
+}
+
 /* Back button, then the tiles from 40 pt; the button sits level with the thumbnails. */
 .island-picker {
   display: grid;
@@ -325,11 +355,28 @@ body {
   background: transparent;
   color: var(--color-text-muted);
   text-align: start;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.island-tile:active:not(:disabled) {
+  transform: scale(var(--motion-press-soft));
 }
 .island-tile-body {
   position: relative;
   display: grid;
   gap: var(--space-1);
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+/* Three levels of stagger at most. */
+.island-tile:nth-child(2) .island-tile-body {
+  transition-delay: var(--delay-1);
+}
+.island-tile:nth-child(3) .island-tile-body {
+  transition-delay: var(--delay-2);
+}
+.island-tile:nth-child(n + 4) .island-tile-body {
+  transition-delay: var(--delay-3);
 }
 .island-tile-thumb {
   position: relative;
@@ -373,6 +420,9 @@ body {
   border-radius: var(--radius-pill);
   background: var(--color-action);
   color: var(--color-on-action);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 .island-tile-name {
   overflow: hidden;
