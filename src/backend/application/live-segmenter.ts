@@ -1,10 +1,13 @@
 import { LIVE_SAMPLE_RATE } from '../../shared/live';
+import { nextNoiseFloor, speechThreshold } from './live-noise-floor';
 
 /** Every length is counted in 20 ms frames. Starting values, tuned on a real meeting (P3). */
 export interface SegmenterConfig {
   frameSamples: number;
-  /** Root mean square on a 0 to 1 scale above which a frame is speech. */
+  /** Root mean square, 0 to 1, below which a frame is never speech. */
   speechRms: number;
+  /** A frame is speech above this many times the room level measured between utterances. */
+  noiseFactor: number;
   /** Consecutive speech frames that open an utterance. */
   openFrames: number;
   /** Frames kept before the first speech frame, so no word starts cut. */
@@ -24,6 +27,7 @@ export interface SegmenterConfig {
 export const DEFAULT_SEGMENTER: SegmenterConfig = {
   frameSamples: 320,
   speechRms: 0.015,
+  noiseFactor: 3,
   openFrames: 3,
   preRollFrames: 10,
   closeFrames: 30,
@@ -57,6 +61,10 @@ interface OpenUtterance {
 export interface SegmenterState {
   /** Frames consumed: the clock of the track, pauses excluded. */
   frameIndex: number;
+  /** Samples received or skipped over a gap: where the next block should start. */
+  position: number;
+  /** Room level measured on the frames outside any utterance. */
+  noiseFloor: number;
   /** Samples short of a whole frame, waiting for the next block. */
   remainder: Int16Array;
   /** While closed: the last frames, pre-roll of the next utterance. */
@@ -85,6 +93,8 @@ export interface SegmenterStep {
 export function initialSegmenter(): SegmenterState {
   return {
     frameIndex: 0,
+    position: 0,
+    noiseFloor: 0,
     remainder: new Int16Array(0),
     recent: [],
     speechRun: 0,
@@ -99,9 +109,10 @@ function rms(samples: Int16Array): number {
   return Math.sqrt(sum / samples.length) / 32_768;
 }
 
-function toFrame(samples: Int16Array, config: SegmenterConfig): Frame {
+function toFrame(samples: Int16Array, floor: number, config: SegmenterConfig): Frame {
   const energy = rms(samples);
-  return { samples, energy, speech: energy >= config.speechRms };
+  const threshold = speechThreshold(floor, config.speechRms, config.noiseFactor);
+  return { samples, energy, speech: energy >= threshold };
 }
 
 function joined(frames: readonly Frame[]): Int16Array {
@@ -165,6 +176,7 @@ function quietestCut(frames: readonly Frame[], config: SegmenterConfig): number 
 }
 
 function stepClosed(state: SegmenterState, frame: Frame, config: SegmenterConfig): void {
+  state.noiseFloor = nextNoiseFloor(state.noiseFloor, frame.energy);
   state.recent = [...state.recent, frame].slice(-(config.preRollFrames + config.openFrames));
   state.speechRun = frame.speech ? state.speechRun + 1 : 0;
   if (state.speechRun < config.openFrames) return;
@@ -209,14 +221,15 @@ export function segment(
   samples: Int16Array,
   config: SegmenterConfig = DEFAULT_SEGMENTER,
 ): SegmenterStep {
-  const state: SegmenterState = { ...previous };
+  const state: SegmenterState = { ...previous, position: previous.position + samples.length };
   const pending = new Int16Array(previous.remainder.length + samples.length);
   pending.set(previous.remainder);
   pending.set(samples, previous.remainder.length);
   const events: SegmenterEvent[] = [];
   let offset = 0;
   for (; offset + config.frameSamples <= pending.length; offset += config.frameSamples) {
-    const frame = toFrame(pending.slice(offset, offset + config.frameSamples), config);
+    const samplesOfFrame = pending.slice(offset, offset + config.frameSamples);
+    const frame = toFrame(samplesOfFrame, state.noiseFloor, config);
     if (state.open) events.push(...stepOpen(state, frame, config));
     else stepClosed(state, frame, config);
     state.frameIndex += 1;
@@ -231,10 +244,32 @@ export function flushSegmenter(
   config: SegmenterConfig = DEFAULT_SEGMENTER,
 ): SegmenterStep {
   const events = previous.open ? closing(previous.open, config) : [];
-  const state: SegmenterState = {
-    ...initialSegmenter(),
-    frameIndex: previous.frameIndex,
-    nextId: previous.nextId,
-  };
+  const state: SegmenterState = { ...previous, recent: [], speechRun: 0, open: null };
   return { state, events };
+}
+
+/**
+ * Feeds a block that starts at `offset` samples of the track. Audio already seen is skipped; a
+ * gap closes the open utterance, which cannot run across missing audio, and moves the clock on.
+ */
+export function segmentAt(
+  previous: SegmenterState,
+  offset: number,
+  samples: Int16Array,
+  config: SegmenterConfig = DEFAULT_SEGMENTER,
+): SegmenterStep {
+  if (offset <= previous.position) {
+    const seen = previous.position - offset;
+    if (seen >= samples.length) return { state: previous, events: [] };
+    return segment(previous, samples.subarray(seen), config);
+  }
+  const flushed = flushSegmenter(previous, config);
+  const resumed: SegmenterState = {
+    ...flushed.state,
+    position: offset,
+    frameIndex: Math.floor(offset / config.frameSamples),
+    remainder: new Int16Array(0),
+  };
+  const step = segment(resumed, samples, config);
+  return { state: step.state, events: [...flushed.events, ...step.events] };
 }

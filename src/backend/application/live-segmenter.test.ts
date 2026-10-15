@@ -3,6 +3,7 @@ import {
   flushSegmenter,
   initialSegmenter,
   segment,
+  segmentAt,
   type SegmenterEvent,
   type SegmenterState,
 } from './live-segmenter';
@@ -140,5 +141,43 @@ describe('live segmenter', () => {
     );
     expect(signal).toEqual(copy);
     expect(start).toEqual(initialSegmenter());
+  });
+  it('closes the utterance on a gap in the audio and moves the clock past it', () => {
+    let state = initialSegmenter();
+    const events: SegmenterEvent[] = [];
+    for (const [offset, block] of [
+      [0, tone(1_000)],
+      [32_000, tone(1_000)],
+    ] as const) {
+      const step = segmentAt(state, offset, block);
+      state = step.state;
+      events.push(...step.events);
+    }
+    events.push(...flushSegmenter(state).events);
+
+    expect(shape(events)).toEqual([
+      { kind: 'final', id: 0, start: 0, end: 1 },
+      { kind: 'final', id: 1, start: 2, end: 3 },
+    ]);
+  });
+
+  it('skips audio it has already seen and keeps the part that is new', () => {
+    const first = segmentAt(initialSegmenter(), 0, tone(1_000));
+    const repeated = segmentAt(first.state, 0, tone(1_000));
+    const overlapping = segmentAt(first.state, 8_000, tone(1_000));
+
+    expect(repeated.state).toBe(first.state);
+    expect(overlapping.state.position).toBe(24_000);
+  });
+
+  it('raises the speech threshold over a noisy room, and still hears a clear voice', () => {
+    const quietVoice = 1_100;
+    const noisy = run(concat(tone(3_000, 463), tone(1_000, quietVoice), silence(1_000)));
+    const quietRoom = run(concat(silence(3_000), tone(1_000, quietVoice), silence(1_000)));
+    const clear = run(concat(tone(3_000, 463), tone(1_000), silence(1_000)));
+
+    expect(noisy.events).toEqual([]);
+    expect(quietRoom.events.map((event) => event.kind)).toEqual(['final']);
+    expect(clear.events.map((event) => event.kind)).toEqual(['final']);
   });
 });
