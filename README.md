@@ -73,7 +73,7 @@ npm run dist      # installateur
 
 ### Mettre à jour l’app installée (macOS)
 
-`npm run update:publish` construit le dernier commit dans une copie propre (le travail en cours n’y entre pas), passe `npm run check`, construit `SayBack.app` puis la dépose dans `~/Library/Application Support/SayBack/updates/` avec son manifeste `latest.json`, écrit en dernier. Options : `--notes "<une ligne>"`, `--allow-dirty` (publie le commit courant malgré des modifications non commitées), `--channel-root <dossier>` (essais ailleurs).
+`npm run update:publish` construit le dernier commit dans une copie propre (le travail en cours n’y entre pas), passe `npm run check`, construit `SayBack.app` puis la dépose dans `~/Library/Application Support/SayBack/updates/` avec son manifeste `latest.json`, écrit en dernier. Options : `--notes "<une ligne>"`, `--allow-dirty` (publie le commit courant malgré des modifications non commitées), `--adhoc` (publie sans certificat, voir plus bas), `--channel-root <dossier>` (essais ailleurs).
 
 **Première installation**, une seule fois :
 
@@ -95,7 +95,18 @@ Seules les apps construites par `npm run update:publish` (qui pose `SAYBACK_LOCA
 export SAYBACK_SIGNING_IDENTITY="SayBack Local Signing"
 ```
 
-L’app est alors signée avec ce certificat, sans runtime renforcé : une autorisation accordée une fois reste valable après les mises à jour. Variable absente : signature ad hoc, comme avant. Variable présente mais certificat introuvable : le build échoue plutôt que de revenir en silence à l’ad hoc. `npm run dist` n’est pas concerné.
+L’app est alors signée avec ce certificat, sans runtime renforcé : une autorisation accordée une fois reste valable après les mises à jour, et la ligne « OK » de `npm run update:publish` dit avec quel certificat. Certificat introuvable, en double, expiré ou révoqué : la commande échoue en quelques secondes, avant tout build.
+
+- `npm run update:publish` refuse de publier sans `SAYBACK_SIGNING_IDENTITY`, sauf avec `--adhoc` ; et jamais une app ad hoc à la place d’une app signée par certificat.
+- `npm run package` sans la variable signe ad hoc, comme avant.
+- `npm run dist` ne signe pas avec le certificat : il remplace `dist/mac-arm64/SayBack.app` par une app ad hoc et construit un dmg ad hoc.
+- La première mise à jour signée redemande les autorisations une dernière fois, puisque l’app installée était ad hoc. Ensuite, elles tiennent.
+- Depuis macOS 15, le système redemande de temps en temps de confirmer **Enregistrement de l’écran**, signature ou pas.
+- Si codesign demande un jour l’accès à la clé, répondez « Toujours autoriser », ou autorisez les outils d’Apple une fois pour toutes (le mot de passe de session est demandé) :
+
+  ```bash
+  security set-key-partition-list -S apple-tool:,apple: -s -l "SayBack Local Signing" ~/Library/Keychains/login.keychain-db
+  ```
 
 ## Sous le capot
 

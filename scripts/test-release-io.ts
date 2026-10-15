@@ -1,7 +1,12 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { writeFakeBundle } from '../src/backend/infrastructure/test-bundle';
-import { APP_BUNDLE_NAME, BUILD_INFO_FILE_NAME } from '../src/shared/update-channel';
+import {
+  APP_BUNDLE_NAME,
+  BUILD_INFO_FILE_NAME,
+  UPDATES_DIR_NAME,
+} from '../src/shared/update-channel';
+import { CODESIGN_PROGRAM, SECURITY_PROGRAM } from './local-signing';
 import { RELEASE_STEPS, type ReleaseIo } from './update-release';
 
 // Test support: simulated commands for `runRelease`. `git` answers as told, `package` "builds"
@@ -9,6 +14,12 @@ import { RELEASE_STEPS, type ReleaseIo } from './update-release';
 
 export const COMMIT = 'c'.repeat(40);
 export const INFO = { version: '0.1.0', commit: COMMIT, builtAt: '2026-10-13T12:00:00.000Z' };
+export const IDENTITY = {
+  name: 'SayBack Local Signing',
+  hash: '0123456789ABCDEF0123456789ABCDEF01234567',
+};
+export const SIGNED_REQUIREMENT = `identifier "ch.sayback.desktop" and certificate leaf = H"${IDENTITY.hash.toLowerCase()}"`;
+export const ADHOC_REQUIREMENT = `cdhash H"${'d'.repeat(40)}"`;
 
 export interface Call {
   command: string;
@@ -25,6 +36,22 @@ export interface FakeOptions {
   builtCommit?: string;
   /** Output folders `package` fills, `dist/<name>/SayBack.app`, each with its own app.asar. */
   outputs?: Record<string, string>;
+  /** `security find-identity` output; by default IDENTITY, untrusted. */
+  keychain?: string;
+  /** Designated requirement of the built bundle; by default signed by IDENTITY. */
+  builtRequirement?: string;
+  /** Of the bundle the channel already offers; by default the built one's. */
+  publishedRequirement?: string;
+}
+
+const KEYCHAIN = `  1) ${IDENTITY.hash} "${IDENTITY.name}" (CSSMERR_TP_NOT_TRUSTED)\n     1 identities found\n`;
+
+/** `codesign -d -r-`: the staged bundle of the channel, or the one built in the copy. */
+function requirementOf(path: string, options: FakeOptions): string {
+  const built = options.builtRequirement ?? SIGNED_REQUIREMENT;
+  const published = path.endsWith(join(UPDATES_DIR_NAME, APP_BUNDLE_NAME));
+  const requirement = published ? (options.publishedRequirement ?? built) : built;
+  return `designated => ${requirement}\n`;
 }
 
 export function fakeIo(options: FakeOptions = {}) {
@@ -36,6 +63,10 @@ export function fakeIo(options: FakeOptions = {}) {
       calls.push({ command, args, cwd });
       if (args[0] === 'status') return Promise.resolve(options.dirty ?? '');
       if (args[0] === 'rev-parse') return Promise.resolve(`${COMMIT}\n`);
+      if (command === SECURITY_PROGRAM) return Promise.resolve(options.keychain ?? KEYCHAIN);
+      if (command === CODESIGN_PROGRAM && args[0] === '-d') {
+        return Promise.resolve(requirementOf(args.at(-1) ?? '', options));
+      }
       return Promise.reject(new Error(`commande inattendue : ${command}`));
     },
     run: async (command, args, cwd, env) => {
