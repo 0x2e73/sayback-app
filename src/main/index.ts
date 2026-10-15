@@ -18,6 +18,7 @@ import {
   registerSettingsHandlers,
 } from './meeting-handlers';
 import { registerCapture } from './capture-permissions';
+import { createCapturePrefsStore, registerCapturePrefs } from './capture-prefs';
 import { registerWindowHandlers } from './full-screen';
 import { createWindow } from './window';
 import { createMenuBarActions } from './menu-bar-actions';
@@ -108,7 +109,12 @@ void app.whenReady().then(() => {
   registerMeetingHandlers(handle, desktop);
   registerFolderHandlers(handle, desktop);
   registerSettingsHandlers(handle, desktop, root, applyAppearance);
-  registerCapture(handle, () => window);
+  registerCapture(
+    handle,
+    () => window,
+    () => [window, island?.window() ?? null],
+  );
+  registerCapturePrefs(handle, createCapturePrefsStore(join(root, 'capture-prefs.json')));
   registerWindowHandlers(handle, () => window);
   updates = createUpdateService({ getWindow: () => window, isRecording });
   registerUpdateHandlers(handle, updates);

@@ -7,6 +7,7 @@ import type { WindowRole } from './window-roles';
 const shownWindow: IslandWindowPort = {
   webContents: { mainFrame: {}, send: vi.fn(), isDestroyed: () => false, on: vi.fn() },
   showInactive: vi.fn(),
+  getMediaSourceId: () => 'window:99:0',
   setBounds: vi.fn(),
   setIgnoreMouseEvents: vi.fn(),
   isDestroyed: () => false,

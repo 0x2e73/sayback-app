@@ -1,5 +1,14 @@
-import { app, desktopCapturer, session, type BrowserWindow, type WebContents } from 'electron';
+import {
+  app,
+  desktopCapturer,
+  screen,
+  session,
+  type BrowserWindow,
+  type WebContents,
+} from 'electron';
 import { z } from 'zod';
+import { captureKindSchema } from '../shared/validation';
+import { capturePermission, ownSourceIds, presentSources, type OwnWindow } from './capture-sources';
 import type { RegisterHandler } from './ipc';
 
 interface SourceSelection {
@@ -7,7 +16,12 @@ interface SourceSelection {
   systemAudio: boolean;
 }
 
-export function registerCapture(handle: RegisterHandler, getWindow: () => BrowserWindow | null) {
+export function registerCapture(
+  handle: RegisterHandler,
+  getWindow: () => BrowserWindow | null,
+  // SayBack's windows, main and island: sharing them would film the recording itself.
+  ownWindows: () => (OwnWindow | null)[] = () => [getWindow()],
+) {
   let chosenSource: SourceSelection | undefined;
   // Writing the notes to the clipboard needs its own permission; reading it stays refused.
   const allowedPermissions = new Set([
@@ -42,12 +56,10 @@ export function registerCapture(handle: RegisterHandler, getWindow: () => Browse
           : 'Aucun écran disponible. Vérifiez les autorisations de capture.',
       );
     }
-    return sources.map((source) => ({
-      id: source.id,
-      name: source.name,
-      thumbnail: source.thumbnail.toDataURL(),
-    }));
+    const primaryDisplayId = String(screen.getPrimaryDisplay().id);
+    return presentSources(sources, primaryDisplayId, ownSourceIds(ownWindows()));
   });
+  handle('capture:permission', (kind) => capturePermission(captureKindSchema.parse(kind)));
   handle('capture:select', (id, systemAudio) => {
     chosenSource = z
       .object({

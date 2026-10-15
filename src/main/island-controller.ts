@@ -16,6 +16,8 @@ export interface IslandWindowPort {
   setBounds(bounds: Rect): void;
   setIgnoreMouseEvents(ignore: boolean): void;
   isDestroyed(): boolean;
+  /** Identifier of the window among the capture sources. */
+  getMediaSourceId(): string;
   destroy(): void;
 }
 

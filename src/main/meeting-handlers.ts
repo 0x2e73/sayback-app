@@ -89,6 +89,12 @@ export function registerSettingsHandlers(
       'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture',
     );
   });
+  handle('privacy:open-microphone-settings', async () => {
+    if (process.platform !== 'darwin') throw new Error('Action disponible uniquement sur macOS.');
+    await shell.openExternal(
+      'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
+    );
+  });
   handle('setup:check', () => services.localSetup.check());
   handle('setup:open-guide', (guide) =>
     shell.openExternal(setupGuides[setupGuideSchema.parse(guide)]),

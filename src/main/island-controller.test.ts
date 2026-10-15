@@ -38,6 +38,7 @@ function fakeWindow() {
       on: (_event: 'render-process-gone', listener: () => void) => (crash.listener = listener),
     },
     showInactive: vi.fn(),
+    getMediaSourceId: () => 'window:99:0',
     setBounds: vi.fn(),
     setIgnoreMouseEvents: vi.fn(),
     isDestroyed: () => destroyed,

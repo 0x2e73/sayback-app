@@ -60,6 +60,11 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     saveSettings: () => ok({ ...settings, hasOpenAiKey: true }),
     clearApiKey: () => ok(settings),
     openScreenRecordingSettings: () => ok(undefined),
+    openMicrophoneSettings: () => ok(undefined),
+    getCapturePermission: () => ok('granted'),
+    getCapturePrefs: () =>
+      ok({ microphone: true, systemAudio: true, screen: true, autoAnalyze: true }),
+    setCapturePrefs: () => ok(undefined),
     getSources: () => ok([]),
     selectSource: () => ok(undefined),
     saveMedia: () => ok(undefined),
