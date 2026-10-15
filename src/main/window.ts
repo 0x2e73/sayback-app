@@ -1,6 +1,6 @@
 import { BrowserWindow, dialog, nativeTheme } from 'electron';
 import { join } from 'node:path';
-import { guardClose } from './close-guard';
+import { guardClose, revealForSheet } from './close-guard';
 import { relayFullScreen } from './full-screen';
 import { followThemeBackground, windowChrome } from './window-chrome';
 
@@ -39,6 +39,7 @@ export function createWindow({
   });
   window.on('close', (event) => {
     guardClose(isRecording, event, () => {
+      revealForSheet(window);
       void dialog.showMessageBox(window, {
         type: 'info',
         message: 'Arrêtez l’enregistrement avant de fermer SayBack.',

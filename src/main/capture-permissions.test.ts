@@ -224,9 +224,10 @@ it('lists the screens alone for the island, and nothing when the listing fails',
   await expect(listScreens()).resolves.toEqual([
     { id: 'screen:1:0', name: 'Écran 1', primary: true },
   ]);
-  expect(electron.getSources).toHaveBeenLastCalledWith(
-    expect.objectContaining({ types: ['screen'] }),
-  );
+  expect(electron.getSources).toHaveBeenLastCalledWith({
+    types: ['screen'],
+    thumbnailSize: { width: 0, height: 0 },
+  });
   electron.getSources.mockRejectedValueOnce(new Error('denied'));
   await expect(listScreens()).resolves.toEqual([]);
 });

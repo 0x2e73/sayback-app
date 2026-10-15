@@ -24,12 +24,13 @@ function macCaptureApp(): string {
 export async function listCaptureSources(
   own: readonly (OwnWindow | null)[],
   types: SourceKind[],
+  thumbnailSize = { width: 240, height: 150 },
 ): Promise<CaptureSource[]> {
   let sources;
   try {
     sources = await desktopCapturer.getSources({
       types,
-      thumbnailSize: { width: 240, height: 150 },
+      thumbnailSize,
     });
   } catch {
     throw new Error(
@@ -52,7 +53,8 @@ export async function listCaptureSources(
 /** The screens for the ready island, without thumbnails; empty when they cannot be listed. */
 export async function listScreens(): Promise<Pick<CaptureSource, 'id' | 'name' | 'primary'>[]> {
   try {
-    const sources = await listCaptureSources([], ['screen']);
+    // The island shows no thumbnail: none is drawn.
+    const sources = await listCaptureSources([], ['screen'], { width: 0, height: 0 });
     return sources.map(({ id, name, primary }) => (primary ? { id, name, primary } : { id, name }));
   } catch {
     return [];
