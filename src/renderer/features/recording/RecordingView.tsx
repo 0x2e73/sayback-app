@@ -19,7 +19,8 @@ interface RecordingViewProps {
   api: DesktopApi;
   onStop(): void;
   stopping: boolean;
-  failed?: boolean;
+  failed: boolean;
+  onOpenInterrupted(): void;
 }
 
 function phaseOf(failed: boolean, stopping: boolean, paused: boolean): RecordingPhase {
@@ -33,7 +34,8 @@ export function RecordingView({
   api,
   onStop,
   stopping,
-  failed = false,
+  failed,
+  onOpenInterrupted,
 }: RecordingViewProps) {
   const paused = useCapturePaused(capture);
   const elapsed = useRecordingClock(capture, onStop);
@@ -52,8 +54,8 @@ export function RecordingView({
       <LevelMeter feed={feed} bars={24} className="level-meter-large" />
       {phase === 'recording' && <SilenceNotice feed={feed} />}
       {stopping && <div className="finalizing-line" aria-hidden="true" />}
-      {failed && <RecordingFailure opening={stopping} onOpen={onStop} />}
-      {capture.displayStream && (
+      {failed && <RecordingFailure opening={stopping} onOpen={onOpenInterrupted} />}
+      {capture.displayStream && !failed && (
         <div className="recording-source">
           <RecordingPreview capture={capture} version={source.previewVersion} />
           <Button variant="secondary" disabled={stopping} onClick={() => void source.openPicker()}>
@@ -61,15 +63,17 @@ export function RecordingView({
           </Button>
         </div>
       )}
-      <footer className="recording-footer">
-        <RecordingActions
-          paused={paused}
-          stopping={stopping}
-          onTogglePause={() => capture.togglePause()}
-          onStop={onStop}
-        />
-        <p className="caption">{RECORDING_LIMIT_NOTE}</p>
-      </footer>
+      {!failed && (
+        <footer className="recording-footer">
+          <RecordingActions
+            paused={paused}
+            stopping={stopping}
+            onTogglePause={() => capture.togglePause()}
+            onStop={onStop}
+          />
+          <p className="caption">{RECORDING_LIMIT_NOTE}</p>
+        </footer>
+      )}
       {source.open && <RecordingSourceDialog source={source} />}
     </div>
   );

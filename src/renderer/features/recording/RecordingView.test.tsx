@@ -27,16 +27,18 @@ const api = { sendLevel: vi.fn() } as unknown as DesktopApi;
 
 function view(props: { stopping?: boolean; failed?: boolean; capture?: CaptureSession } = {}) {
   const onStop = vi.fn();
+  const onOpenInterrupted = vi.fn();
   render(
     <RecordingView
       api={api}
       capture={props.capture ?? fakeCapture()}
       onStop={onStop}
       stopping={props.stopping ?? false}
-      failed={props.failed}
+      failed={props.failed ?? false}
+      onOpenInterrupted={onOpenInterrupted}
     />,
   );
-  return onStop;
+  return { onStop, onOpenInterrupted };
 }
 
 it('shows the title, the running state and the two-hour limit', () => {
@@ -58,7 +60,7 @@ it('names the pause and offers to resume', async () => {
 });
 
 it('stops from the main action', async () => {
-  const onStop = view();
+  const { onStop } = view();
   await userEvent.click(screen.getByRole('button', { name: 'Terminer la réunion' }));
   expect(onStop).toHaveBeenCalledOnce();
 });
@@ -71,6 +73,14 @@ it('shows the finalization and freezes the actions while stopping', () => {
     'aria-busy',
     'true',
   );
+});
+
+it('opens the meeting from the interruption, not by stopping again', async () => {
+  const { onStop, onOpenInterrupted } = view({ failed: true });
+  expect(screen.queryByRole('button', { name: 'Terminer la réunion' })).toBeNull();
+  await userEvent.click(screen.getByRole('button', { name: 'Ouvrir la réunion' }));
+  expect(onOpenInterrupted).toHaveBeenCalledOnce();
+  expect(onStop).not.toHaveBeenCalled();
 });
 
 it('says what was kept when the recording broke off', () => {

@@ -10,13 +10,15 @@ export function useRecording(
 ) {
   const [capture, setCapture] = useState<CaptureSession | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [interrupted, setInterrupted] = useState(false);
   const [error, setError] = useState('');
   const active = useRef<CaptureSession | null>(null);
   const finishing = useRef(false);
+  const interruption = useRef<{ meeting?: Meeting } | null>(null);
   const autoAnalyze = useRef(false);
 
   const stop = useCallback(() => {
-    if (!active.current || finishing.current) return;
+    if (!active.current || finishing.current || interruption.current) return;
     finishing.current = true;
     setStopping(true);
     void active.current
@@ -31,6 +33,40 @@ export function useRecording(
       });
   }, [onFinished]);
 
+  // The capture stays on screen until the user opens the meeting that was kept.
+  const interrupt = useCallback((failure: Error) => {
+    setError(failure.message);
+    const session = active.current;
+    if (!session || finishing.current || interruption.current) return;
+    finishing.current = true;
+    interruption.current = {};
+    setInterrupted(true);
+    setStopping(true);
+    const state = interruption.current;
+    void session
+      .stop()
+      .then((meeting) => {
+        state.meeting = meeting;
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        finishing.current = false;
+        setStopping(false);
+      });
+  }, []);
+
+  const openInterrupted = useCallback(() => {
+    const session = active.current;
+    const state = interruption.current;
+    if (!session || !state || finishing.current) return;
+    active.current = null;
+    interruption.current = null;
+    setInterrupted(false);
+    setError('');
+    setCapture(null);
+    onFinished(state.meeting ?? session.meeting, autoAnalyze.current);
+  }, [onFinished]);
+
   async function start(
     title: string,
     options: Omit<CaptureOptions, 'onFailure' | 'onEnded'>,
@@ -38,17 +74,15 @@ export function useRecording(
   ) {
     const session = await CaptureSession.start(api, title, {
       ...options,
-      onFailure: (failure) => {
-        setError(failure.message);
-        stop();
-      },
+      onFailure: interrupt,
       onEnded: stop,
     });
     active.current = session;
     autoAnalyze.current = analyzeAfterStop;
     setCapture(session);
+    setInterrupted(false);
     setError('');
   }
 
-  return { capture, stopping, error, start, stop };
+  return { capture, stopping, interrupted, error, start, stop, openInterrupted };
 }

@@ -32,6 +32,7 @@ function workspace(selected: Meeting) {
       capture={null}
       stopping={false}
       recordingFailed={false}
+      onOpenInterrupted={vi.fn()}
       onStop={vi.fn()}
       onUpdate={vi.fn()}
       onMove={vi.fn(async () => true)}

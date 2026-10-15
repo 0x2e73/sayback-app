@@ -16,6 +16,7 @@ interface WorkspaceContentProps {
   capture: CaptureSession | null;
   stopping: boolean;
   recordingFailed: boolean;
+  onOpenInterrupted(): void;
   onStop(): void;
   onUpdate(meeting: Meeting): void;
   onMove(meetingId: string, folderId: string | null): Promise<boolean>;
@@ -35,6 +36,7 @@ export function WorkspaceContent(props: WorkspaceContentProps) {
         onStop={props.onStop}
         stopping={props.stopping}
         failed={props.recordingFailed}
+        onOpenInterrupted={props.onOpenInterrupted}
       />
     );
   }
