@@ -103,3 +103,39 @@ Until the handler exists, a start from the island ends in `failed` after 60 s.
 
 - `recording-power.ts` turns background throttling off on the main page while a recording runs, and restores it on stop, crash or close. During the start itself, before the first `recording:state` with `recording: true`, the hidden page is still throttled: its timers run at about 1 Hz, which can slow the start slightly but does not block it. Chromium may also pause the muted `<video>` preview of a hidden page, which would make the 30 s snapshots stale.
 - The desktopCapturer path in a never-shown window was not exercised: the probe session lacked the Screen Recording permission.
+
+## Review fixes (Lucas and Mathieu)
+
+These commits change the contract above. Where this section and an earlier one disagree, this section wins.
+
+### Contract changes
+
+- **`RecordingStartRequest.deadline: number`** (`src/shared/recording-start.ts`): epoch ms, set to sending time + 15 s + 180 s. After it, main has answered the island with `failed`. A start still running past the deadline must stop and release the capture. The preload drops a request without a numeric `deadline`.
+- **`DesktopApi.acknowledgeStartRequest(id: string): void`**, on channel `recording:start-accepted` with payload `{ id }`. It is a send with no answer, main role only, 5 per second, validated by `startAcceptedSchema`. Call it as soon as `onStartRequest` fires, before any `await`.
+- **Two-phase wait in main:** 15 s for the acknowledgement (`ACCEPT_TIMEOUT`), then until `deadline` for `answerStartRequest` (`RESULT_TIMEOUT` = 180 s, which covers the microphone prompt). No acknowledgement gives `failed` after 15 s, so until the main page sends it, every island start fails at 15 s.
+- **`screenProblem(screensListed, permission)`** in `src/shared/capture-selection.ts`:
+  - Screens listed: `null`, even when the permission says `denied`.
+  - None listed: `'screen-denied'` if the permission is `denied`, otherwise `'no-screen'`.
+
+  Main uses it at each opening and on `cycle-screen`. Switch the renderer copies (`missingScreen` in `features/recording/island-start.ts` and any others) over to it.
+
+- **Not done: the `'interrupted'` result code.** Adding it to `startErrorSchema` breaks the exhaustive `ERRORS: Record<RecordingStartError, …>` in `src/renderer/island/ReadyScreenLine.tsx`, a UI component outside my scope. Raphaël: add `'interrupted'` to `startErrorSchema`, its copy (« Un enregistrement interrompu attend dans la fenêtre principale. »), and the main page's mapping, all in one commit. Main needs no change, because it relays any valid code.
+
+### Behaviour changes the island page can rely on
+
+- A new `start` clears `ready.error` in main before relaying, so a later `island:state` never brings the previous error back.
+- `close` is ignored while a start is busy. `toggle` (the icon) still closes.
+- `cycle-screen`:
+  - Error: holds the island open for 30 s.
+  - Success: clears the error and releases the hold.
+- When the screens change, main lists them again and sends `island:state`:
+  - It keeps the current screen if it still exists, otherwise falls back to the remembered or main screen.
+  - A start error stays. A screen problem is recomputed, as at opening.
+- An icon click during a recording before its island exists opens the recording island, then expands it.
+
+### Main renderer
+
+- **Listening:** main tracks it per page. The page listens from its first `announceRecordingState`. It stops at a new top-frame document, a crash or destruction, and every pending start then fails at once. Main reloads a crashed page, or reopens a destroyed window hidden, then waits for the first announcement again.
+- **User activation:** just before `recording:start-request`, main runs `executeJavaScript('void 0', true)` on the page. This gives a never-shown page transient user activation for `getDisplayMedia`. Spend it promptly: call `selectSource`, then `getDisplayMedia`, without waiting on anything slow first. Whether the real desktopCapturer path needs it is still to be proven on the owner's Mac.
+- **Hidden window and close refusal:** if the user quits during a recording while the main window is hidden or minimised, main shows the window before the « Arrêtez l'enregistrement » sheet.
+- **Island screen list:** it is read without thumbnails.
