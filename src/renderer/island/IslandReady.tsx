@@ -70,7 +70,12 @@ export function IslandReady({
         onRequest={onRequest}
       />
       <div className="island-actions island-ready-actions">
-        <Button variant="ghost" disabled={start.busy} onClick={() => onRequest('open')}>
+        <Button
+          variant="ghost"
+          className="island-open-app"
+          disabled={start.busy}
+          onClick={() => onRequest('open')}
+        >
           Ouvrir SayBack
         </Button>
         <Button shape="pill" busy={start.busy} disabled={!start.canStart} onClick={start.start}>

@@ -208,6 +208,7 @@ body {
   flex: none;
   width: var(--control-sm);
   min-height: var(--control-sm);
+  margin-inline-end: calc(var(--space-2) * -1);
   color: var(--color-text-muted);
 }
 /* The screen line and the error that replaces it share one height: nothing below moves. */
@@ -236,10 +237,16 @@ body {
   flex: none;
   color: var(--color-danger);
 }
+/* Ghost buttons line their text up with the content edges: their padding hangs outside. */
 .island-line-action {
   flex: none;
   min-height: var(--control-sm);
-  padding-block: 0;
+  margin-inline-end: calc(var(--space-3) * -1);
+  padding: 0 var(--space-3);
+}
+.island-open-app {
+  margin-inline-start: calc(var(--space-3) * -1);
+  padding-inline: var(--space-3);
 }
 .island-ready-actions {
   align-self: end;
