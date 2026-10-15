@@ -413,9 +413,6 @@ p {
   grid-template-columns: var(--pane-list-width) minmax(0, 1fr);
   height: 100%;
 }
-.brand-dot {
-  color: var(--color-accent);
-}
 .eyebrow {
   color: var(--color-text-subtle);
   font-size: var(--text-caption);
