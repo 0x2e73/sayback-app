@@ -15,6 +15,8 @@ interface TranscriptTurnProps {
   /** Index in `matches` of the current search result, −1 when it is elsewhere. */
   currentMatch: number;
   onSeek(at: number): void;
+  /** 0 when this is not the passage reached from a note; a new value replays the flash. */
+  passageKey: number;
 }
 
 function highlighted(text: string, matches: readonly TextRange[], current: number): ReactNode[] {
@@ -41,10 +43,17 @@ function turnClass(turn: Turn): string {
 }
 
 function TranscriptTurnView(props: TranscriptTurnProps) {
-  const { turn, tone, labelled, active, matches, currentMatch, onSeek } = props;
+  const { turn, tone, labelled, active, matches, currentMatch, onSeek, passageKey } = props;
   const time = shortTimeLabel(turn.start);
   return (
-    <article className={turnClass(turn)} aria-current={active ? 'time' : undefined}>
+    <article
+      className={turnClass(turn)}
+      aria-current={active ? 'time' : undefined}
+      data-passage={passageKey > 0 ? '' : undefined}
+    >
+      {passageKey > 0 && (
+        <span key={passageKey} className="transcript-turn-flash" aria-hidden="true" />
+      )}
       {/* The only seek trigger: the text stays free for selection. */}
       <button
         type="button"

@@ -13,6 +13,7 @@ interface TranscriptListProps {
   active: number;
   found: FoundMatches;
   onSeek(at: number): void;
+  passage: { index: number; key: number };
   ref?: Ref<HTMLDivElement>;
 }
 
@@ -33,7 +34,7 @@ function currentIn(found: FoundMatches, turnId: string, ranges: readonly TextRan
   return ranges.findIndex((range) => range.start === current.start);
 }
 
-export function TranscriptList({ rows, active, found, onSeek, ref }: TranscriptListProps) {
+export function TranscriptList({ rows, active, found, onSeek, passage, ref }: TranscriptListProps) {
   return (
     <div className="transcript-turns" ref={ref}>
       {rows.map((row) => {
@@ -49,6 +50,7 @@ export function TranscriptList({ rows, active, found, onSeek, ref }: TranscriptL
             matches={matches}
             currentMatch={currentIn(found, row.turn.id, matches)}
             onSeek={onSeek}
+            passageKey={row.index === passage.index ? passage.key : 0}
           />
         );
       })}

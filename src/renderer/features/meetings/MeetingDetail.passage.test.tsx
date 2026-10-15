@@ -75,3 +75,43 @@ it('places the turn playing when the transcript opens', async () => {
   expect(turnOf('Bonjour.')).toHaveAttribute('aria-current', 'time');
   expect(scrolled).toHaveBeenLastCalledWith(turnOf('Bonjour.'), { block: 'nearest' });
 });
+
+it('opens the passage of a note in an extract that is not loaded, then goes back to the notes', async () => {
+  const user = userEvent.setup();
+  const play = vi.spyOn(HTMLMediaElement.prototype, 'play');
+  render(detail(analysed));
+  const scroller = document.querySelector<HTMLElement>('.detail-scroll');
+  if (!scroller) throw new Error('no scroll container');
+  scroller.scrollTop = 300;
+  await user.click(screen.getByRole('button', { name: 'Écouter à 1:01' }));
+  expect(screen.getByRole('tab', { name: 'Transcription' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  // The extract is still loading: the turn is marked and placed already.
+  expect(audio()).toHaveAttribute('src', 'meeting-media://local/m1/audio/1');
+  expect(turnOf('Le budget.')).toHaveAttribute('aria-current', 'time');
+  expect(turnOf('Le budget.')).toHaveAttribute('data-passage');
+  expect(scrolled).toHaveBeenLastCalledWith(turnOf('Le budget.'), { block: 'nearest' });
+  fireEvent.loadedMetadata(audio());
+  expect(audio().currentTime).toBe(1);
+  expect(play).toHaveBeenCalled();
+  await user.click(screen.getByRole('button', { name: 'Retour aux notes' }));
+  expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'true');
+  expect(scroller.scrollTop).toBe(300);
+});
+
+it('opens a clarification time no turn holds, plays it and marks nothing', async () => {
+  const user = userEvent.setup();
+  render(detail(analysed));
+  await user.click(screen.getByRole('button', { name: 'Écouter à 1:30' }));
+  expect(screen.getByRole('tab', { name: 'Transcription' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(
+    screen.getAllByRole('article').filter((turn) => turn.hasAttribute('data-passage')),
+  ).toEqual([]);
+  expect(screen.getByRole('button', { name: 'Retour aux notes' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Mettre en pause' })).toBeInTheDocument();
+});

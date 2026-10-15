@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import type { Meeting } from '../../../shared/contracts';
 import { usePlaybackSelector, type PlaybackClock } from './playback-clock';
-import { activeTurnIndex, partStarts, transcriptRows } from './transcript-rows';
+import { activeTurnIndex, partStarts, passageTurn, transcriptRows } from './transcript-rows';
 import { TranscriptList } from './TranscriptList';
 import { TranscriptPills } from './TranscriptPills';
 import { TranscriptSearchBar } from './TranscriptSearchBar';
@@ -44,6 +44,13 @@ function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) 
   const turns = useStableTurns(meeting.transcript);
   const starts = useMemo(() => partStarts(meeting.audioChunks), [meeting.audioChunks]);
   const rows = useMemo(() => transcriptRows(turns, starts), [turns, starts]);
+  const passage = useMemo(
+    () => ({
+      index: view.passage ? passageTurn(turns, view.passage) : -1,
+      key: view.passage?.key ?? 0,
+    }),
+    [turns, view.passage],
+  );
   const found = useTranscriptSearch(turns, view.search, view.onSearch);
   const playing = useCallback((at: number) => activeTurnIndex(turns, at), [turns]);
   // Re-renders when the active turn changes, not at every tick of the clock.
@@ -60,12 +67,19 @@ function TranscriptReader({ meeting, analyzing, clock, view }: TranscriptProps) 
   return (
     <div className="transcript">
       <TranscriptSearchBar found={found} />
-      <TranscriptList ref={list} rows={rows} active={active} found={found} onSeek={view.onSeek} />
+      <TranscriptList
+        ref={list}
+        rows={rows}
+        active={active}
+        found={found}
+        onSeek={view.onSeek}
+        passage={passage}
+      />
       {analyzing && <p className="caption">La transcription arrive au fur et à mesure.</p>}
       <TranscriptPills
         showFollow={!view.following && outOfView}
         onFollow={resume}
-        showBack={false}
+        showBack={view.passage !== null}
         onBack={view.onBackToNotes}
       />
     </div>
