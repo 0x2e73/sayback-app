@@ -32,7 +32,14 @@ export function createRecordingStateHub(
 
   function publish(state: RecordingState): void {
     snapshot = { state, receivedAt: now() };
-    for (const listener of listeners) listener(snapshot);
+    for (const listener of listeners) {
+      // The menu bar, the power and the island are independent: one failure stops none of them.
+      try {
+        listener(snapshot);
+      } catch (error) {
+        console.error('[recording-state] a subscriber failed', error);
+      }
+    }
   }
 
   function reset(): void {

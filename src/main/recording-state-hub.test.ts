@@ -53,6 +53,20 @@ describe('createRecordingStateHub', () => {
     expect(hub.current().state).toMatchObject({ stopping: true });
   });
 
+  it('still tells the others when a subscriber throws, and reports the failure', () => {
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const hub = createRecordingStateHub(fakeClock().now);
+    const after = vi.fn();
+    hub.subscribe(() => {
+      throw new Error('tray gone');
+    });
+    hub.subscribe(after);
+    expect(() => hub.publish(running)).not.toThrow();
+    expect(after).toHaveBeenCalledOnce();
+    expect(report).toHaveBeenCalledOnce();
+    report.mockRestore();
+  });
+
   it('stops telling a subscriber that left', () => {
     const hub = createRecordingStateHub(fakeClock().now);
     const listener = vi.fn();
