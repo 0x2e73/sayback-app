@@ -81,7 +81,7 @@ export function useNewMeeting(api: DesktopApi, onStart: StartMeeting) {
     choice.refreshPermission(kind);
   }
 
-  const hasSource = !selection.screen || Boolean(choice.sourceId);
+  const hasSource = !(selection.screen || selection.systemAudio) || Boolean(choice.sourceId);
   const canStart = choice.ready && choice.hasAudio && hasSource;
   return {
     ...choice,

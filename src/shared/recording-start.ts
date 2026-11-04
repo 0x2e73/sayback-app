@@ -3,17 +3,17 @@ import { capturePrefsSchema, titleSchema } from './validation';
 
 /**
  * The sources of a start outside the dialog. A screen capture names its screen (never a window),
- * and the system audio exists only with the screen, as `normalizeSelection` leaves it.
+ * including when only its system audio is saved.
  */
 export const startSelectionSchema = capturePrefsSchema
   .pick({ microphone: true, systemAudio: true, screen: true, screenId: true })
   .strict()
-  .refine((selection) => !selection.screen || selection.screenId !== undefined, {
-    message: 'Choisissez un écran.',
-  })
-  .refine((selection) => !selection.systemAudio || selection.screen, {
-    message: 'Le son du système accompagne la capture d’écran.',
-  });
+  .refine(
+    (selection) => !(selection.screen || selection.systemAudio) || selection.screenId !== undefined,
+    {
+      message: 'Choisissez un écran.',
+    },
+  );
 export type StartSelection = z.infer<typeof startSelectionSchema>;
 
 /** What the main renderer receives to start a recording without its dialog. */

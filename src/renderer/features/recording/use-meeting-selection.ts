@@ -45,7 +45,7 @@ export function useMeetingSelection(api: DesktopApi) {
     : defaultScreenId(list, habits.screenId);
 
   function toggle(key: SourceKey): void {
-    setChosen(normalizeSelection({ ...toggles, [key]: !selection[key] }, key));
+    setChosen(normalizeSelection({ ...toggles, [key]: !selection[key] }));
   }
 
   return {
@@ -55,7 +55,7 @@ export function useMeetingSelection(api: DesktopApi) {
     selection,
     hasAudio: hasAudioSource(selection),
     microphoneBlocked,
-    screenBlocked: selection.screen && screenRefused,
+    screenBlocked: (selection.screen || selection.systemAudio) && screenRefused,
     refreshPermission: (kind: 'screen' | 'microphone') =>
       (kind === 'screen' ? screenPermission : microphonePermission).refresh(),
     sources: sources.state,
@@ -64,7 +64,8 @@ export function useMeetingSelection(api: DesktopApi) {
     sourceId,
     autoAnalyze: chosenAnalysis ?? habits.autoAnalyze,
     toggle,
-    withoutScreen: () => setChosen(normalizeSelection({ ...toggles, screen: false }, 'screen')),
+    withoutScreen: () =>
+      setChosen(normalizeSelection({ ...toggles, screen: false, systemAudio: false })),
     chooseSource: setChosenSourceId,
     chooseAnalysis: setChosenAnalysis,
   };

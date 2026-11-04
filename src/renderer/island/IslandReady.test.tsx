@@ -30,8 +30,7 @@ describe('ready island', () => {
     );
     expect(screen.getByRole('heading', { name: 'Réunion du 15 octobre, 11 h 00' })).toBeVisible();
     expect(chip('Microphone')).toHaveAttribute('aria-pressed', 'true');
-    // The system audio exists only with the screen: normalised as the dialog does.
-    expect(chip('Son du système')).toHaveAttribute('aria-pressed', 'false');
+    expect(chip('Son du système')).toHaveAttribute('aria-pressed', 'true');
     expect(chip('Écran')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByText('Écran 1')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ouvrir SayBack' })).toBeInTheDocument();
@@ -62,14 +61,14 @@ describe('ready island', () => {
     });
   });
 
-  it('starts without a screen once the chip is off, which drops the system audio', async () => {
+  it('starts with system audio and no video once the screen chip is off', async () => {
     const island = await opened(readySnapshot());
     fireEvent.click(chip('Écran'));
     press('Démarrer');
     expect(island.request).toHaveBeenCalledWith({
       type: 'start',
       title: 'Réunion du 15 octobre, 11 h 42',
-      selection: { microphone: true, systemAudio: false, screen: false },
+      selection: { microphone: true, systemAudio: true, screen: false, screenId: 'screen:1:0' },
     });
   });
 
@@ -131,9 +130,11 @@ describe('ready island errors', () => {
     expect(screen.getByText('Écran 1')).toBeInTheDocument();
   });
 
-  it('drops a screen error once the screen chip is off', async () => {
+  it('drops capture errors only once both screen and system audio are off', async () => {
     await opened(readySnapshot({ error: 'screen-denied' }));
     fireEvent.click(chip('Écran'));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    fireEvent.click(chip('Son du système'));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Démarrer' })).toBeEnabled();
   });

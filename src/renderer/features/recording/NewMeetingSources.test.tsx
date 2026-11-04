@@ -17,19 +17,20 @@ it('groups the three sources as toggles', async () => {
   expect(group).toContainElement(inDialog.getByRole('button', { name: 'Écran' }));
 });
 
-it('turns the system sound off with the screen and says the notes get no image', async () => {
+it('keeps system audio without video and explains what is saved', async () => {
   const { within: inDialog, user } = await openDialog();
   await user.click(inDialog.getByRole('button', { name: 'Écran' }));
-  expect(pressed(inDialog.getByRole('button', { name: 'Son du système' }))).toBe('false');
-  expect(inDialog.getByText('Sans écran, les notes n’auront pas d’image.')).toBeInTheDocument();
+  expect(pressed(inDialog.getByRole('button', { name: 'Son du système' }))).toBe('true');
+  expect(inDialog.getByText(/Seul le son est enregistré/)).toBeInTheDocument();
   expect(inDialog.queryByRole('button', { name: /Changer/ })).toBeNull();
 });
 
-it('brings the screen back when the system sound is asked for without it', async () => {
+it('keeps video off when system audio is toggled', async () => {
   const { within: inDialog, user } = await openDialog();
   await user.click(inDialog.getByRole('button', { name: 'Écran' }));
   await user.click(inDialog.getByRole('button', { name: 'Son du système' }));
-  expect(pressed(inDialog.getByRole('button', { name: 'Écran' }))).toBe('true');
+  await user.click(inDialog.getByRole('button', { name: 'Son du système' }));
+  expect(pressed(inDialog.getByRole('button', { name: 'Écran' }))).toBe('false');
   expect(pressed(inDialog.getByRole('button', { name: 'Son du système' }))).toBe('true');
 });
 
@@ -40,7 +41,7 @@ it('starts without a screen when the screen is off', async () => {
   expect(api.selectSource).not.toHaveBeenCalled();
   expect(onStart).toHaveBeenCalledWith(
     expect.any(String),
-    { screen: false, microphone: true, systemAudio: false, source: undefined },
+    { screen: false, microphone: true, systemAudio: true, source: mainScreen },
     true,
   );
 });

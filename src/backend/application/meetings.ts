@@ -131,6 +131,13 @@ export class MeetingService {
     this.repository.save(meeting);
     return meeting;
   }
+  rename(id: string, title: string): Meeting {
+    const meeting = this.get(id);
+    assertEditable(meeting);
+    meeting.title = normalizeTitle(title);
+    this.repository.save(meeting);
+    return meeting;
+  }
   delete(id: string): void {
     const meeting = this.get(id);
     assertEditable(meeting);

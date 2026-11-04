@@ -43,7 +43,7 @@ export class CaptureSession {
   ) {
     this.writer = new RecordingWriter(api, meeting.id, options.onFailure);
     this.analyser = resources.analyser;
-    this.currentSource = options.source;
+    this.currentSource = options.screen ? options.source : undefined;
     this.frames = new CaptureFrames({
       paused: () => this.paused,
       stopped: () => this.stopPromise !== undefined,
@@ -64,7 +64,7 @@ export class CaptureSession {
       meeting = unwrap(await api.createMeeting(title));
       const capture = new CaptureSession(meeting, api, resources, options);
       capture.startAudio();
-      if (resources.display) capture.startVideo(resources.display);
+      if (options.screen && resources.display) capture.startVideo(resources.display);
       capture.scheduleAudioRotation();
       capture.armLimit();
       return capture;
@@ -105,7 +105,7 @@ export class CaptureSession {
     return { microphone: this.options.microphone, systemAudio: this.options.systemAudio };
   }
   get displayStream(): MediaStream | undefined {
-    return this.resources.display;
+    return this.options.screen ? this.resources.display : undefined;
   }
   get source(): CaptureSource | undefined {
     return this.currentSource;
@@ -156,6 +156,7 @@ export class CaptureSession {
     this.frames.follow(display);
   }
   async switchSource(api: Pick<DesktopApi, 'selectSource'>, source: CaptureSource): Promise<void> {
+    if (!this.options.screen) throw new Error('La capture vidéo est désactivée.');
     if (this.stopPromise) throw new Error(CLOSING);
     if (this.switching) {
       if (this.switching.to === source.id) return this.switching.operation;

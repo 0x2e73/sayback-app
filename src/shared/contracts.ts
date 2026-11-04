@@ -102,7 +102,11 @@ export interface MeetingMenuRequest {
 export type MeetingMenuChoice =
   { kind: 'move'; folderId: string | null } | { kind: 'delete' } | null;
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
+export type MeetingExportKind = 'complete' | 'transcript' | 'notes';
+
 export interface DesktopApi {
+  renameMeeting(id: string, title: string): Promise<Result<Meeting>>;
+  exportMeeting(id: string, kind: MeetingExportKind): Promise<Result<boolean>>;
   listMeetings(): Promise<Result<Meeting[]>>;
   listFolders(): Promise<Result<Folder[]>>;
   createFolder(name: string): Promise<Result<Folder>>;

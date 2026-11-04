@@ -10,6 +10,7 @@ import type { SourcePanel } from './use-source-panel';
 
 interface MeetingSourceProps {
   screen: boolean;
+  systemAudio?: boolean;
   sources: SourcesState;
   source?: CaptureSource;
   sourceId: string;
@@ -94,33 +95,56 @@ function SourceChoice({ source, sources, sourceId, panel, onSource }: MeetingSou
   );
 }
 
+function AudioOnlyHint({ systemAudio }: { systemAudio?: boolean }) {
+  if (systemAudio) {
+    return (
+      <>
+        Seul le son est enregistré, sans vidéo ni image. L’autorisation de capture peut être
+        demandée par le système.
+      </>
+    );
+  }
+  return <>Sans écran, les notes n’auront pas d’image.</>;
+}
+
 /**
  * Each state of the source line is a view of one cell: the one that leaves lies under the one
  * that arrives, so the skeleton turns into the real source and a refusal appears in place.
  */
+function sourceVisibility({ screen, systemAudio, sources, source }: MeetingSourceProps) {
+  const needsCapture = screen || Boolean(systemAudio);
+  const loading = needsCapture && sources.status === 'loading';
+  const failed = needsCapture && sources.status === 'error';
+  const ready = needsCapture && !loading && !failed;
+  return {
+    loading,
+    failed,
+    hint: !screen && !loading && !failed && Boolean(!systemAudio || source),
+    choice: Boolean(ready && (screen || !source)),
+  };
+}
+
 export function MeetingSource(props: MeetingSourceProps) {
-  const { screen, sources } = props;
-  const loading = screen && sources.status === 'loading';
-  const failed = screen && sources.status === 'error';
+  const { sources } = props;
+  const visible = sourceVisibility(props);
   const message = useHeld(sources.status === 'error' ? sources.message : null);
-  const ready = screen && !loading && !failed;
   return (
     <div className="state-stack">
-      <Presence open={!screen}>
+      <Presence open={visible.hint}>
         {({ ref, state }) => (
           <p ref={ref} className="source-line state-view caption" data-state={state}>
-            Sans écran, les notes n’auront pas d’image.
+            <AudioOnlyHint systemAudio={props.systemAudio} />
           </p>
         )}
       </Presence>
-      <Presence open={loading}>
+      <Presence open={visible.loading}>
         {({ ref, state }) => (
           <div ref={ref} className="state-view" data-state={state}>
             <SourceLoading />
           </div>
         )}
       </Presence>
-      <Presence open={failed}>
+      <Presence open={visible.failed}>
         {({ ref, state }) => (
           <div ref={ref} className="state-view" data-state={state}>
             <Notice
@@ -136,7 +160,7 @@ export function MeetingSource(props: MeetingSourceProps) {
           </div>
         )}
       </Presence>
-      <Presence open={ready}>
+      <Presence open={visible.choice}>
         {({ ref, state }) => (
           <div ref={ref} className="state-view" data-state={state}>
             {sources.status === 'ready' && !sources.sources.length ? (

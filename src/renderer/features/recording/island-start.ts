@@ -140,7 +140,8 @@ export async function startFromIsland(
     readPrefs(api),
     analysisReady(api),
   ]);
-  if (selection.screen && !screens.chosen) return refused(await screenFailure(api, screens));
+  if ((selection.screen || selection.systemAudio) && !screens.chosen)
+    return refused(await screenFailure(api, screens));
   const { microphone, systemAudio, screen } = selection;
   const toggles: SourceToggles = { microphone, systemAudio, screen };
   try {

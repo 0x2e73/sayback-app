@@ -69,6 +69,9 @@ export function apiFor(meetings: Meeting[] = []): DesktopApi {
     getSources: () => ok([]),
     selectSource: () => ok(undefined),
     saveMedia: () => ok(undefined),
+    renameMeeting: async (id, title) =>
+      ok({ ...meetings.find((meeting) => meeting.id === id)!, title }),
+    exportMeeting: async () => ok(true),
     createMeeting: async () => {
       throw new Error('Not used');
     },

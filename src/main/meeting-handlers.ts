@@ -1,6 +1,7 @@
 import { shell } from 'electron';
 import {
   appearanceSchema,
+  meetingExportKindSchema,
   clarificationSchema,
   folderNameSchema,
   idSchema,
@@ -24,6 +25,12 @@ export function registerMeetingHandlers(handle: RegisterHandler, services: Deskt
   const { meetings, recordings, credentials } = services;
   handle('meetings:list', () => meetings.list());
   handle('meetings:create', (title) => meetings.create(titleSchema.parse(title)));
+  handle('meetings:rename', (id, title) =>
+    meetings.rename(idSchema.parse(id), titleSchema.parse(title)),
+  );
+  handle('meetings:export', (id, kind) =>
+    services.exports.save(idSchema.parse(id), meetingExportKindSchema.parse(kind)),
+  );
   handle('meetings:get', (id) => meetings.get(idSchema.parse(id)));
   handle('meetings:finish', (id, duration) =>
     meetings.finish(idSchema.parse(id), timeSchema.parse(duration)),

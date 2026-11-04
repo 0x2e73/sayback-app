@@ -187,3 +187,20 @@ it('relays a screen switch from the island, and answers it', async () => {
     ok: false,
   });
 });
+
+it('exposes explicit rename and export commands without filesystem paths', async () => {
+  const api = electron.exposeInMainWorld.mock.calls[0]?.[1];
+  if (!api) throw new Error('the preload exposed nothing');
+  await api.renameMeeting('meeting-id', 'Nouveau nom');
+  expect(ipcRenderer.invoke).toHaveBeenLastCalledWith(
+    'meetings:rename',
+    'meeting-id',
+    'Nouveau nom',
+  );
+  await api.exportMeeting('meeting-id', 'transcript');
+  expect(ipcRenderer.invoke).toHaveBeenLastCalledWith(
+    'meetings:export',
+    'meeting-id',
+    'transcript',
+  );
+});

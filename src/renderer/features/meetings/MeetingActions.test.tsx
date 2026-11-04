@@ -4,11 +4,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { meetingFixture } from '../../test-api';
-import { downloadMeeting } from './download-meeting';
 import { MeetingActions } from './MeetingActions';
 import { notesMarkdown } from './meeting-format';
 
-vi.mock('./download-meeting', () => ({ downloadMeeting: vi.fn() }));
+const onExport = vi.fn();
 
 afterEach(() => {
   cleanup();
@@ -28,7 +27,7 @@ const analysed = meetingFixture('m1', 'Revue produit', '2026-10-14T08:00:00Z', {
 });
 
 it('names every action and gives it a tooltip', () => {
-  render(<MeetingActions meeting={analysed} busy={false} onDelete={vi.fn()} />);
+  render(<MeetingActions onExport={onExport} meeting={analysed} busy={false} onDelete={vi.fn()} />);
   const pill = screen.getByRole('group', { name: 'Actions de la réunion' });
   for (const name of ['Copier les notes', 'Exporter', 'Supprimer la réunion']) {
     expect(within(pill).getByRole('button', { name })).toHaveAttribute('title', name);
@@ -37,7 +36,7 @@ it('names every action and gives it a tooltip', () => {
 
 it('copies the notes, not the transcript', async () => {
   const user = userEvent.setup();
-  render(<MeetingActions meeting={analysed} busy={false} onDelete={vi.fn()} />);
+  render(<MeetingActions onExport={onExport} meeting={analysed} busy={false} onDelete={vi.fn()} />);
   await user.click(screen.getByRole('button', { name: 'Copier les notes' }));
   const copied = await navigator.clipboard.readText();
   expect(copied).toBe(notesMarkdown(analysed));
@@ -48,33 +47,34 @@ it('copies the notes, not the transcript', async () => {
 it('says when the copy fails', async () => {
   const user = userEvent.setup();
   vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('refusé'));
-  render(<MeetingActions meeting={analysed} busy={false} onDelete={vi.fn()} />);
+  render(<MeetingActions onExport={onExport} meeting={analysed} busy={false} onDelete={vi.fn()} />);
   await user.click(screen.getByRole('button', { name: 'Copier les notes' }));
   expect(await screen.findByText('La copie a échoué. Réessayez.')).toBeInTheDocument();
 });
 
 it('exports the whole meeting', async () => {
   const user = userEvent.setup();
-  render(<MeetingActions meeting={analysed} busy={false} onDelete={vi.fn()} />);
+  render(<MeetingActions onExport={onExport} meeting={analysed} busy={false} onDelete={vi.fn()} />);
   await user.click(screen.getByRole('button', { name: 'Exporter' }));
-  expect(downloadMeeting).toHaveBeenCalledWith(analysed);
+  expect(onExport).toHaveBeenCalledOnce();
 });
 
 it('asks before deleting, and not during an analysis', async () => {
   const user = userEvent.setup();
   const onDelete = vi.fn();
   const { rerender } = render(
-    <MeetingActions meeting={analysed} busy={false} onDelete={onDelete} />,
+    <MeetingActions onExport={onExport} meeting={analysed} busy={false} onDelete={onDelete} />,
   );
   await user.click(screen.getByRole('button', { name: 'Supprimer la réunion' }));
   expect(onDelete).toHaveBeenCalledOnce();
-  rerender(<MeetingActions meeting={analysed} busy onDelete={onDelete} />);
+  rerender(<MeetingActions onExport={onExport} meeting={analysed} busy onDelete={onDelete} />);
   expect(screen.getByRole('button', { name: 'Supprimer la réunion' })).toBeDisabled();
 });
 
 it('has nothing to copy or export before the analysis', () => {
   render(
     <MeetingActions
+      onExport={onExport}
       meeting={meetingFixture('m2', 'Point', '2026-10-14T08:00:00Z')}
       busy={false}
       onDelete={vi.fn()}
@@ -89,7 +89,9 @@ it('lets a failed copy fade away like a successful one', async () => {
   try {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('refusé'));
-    render(<MeetingActions meeting={analysed} busy={false} onDelete={vi.fn()} />);
+    render(
+      <MeetingActions onExport={onExport} meeting={analysed} busy={false} onDelete={vi.fn()} />,
+    );
     await user.click(screen.getByRole('button', { name: 'Copier les notes' }));
     expect(await screen.findByText('La copie a échoué. Réessayez.')).toBeInTheDocument();
     await act(async () => {
@@ -102,7 +104,7 @@ it('lets a failed copy fade away like a successful one', async () => {
 });
 
 it('holds the copy and the export back during an analysis, and says why', () => {
-  render(<MeetingActions meeting={analysed} busy onDelete={vi.fn()} />);
+  render(<MeetingActions onExport={onExport} meeting={analysed} busy onDelete={vi.fn()} />);
   for (const name of ['Copier les notes', 'Exporter']) {
     const button = screen.getByRole('button', { name });
     expect(button).toBeDisabled();
@@ -113,6 +115,7 @@ it('holds the copy and the export back during an analysis, and says why', () => 
 it('says what is missing when there is nothing to copy or export yet', () => {
   render(
     <MeetingActions
+      onExport={onExport}
       meeting={meetingFixture('m2', 'Point', '2026-10-14T08:00:00Z')}
       busy={false}
       onDelete={vi.fn()}
@@ -124,6 +127,6 @@ it('says what is missing when there is nothing to copy or export yet', () => {
   );
   expect(screen.getByRole('button', { name: 'Exporter' })).toHaveAttribute(
     'title',
-    'Aucune transcription à exporter pour le moment.',
+    'Aucun contenu à exporter pour le moment.',
   );
 });

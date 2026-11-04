@@ -157,3 +157,42 @@ it('hands the capture the desktop api for the live blocks', async () => {
   await startWithLimit(vi.fn());
   expect(resources.open.mock.calls[0]?.[1]).toMatchObject({ sendPcm });
 });
+
+it('records only audio and never exposes video when system sound is selected alone', async () => {
+  vi.stubGlobal('MediaStream', FakeStream);
+  vi.stubGlobal('MediaRecorder', FakeRecorder);
+  const audio = new FakeStream([{}]) as unknown as MediaStream;
+  const dispose = vi.fn(async () => undefined);
+  resources.open.mockResolvedValue({
+    display: display(),
+    audio,
+    analyser: {},
+    live: INERT_LIVE_TAP,
+    dispose,
+  });
+  const meeting = { id: 'meeting-1' } as Meeting;
+  const api = {
+    createMeeting: vi.fn(async () => ({ ok: true, value: meeting })),
+    saveMedia: vi.fn(async () => ({ ok: true, value: undefined })),
+    sendPreview: vi.fn(),
+    finishMeeting: vi.fn(async () => ({ ok: true, value: meeting })),
+  } as unknown as DesktopApi;
+  const capture = await CaptureSession.start(api, 'Audio seul', {
+    screen: false,
+    microphone: false,
+    systemAudio: true,
+    source: { id: 'screen:1:0', name: 'Écran', thumbnail: '' },
+    onFailure: vi.fn(),
+    onEnded: vi.fn(),
+  });
+  expect(FakeRecorder.made).toHaveLength(1);
+  expect(FakeRecorder.made[0]?.stream).toBe(audio);
+  expect(capture.displayStream).toBeUndefined();
+  expect(capture.source).toBeUndefined();
+  expect(api.sendPreview).not.toHaveBeenCalled();
+  await expect(
+    capture.switchSource(api, { id: 'screen:2:0', name: '', thumbnail: '' }),
+  ).rejects.toThrow(/désactivée/);
+  await capture.stop();
+  expect(dispose).toHaveBeenCalledOnce();
+});

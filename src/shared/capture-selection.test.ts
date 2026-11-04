@@ -32,24 +32,25 @@ describe('normalizeSelection', () => {
     });
   });
 
-  it('turns the system audio off with the screen', () => {
-    expect(normalizeSelection({ ...all, screen: false }, 'screen')).toEqual({
+  it('keeps system audio when the screen is disabled', () => {
+    expect(normalizeSelection({ ...all, screen: false })).toEqual({
       microphone: true,
-      systemAudio: false,
+      systemAudio: true,
       screen: false,
     });
   });
 
-  it('brings the screen back when the system audio is asked for without it', () => {
-    expect(
-      normalizeSelection({ microphone: true, systemAudio: true, screen: false }, 'systemAudio'),
-    ).toEqual(all);
+  it('keeps video off when enabling system audio', () => {
+    expect(normalizeSelection({ microphone: true, systemAudio: true, screen: false })).toEqual({
+      ...all,
+      screen: false,
+    });
   });
 
-  it('drops a system audio stored without a screen', () => {
+  it('restores system audio without video', () => {
     expect(normalizeSelection({ microphone: true, systemAudio: true, screen: false })).toEqual({
       microphone: true,
-      systemAudio: false,
+      systemAudio: true,
       screen: false,
     });
   });
@@ -62,8 +63,8 @@ describe('hasAudioSource', () => {
     expect(hasAudioSource({ microphone: false, systemAudio: true, screen: true })).toBe(true);
   });
 
-  it('never counts a system audio that has no screen', () => {
-    expect(hasAudioSource({ microphone: false, systemAudio: true, screen: false })).toBe(false);
+  it('counts system audio without video', () => {
+    expect(hasAudioSource({ microphone: false, systemAudio: true, screen: false })).toBe(true);
   });
 });
 

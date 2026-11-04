@@ -46,9 +46,9 @@ it('loses only the field that is wrong', () => {
   expect(createCapturePrefsStore(path).get()).toEqual({ ...everything, microphone: false });
 });
 
-it('drops a system audio stored without a screen', () => {
+it('restores system audio stored without video', () => {
   writeFileSync(path, JSON.stringify({ ...everything, screen: false }));
-  expect(createCapturePrefsStore(path).get().systemAudio).toBe(false);
+  expect(createCapturePrefsStore(path).get().systemAudio).toBe(true);
 });
 
 it.each([
@@ -64,10 +64,10 @@ it.each([
   expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({ autoAnalyze: false });
 });
 
-it('stores a system audio without screen as off', async () => {
+it('persists system audio independently of video', async () => {
   const store = createCapturePrefsStore(path);
   await store.set({ ...everything, screen: false });
-  expect(store.get()).toMatchObject({ screen: false, systemAudio: false });
+  expect(store.get()).toMatchObject({ screen: false, systemAudio: true });
 });
 
 it('writes the file for its owner only, through a sibling that is gone afterwards', async () => {

@@ -28,7 +28,8 @@ async function openCapture(
   options: CaptureOptions,
   deadline: number | undefined,
 ): Promise<CaptureSession> {
-  if (options.screen) unwrap(await api.selectSource(options.source?.id ?? '', options.systemAudio));
+  if (options.screen || options.systemAudio)
+    unwrap(await api.selectSource(options.source?.id ?? '', options.systemAudio));
   const session = await CaptureSession.start(api, title, options);
   if (deadline === undefined || Date.now() <= deadline) return session;
   await session.stop().catch(() => undefined);

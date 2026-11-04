@@ -86,3 +86,5 @@ export const meetingMenuRequestSchema = z.object({
   disabled: z.boolean(),
   at: z.object({ x: coordinateSchema, y: coordinateSchema }).optional(),
 });
+
+export const meetingExportKindSchema = z.enum(['complete', 'transcript', 'notes']);

@@ -1,3 +1,5 @@
+import { MeetingExportService } from '../backend/application/meeting-export';
+import { createExportDestination } from './export-destination';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -129,6 +131,7 @@ export function createServices(root: string, encryption: Encryption) {
     meetings,
     folders,
     recordings,
+    exports: new MeetingExportService(meetings, createExportDestination()),
     media,
     credentials,
     models,

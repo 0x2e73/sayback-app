@@ -187,3 +187,20 @@ describe('startErrorOf', () => {
     await expect(startErrorOf(api, refusal, 'screen:9:0')).resolves.toBe('no-screen');
   });
 });
+
+it('starts system audio alone from the island and remembers video as disabled', async () => {
+  const { api, onStart, setCapturePrefs } = fixture();
+  const payload = {
+    ...withScreen,
+    selection: { ...withScreen.selection, screen: false, microphone: false },
+  };
+  expect(await startFromIsland(api, payload, onStart)).toEqual({ ok: true });
+  expect(onStart).toHaveBeenCalledWith(
+    payload.title,
+    { screen: false, microphone: false, systemAudio: true, source: main },
+    true,
+  );
+  expect(setCapturePrefs).toHaveBeenCalledWith(
+    expect.objectContaining({ screen: false, microphone: false, systemAudio: true }),
+  );
+});

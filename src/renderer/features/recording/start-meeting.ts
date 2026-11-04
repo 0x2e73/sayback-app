@@ -31,7 +31,8 @@ export function rememberedScreenId(
   sourceId: string,
   previous: string | undefined,
 ): string | undefined {
-  if (selection.screen && sourceId.startsWith('screen:')) return sourceId;
+  if ((selection.screen || selection.systemAudio) && sourceId.startsWith('screen:'))
+    return sourceId;
   return previous;
 }
 
@@ -45,7 +46,7 @@ export async function launchMeeting(
   launch: MeetingLaunch,
 ): Promise<void> {
   const { selection } = launch;
-  const source = selection.screen ? launch.source : undefined;
+  const source = selection.screen || selection.systemAudio ? launch.source : undefined;
   await onStart(launch.title, { ...selection, source }, launch.autoAnalyze);
   void api.setCapturePrefs(launch.remembered).catch(() => undefined);
 }

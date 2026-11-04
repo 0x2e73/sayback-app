@@ -122,6 +122,7 @@ describe('Meeting lifecycle', () => {
     const first = service.process(meeting.id);
     await expect(service.process(meeting.id)).rejects.toThrow(/cours/i);
     expect(() => service.clarify(meeting.id, 1, 'Texte')).toThrow(/cours/i);
+    expect(() => service.rename(meeting.id, 'Nouveau titre')).toThrow(/cours/i);
     await new Promise((resolve) => setTimeout(resolve, 0));
     release();
     await first;
@@ -137,4 +138,22 @@ describe('Meeting lifecycle', () => {
     service.finish(meeting.id, 0);
     await expect(service.process(meeting.id)).rejects.toThrow(/audio/i);
   });
+});
+
+it('persists a renamed meeting without changing its content', () => {
+  const meeting = recorded();
+  const renamed = service.rename(meeting.id, '  Nouveau titre  ');
+  expect(renamed).toEqual({ ...meeting, title: 'Nouveau titre' });
+  repository.close();
+  repository = new SqliteMeetings(join(path, 'meetings.sqlite'));
+  expect(repository.get(meeting.id)?.title).toBe('Nouveau titre');
+});
+
+it('rejects invalid titles and renaming during an operation', () => {
+  const meeting = service.create('Réunion');
+  expect(() => service.rename(meeting.id, 'Titre')).toThrow(/cours/);
+  service.finish(meeting.id, 0);
+  expect(() => service.rename(meeting.id, '  ')).toThrow(/titre/);
+  expect(() => service.rename(meeting.id, 'x'.repeat(161))).toThrow(/titre/);
+  expect(service.get(meeting.id).title).toBe('Réunion');
 });

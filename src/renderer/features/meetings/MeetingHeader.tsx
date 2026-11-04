@@ -1,6 +1,7 @@
+import { Pencil } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Folder, Meeting } from '../../../shared/contracts';
-import { StatusBadge } from '../../components/ui';
+import { Button, StatusBadge } from '../../components/ui';
 import { AnalysisStatus } from './AnalysisStatus';
 import { durationLabel, meetingDateLabel } from './detail-format';
 import { FolderControl } from './FolderControl';
@@ -9,6 +10,7 @@ interface MeetingHeaderProps {
   meeting: Meeting;
   folders: Folder[];
   analyzing: boolean;
+  onRename?(): void;
   onMove(folderId: string | null): void;
   onCreateFolder(name: string): Promise<Folder | null>;
 }
@@ -23,7 +25,20 @@ export function MeetingHeader(props: MeetingHeaderProps) {
   const { meeting, folders, analyzing, onMove, onCreateFolder } = props;
   return (
     <header className="detail-header">
-      <h1>{meeting.title}</h1>
+      <div className="detail-title-row">
+        <h1>{meeting.title}</h1>
+        {props.onRename && (
+          <Button
+            variant="ghost"
+            disabled={analyzing || meeting.status === 'recording'}
+            onClick={props.onRename}
+            aria-label="Renommer la réunion"
+            title="Renommer la réunion"
+          >
+            <Pencil size={16} />
+          </Button>
+        )}
+      </div>
       <div className="detail-meta">
         <MetaItem>
           <FolderControl

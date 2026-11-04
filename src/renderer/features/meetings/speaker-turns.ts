@@ -1,3 +1,5 @@
+import { partOf } from '../../../shared/transcript-part';
+export { partOf } from '../../../shared/transcript-part';
 import type { Segment } from '../../../shared/contracts';
 
 // Au-delà, un tour devient un mur de texte : on ouvre une suite sans nouvelle étiquette.
@@ -18,11 +20,6 @@ export interface Turn {
   /** The same voice cut at 900 characters: shown without a new label. */
   continuation: boolean;
   segmentIds: string[];
-}
-
-export function partOf(id: string): number | null {
-  const head = id.split('-')[0] ?? '';
-  return /^\d+$/.test(head) ? Number(head) : null;
 }
 
 // Les étiquettes d'intervenants sont attribuées extrait par extrait : « A » dans un

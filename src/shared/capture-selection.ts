@@ -38,18 +38,17 @@ export function defaultMeetingTitle(date: Date): string {
   return `Réunion du ${day} ${months[date.getMonth()]}, ${date.getHours()} h ${minutes}`;
 }
 
-/**
- * The system audio only exists attached to the screen capture. `changed` names the toggle the
- * user just flipped: asking for the system audio brings the screen back, anything else drops it.
- */
-export function normalizeSelection(selection: SourceToggles, changed?: SourceKey): SourceToggles {
-  if (!selection.systemAudio || selection.screen) return selection;
-  if (changed === 'systemAudio') return { ...selection, screen: true };
-  return { ...selection, systemAudio: false };
+/** Capture choices are independent, including system audio without saved video. */
+export function normalizeSelection(selection: SourceToggles): SourceToggles {
+  return {
+    microphone: selection.microphone,
+    systemAudio: selection.systemAudio,
+    screen: selection.screen,
+  };
 }
 
 export function hasAudioSource(selection: SourceToggles): boolean {
-  return selection.microphone || (selection.screen && selection.systemAudio);
+  return selection.microphone || selection.systemAudio;
 }
 
 type SourceRef = Pick<CaptureSource, 'id' | 'primary'>;

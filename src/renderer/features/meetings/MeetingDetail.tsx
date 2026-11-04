@@ -1,3 +1,7 @@
+import { ExportMeetingDialog } from './ExportMeetingDialog';
+import { RenameMeetingDialog } from './RenameMeetingDialog';
+import { useMeetingExport } from './use-meeting-export';
+import { useMeetingTitle } from './use-meeting-title';
 import { useState } from 'react';
 import type { DesktopApi, Folder, Meeting } from '../../../shared/contracts';
 import { AnalysisLine } from './AnalysisStatus';
@@ -31,6 +35,8 @@ interface MeetingDetailProps {
 export function MeetingDetail(props: MeetingDetailProps) {
   const { meeting, api, onUpdate, onDeleted } = props;
   const actions = useMeetingActions({ api, meeting, onUpdate, onDeleted });
+  const exporting = useMeetingExport(api, meeting.id);
+  const title = useMeetingTitle(api, meeting, onUpdate);
   const playback = useMediaPlayback(meeting);
   const view = useDetailView(playback.playAt);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -40,6 +46,7 @@ export function MeetingDetail(props: MeetingDetailProps) {
     <>
       <MeetingHeader
         meeting={meeting}
+        onRename={title.show}
         folders={props.folders}
         analyzing={actions.analyzing}
         onMove={(folderId) => void props.onMove(meeting.id, folderId)}
@@ -88,9 +95,12 @@ export function MeetingDetail(props: MeetingDetailProps) {
         <MeetingActions
           meeting={meeting}
           busy={actions.analyzing}
+          onExport={exporting.show}
           onDelete={() => setConfirmDelete(true)}
         />
       </footer>
+      <ExportMeetingDialog meeting={meeting} actions={exporting} />
+      <RenameMeetingDialog actions={title} />
       <DeleteMeetingDialog
         open={confirmDelete}
         busy={actions.deleting}

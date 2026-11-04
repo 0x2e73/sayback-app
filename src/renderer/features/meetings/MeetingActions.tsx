@@ -3,7 +3,6 @@ import type { Meeting } from '../../../shared/contracts';
 import { Presence } from '../../components/Presence';
 import { useHeld } from '../../components/use-held';
 import { Button, IconSwap } from '../../components/ui';
-import { downloadMeeting } from './download-meeting';
 import { useCopyNotes } from './use-copy-notes';
 
 interface MeetingActionsProps {
@@ -11,6 +10,7 @@ interface MeetingActionsProps {
   /** An analysis runs: the backend refuses the deletion (meeting-rules.ts:15-19). */
   busy: boolean;
   onDelete(): void;
+  onExport(): void;
 }
 
 /** Why an action is unavailable, or null when it is available. */
@@ -19,15 +19,15 @@ function holdBack(busy: boolean, ready: boolean, missing: string): string | null
   return ready ? null : missing;
 }
 
-export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps) {
+export function MeetingActions({ meeting, busy, onDelete, onExport }: MeetingActionsProps) {
   const copy = useCopyNotes(meeting);
   const message = useHeld(copy.message || null);
   const hasNotes = meeting.notes !== null || meeting.clarifications.length > 0;
   const copyHint = holdBack(busy, hasNotes, 'Aucune note à copier pour le moment.');
   const exportHint = holdBack(
     busy,
-    meeting.transcript.length > 0,
-    'Aucune transcription à exporter pour le moment.',
+    meeting.transcript.length > 0 || hasNotes,
+    'Aucun contenu à exporter pour le moment.',
   );
 
   return (
@@ -58,13 +58,13 @@ export function MeetingActions({ meeting, busy, onDelete }: MeetingActionsProps)
         </Button>
         <Button
           variant="ghost"
-          shape="round"
           aria-label="Exporter"
           title={exportHint ?? 'Exporter'}
           disabled={exportHint !== null}
-          onClick={() => downloadMeeting(meeting)}
+          onClick={onExport}
         >
           <Download size={16} aria-hidden="true" />
+          Exporter
         </Button>
         <Button
           variant="ghost"

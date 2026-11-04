@@ -140,3 +140,33 @@ it('gives up when the audio never starts, instead of waiting for ever', async ()
   await outcome;
   expect(track.stop).toHaveBeenCalled();
 });
+
+it('acquires system audio without microphone or saved video, and releases every track', async () => {
+  const audio = { onended: null as (() => void) | null, stop: vi.fn() };
+  const video = { enabled: true, onended: null as (() => void) | null, stop: vi.fn() };
+  stubAudio(audio);
+  const stream = {
+    getTracks: () => [audio, video],
+    getVideoTracks: () => [video],
+    getAudioTracks: () => [audio],
+  };
+  const getDisplayMedia = vi.fn(async () => stream);
+  const getUserMedia = vi.fn();
+  vi.stubGlobal('navigator', { mediaDevices: { getDisplayMedia, getUserMedia } });
+  const onEnded = vi.fn();
+  const resources = await openCaptureResources({
+    screen: false,
+    microphone: false,
+    systemAudio: true,
+    onEnded,
+    onFailure: vi.fn(),
+  });
+  expect(getDisplayMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: true }));
+  expect(getUserMedia).not.toHaveBeenCalled();
+  expect(video.enabled).toBe(false);
+  audio.onended?.();
+  expect(onEnded).toHaveBeenCalledOnce();
+  await resources.dispose();
+  expect(audio.stop).toHaveBeenCalled();
+  expect(video.stop).toHaveBeenCalled();
+});

@@ -121,6 +121,7 @@ function NewMeetingBody({ api, presence, onClose, onStart, onConfigure }: BodyPr
           />
           <MeetingSource
             screen={form.selection.screen}
+            systemAudio={form.selection.systemAudio}
             sources={form.sources}
             source={form.source}
             sourceId={form.sourceId}

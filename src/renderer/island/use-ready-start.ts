@@ -22,7 +22,7 @@ export function readyLineError(
 ): RecordingStartError | null {
   if (!hasAudioSource(selection)) return 'no-audio-source';
   if (reported === 'failed' || reported === 'interrupted') return reported;
-  if (!selection.screen) return null;
+  if (!(selection.screen || selection.systemAudio)) return null;
   if (reported === 'screen-denied') return reported;
   if (!screen) return 'no-screen';
   return reported === 'no-screen' ? reported : null;
@@ -31,7 +31,7 @@ export function readyLineError(
 /** Left as it was offered, the title names the moment the recording starts, as in the dialog. */
 export function startRequest(selection: SourceToggles, screen: IslandScreen | null): IslandStart {
   const title = defaultMeetingTitle(new Date());
-  if (selection.screen && screen) {
+  if ((selection.screen || selection.systemAudio) && screen) {
     return { type: 'start', title, selection: { ...selection, screenId: screen.id } };
   }
   return { type: 'start', title, selection };
@@ -71,10 +71,11 @@ export function useReadyStart(
     [api, fail],
   );
 
-  const canStart = hasAudioSource(selection) && (!selection.screen || screen !== null);
+  const canStart =
+    hasAudioSource(selection) && (!(selection.screen || selection.systemAudio) || screen !== null);
 
   function toggle(key: SourceKey): void {
-    setSelection((current) => normalizeSelection({ ...current, [key]: !current[key] }, key));
+    setSelection((current) => normalizeSelection({ ...current, [key]: !current[key] }));
   }
 
   function start(): void {

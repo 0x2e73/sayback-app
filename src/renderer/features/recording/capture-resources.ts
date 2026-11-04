@@ -57,7 +57,7 @@ function stopTracks(streams: MediaStream[]): void {
 async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
   let display: MediaStream | undefined;
   let microphone: MediaStream | undefined;
-  if (options.screen) {
+  if (options.screen || options.systemAudio) {
     display = await captureOf('screen', () =>
       navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 10, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -65,6 +65,14 @@ async function acquireStreams(options: CaptureOptions, streams: MediaStream[]) {
       }),
     );
     streams.push(display);
+    if (!options.screen) {
+      // Chromium requires video for display audio; never render or record these frames.
+      for (const track of display.getVideoTracks()) {
+        track.enabled = false;
+        track.onended = options.onEnded;
+      }
+      for (const track of display.getAudioTracks()) track.onended = options.onEnded;
+    }
     if (options.systemAudio && !display.getAudioTracks().length) {
       throw new Error(
         'Le son système est indisponible. Vérifiez les permissions ou désactivez cette source.',
@@ -132,7 +140,7 @@ export async function openCaptureResources(
   const streams: MediaStream[] = [];
   let context: AudioContext | undefined;
   try {
-    if (!options.microphone && !(options.screen && options.systemAudio)) {
+    if (!options.microphone && !options.systemAudio) {
       throw new Error('Choisissez au moins une source audio.');
     }
     const acquired = await acquireStreams(options, streams);

@@ -140,8 +140,8 @@ describe('registerIslandHandlers', () => {
       { ...start, selection: { ...start.selection, screenId: undefined } },
     ],
     [
-      'the system audio without the screen',
-      { ...start, selection: { ...start.selection, screen: false } },
+      'system audio without a capture source',
+      { ...start, selection: { ...start.selection, screen: false, screenId: undefined } },
     ],
     ['a missing source', { ...start, selection: { microphone: true, screen: false } }],
     ['an unknown field', { ...start, meetingId: 'x' }],
