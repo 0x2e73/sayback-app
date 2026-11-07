@@ -114,6 +114,33 @@ export function certificateLeaf(requirement: string): string | null {
   return /certificate leaf = H"([0-9a-fA-F]{40})"/.exec(requirement)?.[1]?.toLowerCase() ?? null;
 }
 
+/** The team of a certificate issued by Apple, from its name: `… (ABCDE12345)`; else `null`. */
+function nameTeam(name: string): string | null {
+  return /\(([A-Z0-9]{10})\)$/.exec(name)?.[1] ?? null;
+}
+
+/**
+ * The team a requirement names, when it anchors to Apple: codesign writes this, not the leaf hash,
+ * for a Developer ID or Apple Development certificate. It stays the same when the certificate is
+ * renewed, so the permissions do too.
+ */
+function requirementTeam(requirement: string): string | null {
+  if (!/\banchor apple generic\b/.test(requirement)) return null;
+  return /certificate leaf\[subject\.OU\] = "?([A-Z0-9]{10})"?/.exec(requirement)?.[1] ?? null;
+}
+
+/** The requirement names a certificate (self-signed or Apple's), not the hash of one build. */
+export function signedByCertificate(requirement: string): boolean {
+  return certificateLeaf(requirement) !== null || requirementTeam(requirement) !== null;
+}
+
+/** The requirement names `identity`: its leaf hash (self-signed) or its Apple team. */
+export function requirementNamesIdentity(requirement: string, identity: SigningIdentity): boolean {
+  if (certificateLeaf(requirement) === identity.hash.toLowerCase()) return true;
+  const team = requirementTeam(requirement);
+  return team !== null && team === nameTeam(identity.name);
+}
+
 /** How a build is signed, for the logs: certificate name and leaf hash, or ad hoc. */
 export function describeSigning(identity: SigningIdentity | null): string {
   if (identity === null) return 'ad hoc';
@@ -122,7 +149,8 @@ export function describeSigning(identity: SigningIdentity | null): string {
 
 /**
  * Signs `appPath` with `identity`, after electron-builder flipped the fuses, then proves the goal:
- * the designated requirement names this certificate. By hash, so a homonym cannot be picked. No
+ * the designated requirement names this certificate (or its Apple team). By hash, so a homonym
+ * cannot be picked. No
  * hardened runtime and no entitlements, as ad hoc: a missing entitlement would cut the microphone.
  */
 export async function signBundle(
@@ -135,7 +163,7 @@ export async function signBundle(
   await io.capture(CODESIGN_PROGRAM, signing);
   await io.capture(CODESIGN_PROGRAM, ['--verify', '--deep', '--strict', appPath]);
   const requirement = await readDesignatedRequirement(appPath, io.capture);
-  if (certificateLeaf(requirement) !== identity.hash.toLowerCase()) {
+  if (!requirementNamesIdentity(requirement, identity)) {
     throw new SigningError(
       `signé, mais l’exigence désignée ne nomme pas le certificat : ${requirement}`,
     );

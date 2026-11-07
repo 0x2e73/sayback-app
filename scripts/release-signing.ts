@@ -2,9 +2,10 @@ import { stat } from 'node:fs/promises';
 import {
   SIGNING_IDENTITY_ENV,
   SigningError,
-  certificateLeaf,
   readDesignatedRequirement,
+  requirementNamesIdentity,
   resolveIdentity,
+  signedByCertificate,
   type Capture,
   type SigningIdentity,
 } from './local-signing.ts';
@@ -46,14 +47,14 @@ export async function chooseSigning(
   return asReleaseError(() => resolveIdentity(identityName, capture));
 }
 
-/** The leaf of the bundle the channel offers today; `null` when absent, ad hoc or unreadable. */
-async function publishedLeaf(publishedApp: string, capture: Capture): Promise<string | null> {
+/** The bundle the channel offers today is signed by certificate; not when absent or unreadable. */
+async function publishedSigned(publishedApp: string, capture: Capture): Promise<boolean> {
   const present = await stat(publishedApp).then(
     (info) => info.isDirectory(),
     () => false,
   );
-  if (!present) return null;
-  return readDesignatedRequirement(publishedApp, capture).then(certificateLeaf, () => null);
+  if (!present) return false;
+  return readDesignatedRequirement(publishedApp, capture).then(signedByCertificate, () => false);
 }
 
 /**
@@ -67,14 +68,13 @@ export async function checkBuiltSignature(
   capture: Capture,
 ): Promise<void> {
   const requirement = await asReleaseError(() => readDesignatedRequirement(builtApp, capture));
-  const leaf = certificateLeaf(requirement);
-  if (signing !== null && leaf !== signing.hash.toLowerCase()) {
+  if (signing !== null && !requirementNamesIdentity(requirement, signing)) {
     throw new ReleaseError(
       `le paquet construit n’est pas signé par « ${signing.name} » : ${requirement}`,
     );
   }
-  if (leaf !== null) return;
-  if ((await publishedLeaf(publishedApp, capture)) !== null) {
+  if (signedByCertificate(requirement)) return;
+  if (await publishedSigned(publishedApp, capture)) {
     throw new ReleaseError(
       `le canal propose une app signée par certificat : une app ad hoc la remplacerait et perdrait ses autorisations. Publiez avec ${SIGNING_IDENTITY_ENV}, ou retirez d’abord ${publishedApp}`,
     );

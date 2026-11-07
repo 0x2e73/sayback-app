@@ -9,8 +9,8 @@ files:
 asar: true
 # Flipped in the Electron binary just before signing. Without a Developer ID the bundle is only
 # ad-hoc signed: flipping breaks that signature, so it is redone, or arm64 macOS kills the app.
-# `npm run package` and `update:publish` then re-sign it with SAYBACK_SIGNING_IDENTITY, if set
-# (scripts/local-signing.ts), so that macOS permissions survive updates.
+# `npm run package`, `dist` and `update:publish` then re-sign it with SAYBACK_SIGNING_IDENTITY, if
+# set (scripts/local-signing.ts), so that macOS permissions survive updates.
 electronFuses:
   runAsNode: false
   enableNodeOptionsEnvironmentVariable: false
@@ -21,6 +21,9 @@ electronFuses:
   resetAdHocDarwinSignature: true
 mac:
   category: public.app-category.productivity
+  # electron-builder never signs: it would pick a Developer ID from the keychain, with hardened
+  # runtime and no entitlements, which cuts the microphone. scripts/local-signing.ts signs.
+  identity: null
   target: [dmg]
   extendInfo:
     NSMicrophoneUsageDescription: Enregistrer votre voix pendant vos réunions.

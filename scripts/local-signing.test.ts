@@ -7,8 +7,10 @@ import {
   certificateLeaf,
   describeSigning,
   keychainEntries,
+  requirementNamesIdentity,
   resolveIdentity,
   signBundle,
+  signedByCertificate,
   signingIdentityName,
   type Capture,
   type SigningIo,
@@ -24,6 +26,10 @@ const APP = '/build/dist/mac-arm64/SayBack.app';
 const IDENTITY = { name: NAME, hash: HASH };
 const SIGNED = `designated => identifier "ch.sayback.desktop" and certificate leaf = H"${HASH.toLowerCase()}"`;
 const ADHOC = `# designated => cdhash H"${'d'.repeat(40)}"`;
+// A certificate issued by Apple: codesign names the team, not the certificate, in the requirement.
+const TEAM = 'ABCDE12345';
+const APPLE_IDENTITY = { name: `Developer ID Application: Jane Doe (${TEAM})`, hash: OTHER_HASH };
+const APPLE_SIGNED = `designated => identifier "ch.sayback.desktop" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = ${TEAM}`;
 
 const entry = (hash: string, name: string, code = 'CSSMERR_TP_NOT_TRUSTED') =>
   `  1) ${hash} "${name}" (${code})`;
@@ -155,6 +161,31 @@ describe('certificateLeaf', () => {
   });
 });
 
+describe('requirementNamesIdentity', () => {
+  it.each([
+    ['autosigné, même empreinte', SIGNED, IDENTITY, true],
+    ['autosigné, autre empreinte', SIGNED.replace(HASH.toLowerCase(), 'b'.repeat(40)), IDENTITY, false],
+    ['Developer ID, même équipe', APPLE_SIGNED, APPLE_IDENTITY, true],
+    ['Developer ID, équipe entre guillemets', APPLE_SIGNED.replace(`= ${TEAM}`, `= "${TEAM}"`), APPLE_IDENTITY, true],
+    ['Developer ID, autre équipe', APPLE_SIGNED.replace(TEAM, 'ZZZZZZZZZZ'), APPLE_IDENTITY, false],
+    ['équipe sans ancre Apple', APPLE_SIGNED.replace('anchor apple generic and ', ''), APPLE_IDENTITY, false],
+    ['Developer ID, identité autosignée', APPLE_SIGNED, IDENTITY, false],
+    ['autosigné, identité Developer ID', SIGNED, APPLE_IDENTITY, false],
+    ['ad hoc', ADHOC, APPLE_IDENTITY, false],
+  ])('%s', (_case, requirement, identity, expected) => {
+    expect(requirementNamesIdentity(requirement, identity)).toBe(expected);
+  });
+});
+
+describe('signedByCertificate', () => {
+  it('autosigné ou Developer ID : oui ; ad hoc ou sans signataire : non', () => {
+    expect(signedByCertificate(SIGNED)).toBe(true);
+    expect(signedByCertificate(APPLE_SIGNED)).toBe(true);
+    expect(signedByCertificate(ADHOC)).toBe(false);
+    expect(signedByCertificate('designated => identifier "ch.sayback.desktop"')).toBe(false);
+  });
+});
+
 describe('signBundle', () => {
   it('signe par empreinte sans runtime renforcé, vérifie, puis prouve l’exigence désignée', async () => {
     const { io, calls } = fakeIo();
@@ -168,6 +199,11 @@ describe('signBundle', () => {
       { command: CODESIGN_PROGRAM, args: ['-d', '-r-', APP] },
     ]);
     expect(calls[0]?.args.join(' ')).not.toMatch(/runtime|entitlements/);
+  });
+
+  it('certificat Developer ID : l’exigence nomme l’équipe, c’est accepté', async () => {
+    const { io } = fakeIo({ requirement: APPLE_SIGNED });
+    await expect(signBundle(APP, APPLE_IDENTITY, io)).resolves.toBeUndefined();
   });
 
   it('codesign échoue : l’échec remonte et rien n’est vérifié', async () => {

@@ -22,7 +22,7 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
     "package": "npm run build && electron-builder --dir && node scripts/local-signing-cli.ts",
-    "dist": "npm run build && electron-builder",
+    "dist": "npm run package && node scripts/dist-cli.ts",
     "update:publish": "node scripts/update-publish-cli.ts"
   },
   "dependencies": {

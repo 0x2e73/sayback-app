@@ -100,6 +100,24 @@ describe('signature du paquet construit', () => {
     expect(await offered()).toEqual({ kind: 'available', manifest: first.manifest });
   });
 
+  it('certificat Developer ID : publié signé, et une app ad hoc ne le remplace pas', async () => {
+    const name = 'Developer ID Application: Jane Doe (ABCDE12345)';
+    const appleRequirement =
+      'identifier "ch.sayback.desktop" and anchor apple generic and certificate leaf[subject.OU] = ABCDE12345';
+    const keychain = `  1) ${'A'.repeat(40)} "${name}"\n     1 identities found\n`;
+    const first = await runRelease(
+      SIGNED,
+      context(fakeIo({ keychain, builtRequirement: appleRequirement }).io, name),
+    );
+    expect(first.signing).toEqual({ name, hash: 'A'.repeat(40) });
+    const { io } = fakeIo({
+      builtRequirement: ADHOC_REQUIREMENT,
+      publishedRequirement: appleRequirement,
+    });
+    await expect(runRelease(ADHOC, context(io, null))).rejects.toThrow(/signée par certificat/);
+    expect(await offered()).toEqual({ kind: 'available', manifest: first.manifest });
+  });
+
   it('ad hoc par-dessus ad hoc : accepté', async () => {
     const adhocIo = () => fakeIo({ builtRequirement: ADHOC_REQUIREMENT }).io;
     await runRelease(ADHOC, context(adhocIo(), null));
