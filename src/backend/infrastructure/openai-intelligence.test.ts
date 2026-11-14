@@ -92,7 +92,8 @@ describe('OpenAI adapter', () => {
       }),
     );
 
-    await expect(ai.summarize(meeting)).rejects.toThrow(/missing/);
+    await expect(ai.summarize(meeting)).rejects.toThrow(/aucune source réelle\. Relancez/);
+    await expect(ai.summarize(meeting)).rejects.not.toThrow(/missing/);
   });
   it('rejects malformed structured output', async () => {
     await expect(
