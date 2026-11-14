@@ -1,31 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import type { Notes } from '../../shared/contracts';
-import { MAX_REDUCE_ROUNDS, OUTPUT_TOKENS, PROMPT_BUDGET, estimateTokens } from './ollama-budget';
-import { NOTE_LIMITS } from './notes-format';
-import { citedIds, groupPartials, reduceContext, reduceInstruction } from './notes-reduce';
+import { UngroundedNotesError } from './notes-context';
+import { MERGE_LIMITS } from './notes-format';
+import {
+  type Condensed,
+  citedIds,
+  groundedCondensed,
+  groupPartials,
+  reduceContext,
+  reduceInstruction,
+} from './notes-reduce';
+import { MAX_REDUCE_ROUNDS, PROMPT_BUDGET, estimateTokens } from './ollama-budget';
+import { frenchText } from './ollama-fake.test-support';
 
-// The largest answer the grammar allows: every list full, every text and id list at its cap.
-function worstCase(index: number): Notes {
-  const items = Array.from({ length: NOTE_LIMITS.items }, (_unused, item) => ({
-    text: 'x'.repeat(NOTE_LIMITS.itemText),
-    sourceIds: Array.from({ length: NOTE_LIMITS.sourceIds }, (_id, id) => `${index}-${item}${id}`),
-  }));
+function partialOf(index: number, chars = 600): Condensed {
   return {
-    summary: 'r'.repeat(NOTE_LIMITS.summary),
-    keyPoints: items,
-    decisions: items,
-    actions: items,
-    questions: items,
+    summary: frenchText(chars),
+    keyPoints: [{ text: `Point ${index}`, sourceIds: [`${index}-0`, `${index}-1`] }],
+    questions: [{ text: 'Qui envoie le devis ?', sourceIds: [`${index}-2`] }],
   };
 }
 
-function partialOf(index: number, chars = 1_200): Notes {
+// The largest answer a merge may give: every list full, every text and id list at its cap.
+function worstCase(index: number): Condensed {
+  const item = (position: number) => ({
+    text: frenchText(MERGE_LIMITS.itemText),
+    sourceIds: Array.from(
+      { length: MERGE_LIMITS.sourceIds },
+      (_id, id) => `${index}${position}-${id}`,
+    ),
+  });
   return {
-    summary: 'r'.repeat(chars),
-    keyPoints: [{ text: `Point ${index}`, sourceIds: [`${index}-0`, `${index}-1`] }],
-    decisions: [],
-    actions: [{ text: 'Envoyer le devis', sourceIds: [`${index}-2`] }],
-    questions: [],
+    summary: frenchText(MERGE_LIMITS.summary),
+    keyPoints: Array.from({ length: MERGE_LIMITS.keyPoints }, (_unused, position) =>
+      item(position),
+    ),
+    questions: Array.from({ length: MERGE_LIMITS.questions }, (_unused, position) =>
+      item(position),
+    ),
   };
 }
 
@@ -44,9 +55,7 @@ describe('groupPartials', () => {
   it('keeps order and every partial exactly once', () => {
     const partials = Array.from({ length: 9 }, (_unused, index) => partialOf(index));
 
-    const groups = groupPartials('Revue', partials);
-
-    expect(groups.flat()).toEqual(partials);
+    expect(groupPartials('Revue', partials).flat()).toEqual(partials);
   });
 
   it('keeps each group, with the reduce instruction, under the prompt budget', () => {
@@ -77,17 +86,11 @@ describe('groupPartials', () => {
   });
 });
 
-describe('largest answer', () => {
-  it('stays within the output cap at the measured 3.4 characters per token', () => {
-    expect(JSON.stringify(worstCase(0)).length / 3.4).toBeLessThanOrEqual(OUTPUT_TOKENS);
-  });
-});
-
 describe('reduceContext', () => {
   it('carries the partial notes and their sourceIds, never a transcript', () => {
     const context = JSON.parse(reduceContext('Revue', [partialOf(0), partialOf(1)])) as {
       title: string;
-      partials: Notes[];
+      partials: Condensed[];
       transcript?: unknown;
     };
 
@@ -95,10 +98,17 @@ describe('reduceContext', () => {
     expect(context.transcript).toBeUndefined();
     expect(context.partials[1]?.keyPoints[0]?.sourceIds).toEqual(['1-0', '1-1']);
   });
+
+  it('leaves decisions and actions out of what the model merges', () => {
+    const context = reduceContext('Revue', [partialOf(0)]);
+
+    expect(context).not.toContain('decisions');
+    expect(context).not.toContain('actions');
+  });
 });
 
 describe('citedIds', () => {
-  it('lists every id a set of notes cites', () => {
+  it('lists every id the key points and questions cite', () => {
     expect([...citedIds([partialOf(0), partialOf(3)])].sort()).toEqual([
       '0-0',
       '0-1',
@@ -107,5 +117,29 @@ describe('citedIds', () => {
       '3-1',
       '3-2',
     ]);
+  });
+});
+
+describe('groundedCondensed', () => {
+  const answer = {
+    summary: 'Fusion.',
+    keyPoints: [
+      { text: 'Réel', sourceIds: ['1-0', '9-9'] },
+      { text: 'Inventé', sourceIds: ['9-9'] },
+    ],
+    questions: [],
+  };
+
+  it('keeps only the ids the merge was shown, even if another block of the meeting exists', () => {
+    const kept = groundedCondensed(JSON.stringify(answer), new Set(['1-0']));
+
+    expect(kept.keyPoints).toEqual([{ text: 'Réel', sourceIds: ['1-0'] }]);
+  });
+
+  it('rejects an answer that cites nothing the merge was shown, without echoing ids', () => {
+    const failure = () => groundedCondensed(JSON.stringify(answer), new Set(['2-0']));
+
+    expect(failure).toThrow(UngroundedNotesError);
+    expect(failure).not.toThrow(/9-9/);
   });
 });

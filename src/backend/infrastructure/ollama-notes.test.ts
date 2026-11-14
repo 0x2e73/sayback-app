@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Notes } from '../../shared/contracts';
-import { notesInstruction } from './notes-context';
+import { type Condensed, sliceInstruction } from './notes-reduce';
 import {
   CONTEXT_TOKENS,
   FRAME_TOKENS,
@@ -9,17 +8,16 @@ import {
   REQUEST_OVERHEAD_TOKENS,
   estimateTokens,
 } from './ollama-budget';
-import { type ChatCall, echoNotes, fakeOllama, meetingOf } from './ollama-fake';
-import { OllamaNotes } from './ollama-notes';
-
-const media = {
-  readAudio: async () => Buffer.from('audio'),
-  readFrame: async () => Buffer.from('image'),
-};
-
-function providerOver(request: typeof fetch, model = 'qwen3.5:4b'): OllamaNotes {
-  return new OllamaNotes(() => model, media, request);
-}
+import {
+  type ChatCall,
+  callOf,
+  fakeOllama,
+  ids,
+  meetingOf,
+  providerOver,
+  sliceIds,
+  uncitedBlock,
+} from './ollama-fake.test-support';
 
 function fits(call: ChatCall): boolean {
   const prompt =
@@ -29,10 +27,13 @@ function fits(call: ChatCall): boolean {
   return prompt + OUTPUT_TOKENS <= CONTEXT_TOKENS;
 }
 
-function ids(notes: Notes): string[] {
-  return [notes.keyPoints, notes.decisions, notes.actions, notes.questions]
-    .flat()
-    .flatMap((item) => item.sourceIds);
+function allowedIds(call: ChatCall): string[] {
+  const format = call.body.format as {
+    properties: {
+      keyPoints: { items: { properties: { sourceIds: { items: { enum?: string[] } } } } };
+    };
+  };
+  return format.properties.keyPoints.items.properties.sourceIds.items.enum ?? [];
 }
 
 describe('Ollama notes on a short meeting', () => {
@@ -45,7 +46,7 @@ describe('Ollama notes on a short meeting', () => {
     expect(spy).toHaveBeenCalledTimes(2);
     expect(String(spy.mock.calls[1]?.[0])).toBe('http://127.0.0.1:11434/api/chat');
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.system).toBe(notesInstruction);
+    expect(calls[0]?.system).toBe(sliceInstruction);
     expect(calls[0]?.images).toEqual([Buffer.from('image').toString('base64')]);
     expect(calls[0]?.body).toMatchObject({
       model: 'qwen3.5:4b',
@@ -53,17 +54,17 @@ describe('Ollama notes on a short meeting', () => {
       think: false,
       options: { num_ctx: CONTEXT_TOKENS, num_predict: OUTPUT_TOKENS },
     });
-    expect(ids(notes)).toEqual(['0-0', '2-0']);
-    expect(calls[0]?.body.format).toMatchObject({
-      required: expect.arrayContaining([
-        'summary',
-        'keyPoints',
-        'decisions',
-        'actions',
-        'questions',
-      ]),
-      properties: { keyPoints: { items: { required: ['text', 'sourceIds'] } } },
-    });
+    expect(ids(notes)).toEqual(['0-0', '2-0', '0-0', '0-0', '2-0']);
+  });
+
+  it('tells the model the limits of its answer and restricts its ids to the meeting', async () => {
+    const { request, calls } = fakeOllama();
+
+    await providerOver(request).summarize(meetingOf({ blocks: 3 }));
+
+    expect(calls[0]?.system).toContain('140 caractères');
+    expect(calls[0]?.system).toContain('4 décisions, 4 actions');
+    expect(allowedIds(callOf(calls, 'single'))).toEqual(['0-0', '1-0', '2-0']);
   });
 
   it('explains when the selected local model cannot read the screen', async () => {
@@ -85,6 +86,18 @@ describe('Ollama notes on a short meeting', () => {
       providerOver(request, 'alias').summarize(meetingOf({ blocks: 2 })),
     ).rejects.toThrow(/cloud/);
   });
+
+  it.each(['qwen3-coder:480b-cloud', 'gpt-oss:120b-cloud', 'kimi:cloud'])(
+    'refuses the cloud model %s without any request',
+    async (model) => {
+      const { request, spy } = fakeOllama();
+
+      await expect(
+        providerOver(request, model).summarize(meetingOf({ blocks: 2 })),
+      ).rejects.toThrow(/cloud/);
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('Ollama notes on a long meeting', () => {
@@ -95,18 +108,14 @@ describe('Ollama notes on a long meeting', () => {
     const notes = await providerOver(request).summarize(meeting);
 
     const maps = calls.filter((call) => call.kind === 'map');
-    const reduces = calls.filter((call) => call.kind === 'reduce');
     expect(maps.length).toBeGreaterThan(3);
-    expect(reduces.length).toBeGreaterThan(0);
+    expect(calls.filter((call) => call.kind === 'reduce').length).toBeGreaterThan(0);
     expect(calls.every(fits)).toBe(true);
-    const sent = maps.flatMap(
-      (call) => (JSON.parse(call.user) as { transcript: Array<{ id: string }> }).transcript,
-    );
-    expect(sent.map((block) => block.id)).toEqual(meeting.transcript.map((segment) => segment.id));
-    expect(ids(notes)).toEqual(['0-0', '67-0']);
+    expect(maps.flatMap(sliceIds)).toEqual(meeting.transcript.map((segment) => segment.id));
+    expect(notes.keyPoints.flatMap((item) => item.sourceIds)).toEqual(['0-0', '67-0']);
   });
 
-  it('never sends the transcript to the merge, only the partial notes', async () => {
+  it('never sends the transcript, decisions or actions to the merge', async () => {
     const { request, calls } = fakeOllama();
 
     await providerOver(request).summarize(meetingOf({ blocks: 68 }));
@@ -114,23 +123,38 @@ describe('Ollama notes on a long meeting', () => {
     const reduces = calls.filter((call) => call.kind === 'reduce');
     for (const call of reduces) {
       expect(call.user).not.toContain('Nous validons');
+      expect(call.user).not.toContain('Décision');
+      expect(call.user).not.toContain('Action');
       expect(call.user).toContain('"partials"');
     }
-    const firstMerge = JSON.parse(reduces[0]?.user ?? '{}') as { partials: Notes[] };
+    const firstMerge = JSON.parse(reduces[0]?.user ?? '{}') as { partials: Condensed[] };
     expect(firstMerge.partials[0]?.keyPoints[0]?.sourceIds).toEqual(['0-0']);
   });
 
-  it('asks the model for partial notes about the slice only', async () => {
+  it('restricts the ids of each call to those it was shown', async () => {
+    const { request, calls } = fakeOllama();
+
+    await providerOver(request).summarize(meetingOf({ blocks: 68 }));
+
+    const maps = calls.filter((call) => call.kind === 'map');
+    for (const call of maps) expect(allowedIds(call)).toEqual(sliceIds(call));
+    const merge = callOf(calls, 'reduce');
+    expect(allowedIds(merge)).toContain('0-0');
+    expect(allowedIds(merge)).not.toContain(uncitedBlock(68));
+  });
+
+  it('asks the model for partial notes about the extract only, citing ids it contains', async () => {
     const { request, calls } = fakeOllama();
 
     await providerOver(request).summarize(meetingOf({ blocks: 68 }));
 
     const map = calls.find((call) => call.kind === 'map');
     expect(map?.system).toContain('extrait');
-    expect(map?.system).toContain(notesInstruction);
+    expect(map?.system).toContain('cite uniquement des ids présents dans cet extrait');
+    expect(map?.system).toContain(sliceInstruction);
   });
 
-  it('spreads the screen frames over the calls and keeps each call inside the window', async () => {
+  it('spreads the screen frames over the calls and names the block each one overlaps', async () => {
     const { request, calls } = fakeOllama();
 
     await providerOver(request).summarize(meetingOf({ blocks: 68, frames: 60 }));
@@ -140,6 +164,8 @@ describe('Ollama notes on a long meeting', () => {
     expect(Math.max(...maps.map((call) => call.images.length))).toBeLessThanOrEqual(
       MAX_FRAMES_PER_CALL,
     );
+    const withImage = maps.find((call) => call.images.length > 0);
+    expect(withImage?.user).toMatch(/écran à [\d.]+ secondes \(bloc \d+-0\)/);
     expect(
       calls.filter((call) => call.kind === 'reduce').every((call) => !call.images.length),
     ).toBe(true);
@@ -157,34 +183,16 @@ describe('Ollama notes on a long meeting', () => {
     expect(maps).toBeGreaterThan(30);
     expect(reduces).toBeLessThanOrEqual(maps);
     expect(calls.every(fits)).toBe(true);
-    expect(ids(notes)).toEqual(['0-0', '239-0']);
-  });
-
-  it('drops a citation invented by the merge and keeps the real ones', async () => {
-    const { request } = fakeOllama((call) => {
-      if (call.kind !== 'reduce') return echoOf(call);
-      const merged = echoNotes(call);
-      const real = merged.keyPoints[0]?.sourceIds ?? [];
-      return {
-        ...merged,
-        decisions: [{ text: 'Inventé', sourceIds: ['999-0'] }],
-        actions: [{ text: 'Mélangé', sourceIds: [...real, '999-1'] }],
-      };
-    });
-
-    const notes = await providerOver(request).summarize(meetingOf({ blocks: 68 }));
-
-    expect(notes.decisions).toEqual([]);
-    expect(notes.actions).toEqual([{ text: 'Mélangé', sourceIds: ['0-0'] }]);
-    expect(ids(notes)).not.toContain('999-0');
-    expect(ids(notes)).not.toContain('999-1');
-    expect(notes.keyPoints.length).toBeGreaterThan(0);
+    expect(notes.keyPoints.flatMap((item) => item.sourceIds)).toEqual(['0-0', '239-0']);
   });
 
   it('rejects a slice whose notes cite nothing real, before any merge', async () => {
     const { request, calls } = fakeOllama((call) => ({
-      ...echoOf(call),
-      keyPoints: [{ text: 'Inventé', sourceIds: ['999-0'] }],
+      summary: 'Extrait',
+      keyPoints: [{ text: 'Inventé', sourceIds: [`${sliceIds(call).length}-invented`] }],
+      decisions: [],
+      actions: [],
+      questions: [],
     }));
 
     await expect(providerOver(request).summarize(meetingOf({ blocks: 68 }))).rejects.toThrow(
@@ -193,14 +201,3 @@ describe('Ollama notes on a long meeting', () => {
     expect(calls.some((call) => call.kind === 'reduce')).toBe(false);
   });
 });
-
-function echoOf(call: ChatCall): Notes {
-  const first = (JSON.parse(call.user) as { transcript: Array<{ id: string }> }).transcript[0];
-  return {
-    summary: 'Extrait',
-    keyPoints: [{ text: 'Point', sourceIds: [first?.id ?? ''] }],
-    decisions: [],
-    actions: [],
-    questions: [],
-  };
-}

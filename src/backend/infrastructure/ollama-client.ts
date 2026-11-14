@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { notesFormat } from './notes-format';
 import { CONTEXT_TOKENS, OUTPUT_TOKENS, REQUEST_TIMEOUT_MS } from './ollama-budget';
 
 const baseUrl = 'http://127.0.0.1:11434';
 const replySchema = z.object({
   message: z.object({ content: z.string() }),
   done_reason: z.string().optional(),
+  prompt_eval_count: z.number().optional(),
 });
 const capabilitySchema = z.object({
   capabilities: z.array(z.string()),
@@ -18,6 +18,8 @@ export interface ChatInput {
   system: string;
   user: string;
   images: Buffer[];
+  /** JSON schema of the answer. */
+  format: object;
 }
 
 function isTimeout(error: unknown): boolean {
@@ -29,7 +31,7 @@ export class OllamaClient {
   constructor(private readonly request: typeof fetch) {}
 
   async verifyLocalModel(model: string, needsVision: boolean): Promise<void> {
-    if (model.endsWith(':cloud')) {
+    if (/[:-]cloud$/.test(model)) {
       throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
     }
     const response = await this.post('/api/show', { model }, 20_000);
@@ -52,7 +54,7 @@ export class OllamaClient {
         stream: false,
         // A thinking model would spend the whole window on reasoning and answer nothing.
         think: false,
-        format: notesFormat,
+        format: input.format,
         options: { num_ctx: CONTEXT_TOKENS, num_predict: OUTPUT_TOKENS },
         messages: [
           { role: 'system', content: input.system },
@@ -75,6 +77,12 @@ export class OllamaClient {
     const reply = replySchema.safeParse(await this.json(response));
     if (!reply.success)
       throw new Error('Ollama a renvoyé une réponse illisible. Relancez l’analyse.');
+    // Dense text or a tall frame can cost more than estimated: the answer would have no room left.
+    if ((reply.data.prompt_eval_count ?? 0) + OUTPUT_TOKENS > CONTEXT_TOKENS) {
+      throw new Error(
+        'Cette partie de la réunion est trop dense pour la fenêtre du modèle Ollama. Relancez l’analyse ou choisissez un autre modèle.',
+      );
+    }
     if (reply.data.done_reason === 'length') {
       throw new Error('Ollama a coupé sa réponse avant la fin. Relancez l’analyse.');
     }

@@ -2,6 +2,10 @@ import type { Frame, Meeting } from '../../shared/contracts';
 import { type CitableBlock, citableBlocks } from './notes-context';
 import { FRAME_TOKENS, MAX_FRAMES_PER_CALL, PROMPT_BUDGET, estimateTokens } from './ollama-budget';
 
+// The caption line that names a frame in the context ("Image 1 : écran à 312.0 secondes (bloc 14-0)").
+const CAPTION_TOKENS = 40;
+const FRAME_COST = FRAME_TOKENS + CAPTION_TOKENS;
+
 export interface SliceClarification {
   id: string;
   at: number;
@@ -19,10 +23,21 @@ type Entry =
   | { at: number; tokens: number; block: CitableBlock }
   | { at: number; tokens: number; clarification: SliceClarification };
 
+// The block a frame overlaps: a model that wants to cite a screen can only cite a block id.
+function blockAt(slice: NotesSlice, at: number): CitableBlock | undefined {
+  return slice.blocks.filter((block) => block.start <= at).pop() ?? slice.blocks[0];
+}
+
+export function sliceSourceIds(slice: NotesSlice): string[] {
+  return [...slice.blocks.map((block) => block.id), ...slice.clarifications.map((item) => item.id)];
+}
+
 export function sliceContext(title: string, slice: NotesSlice): string {
-  const screens = slice.frames.map(
-    (frame, index) => `Image ${index + 1} : écran à ${frame.at.toFixed(1)} secondes`,
-  );
+  const screens = slice.frames.map((frame, index) => {
+    const block = blockAt(slice, frame.at);
+    const overlap = block ? ` (bloc ${block.id})` : '';
+    return `Image ${index + 1} : écran à ${frame.at.toFixed(1)} secondes${overlap}`;
+  });
   return JSON.stringify({
     title,
     transcript: slice.blocks,
@@ -86,7 +101,7 @@ function sliceOf(group: Entry[]): NotesSlice {
  * takes more, up to MAX_FRAMES_PER_CALL.
  */
 export function planSlices(meeting: Meeting, instructionTokens: number): NotesSlice[] {
-  const reserved = meeting.frames.length ? FRAME_TOKENS : 0;
+  const reserved = meeting.frames.length ? FRAME_COST : 0;
   const wrapper = estimateTokens(sliceContext(meeting.title, sliceOf([])));
   const budget = PROMPT_BUDGET - instructionTokens - wrapper - reserved;
   const groups = pack(entriesOf(meeting), budget);
@@ -99,7 +114,7 @@ export function planSlices(meeting: Meeting, instructionTokens: number): NotesSl
     );
     const room =
       PROMPT_BUDGET - instructionTokens - estimateTokens(sliceContext(meeting.title, slice));
-    const count = Math.min(inRange.length, MAX_FRAMES_PER_CALL, Math.floor(room / FRAME_TOKENS));
+    const count = Math.min(inRange.length, MAX_FRAMES_PER_CALL, Math.floor(room / FRAME_COST));
     return { ...slice, frames: evenly(inRange, count) };
   });
 }

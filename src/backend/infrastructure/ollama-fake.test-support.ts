@@ -1,6 +1,17 @@
 import { vi } from 'vitest';
+import { OllamaNotes } from './ollama-notes';
+import { planSlices } from './notes-slicing';
+import { estimateTokens } from './ollama-budget';
 import type { Meeting, Notes } from '../../shared/contracts';
-import { partialInstruction, reduceInstruction } from './notes-reduce';
+import { type Condensed, partialInstruction, reduceInstruction } from './notes-reduce';
+
+const sentence =
+  'Le comité valide le calendrier de livraison, puis la direction confirme le budget prévu pour le troisième trimestre. ';
+
+/** Realistic French of exactly `chars` characters (the sizing tests must not use filler such as 'x'). */
+export function frenchText(chars: number): string {
+  return sentence.repeat(Math.ceil(chars / sentence.length)).slice(0, chars);
+}
 
 interface MeetingShape {
   blocks: number;
@@ -50,7 +61,7 @@ export interface ChatCall {
   body: Record<string, unknown>;
 }
 
-type Reply = Notes | Response | string;
+type Reply = Notes | Condensed | Response | string;
 
 function kindOf(system: string): CallKind {
   if (system === partialInstruction) return 'map';
@@ -71,31 +82,37 @@ function parseCall(body: Record<string, unknown>): ChatCall {
   };
 }
 
-/** Cites the first and last block of the slice; a merge keeps the first item of its first part and the last of its last. */
-export function echoNotes(call: ChatCall): Notes {
+/**
+ * A slice cites its first and last block, decides on its first and acts on both. A merge keeps the
+ * first key point of its first part and the last key point of its last.
+ */
+export function echoNotes(call: ChatCall): Notes | Condensed {
   if (call.kind === 'reduce') {
-    const partials = (JSON.parse(call.user) as { partials: Notes[] }).partials;
+    const partials = (JSON.parse(call.user) as { partials: Condensed[] }).partials;
     const first = partials[0]?.keyPoints[0];
     const last = partials[partials.length - 1]?.keyPoints.at(-1);
     return {
       summary: 'Fusion',
       keyPoints: [first, last].flatMap((item) => (item ? [item] : [])),
-      decisions: [],
-      actions: [],
       questions: [],
     };
   }
   const ids = (JSON.parse(call.user) as { transcript: Array<{ id: string }> }).transcript.map(
     (block) => block.id,
   );
+  const head = ids[0] ?? '';
+  const tail = ids[ids.length - 1] ?? '';
   return {
     summary: 'Extrait',
     keyPoints: [
-      { text: `Début ${ids[0]}`, sourceIds: [ids[0] ?? ''] },
-      { text: `Fin ${ids[ids.length - 1]}`, sourceIds: [ids[ids.length - 1] ?? ''] },
+      { text: `Début ${head}`, sourceIds: [head] },
+      { text: `Fin ${tail}`, sourceIds: [tail] },
     ],
-    decisions: [],
-    actions: [],
+    decisions: [{ text: `Décision ${head}`, sourceIds: [head] }],
+    actions: [
+      { text: `Action ${head}`, sourceIds: [head] },
+      { text: `Action ${tail}`, sourceIds: [tail] },
+    ],
     questions: [],
   };
 }
@@ -121,4 +138,42 @@ export function fakeOllama(
     return toResponse(reply(call, calls.length - 1));
   });
   return { request: request as typeof fetch, calls, spy: request };
+}
+
+const media = {
+  readAudio: async () => Buffer.from('audio'),
+  readFrame: async () => Buffer.from('image'),
+};
+
+export function providerOver(request: typeof fetch, model = 'qwen3.5:4b'): OllamaNotes {
+  return new OllamaNotes(() => model, media, request);
+}
+export function ids(notes: Notes): string[] {
+  return [notes.keyPoints, notes.decisions, notes.actions, notes.questions]
+    .flat()
+    .flatMap((item) => item.sourceIds);
+}
+export function sliceIds(call: ChatCall): string[] {
+  const context = JSON.parse(call.user) as { transcript: Array<{ id: string }> };
+  return context.transcript.map((block) => block.id);
+}
+export function callOf(calls: ChatCall[], kind: ChatCall['kind']): ChatCall {
+  const call = calls.find((candidate) => candidate.kind === kind);
+  if (!call) throw new Error(`no ${kind} call`);
+  return call;
+}
+export // A block that is the first or last of no slice: the fake model never cites it.
+function uncitedBlock(blocks: number): string {
+  const meeting = meetingOf({ blocks });
+  const cited = new Set(
+    planSlices(meeting, estimateTokens(partialInstruction)).flatMap((slice) => [
+      slice.blocks[0]?.id,
+      slice.blocks.at(-1)?.id,
+    ]),
+  );
+  const id = meeting.transcript
+    .map((segment) => segment.id)
+    .find((candidate) => !cited.has(candidate));
+  if (!id) throw new Error('every block is cited');
+  return id;
 }

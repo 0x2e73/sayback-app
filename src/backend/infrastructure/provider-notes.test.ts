@@ -76,7 +76,7 @@ describe('Claude notes', () => {
     expect(result.summary).toBe(notes.summary);
   });
 
-  it('names the invented ids when nothing at all is cited correctly', async () => {
+  it('refuses the notes, without echoing ids, when nothing at all is cited correctly', async () => {
     const provider = new AnthropicNotes(
       () => 'key',
       () => 'claude-model',
@@ -90,7 +90,7 @@ describe('Claude notes', () => {
       }) as typeof fetch,
     );
 
-    await expect(provider.summarize(meeting)).rejects.toThrow(/missing/);
+    await expect(provider.summarize(meeting)).rejects.toThrow(/aucune source réelle\. Relancez/);
   });
 });
 

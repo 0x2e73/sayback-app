@@ -1,19 +1,20 @@
 import type { Meeting, Notes } from '../../shared/contracts';
 import type { AiMedia } from './openai-intelligence';
+import { groundedNotes, parseGroundedNotes, UngroundedNotesError } from './notes-context';
+import { mergeFormat, sliceFormat } from './notes-format';
+import { concatenateItems } from './notes-lists';
 import {
-  groundedNotes,
-  notesInstruction,
-  parseGroundedNotes,
-  UngroundedNotesError,
-} from './notes-context';
-import {
+  type Condensed,
   citedIds,
+  condensed,
+  groundedCondensed,
   groupPartials,
   partialInstruction,
   reduceContext,
   reduceInstruction,
+  sliceInstruction,
 } from './notes-reduce';
-import { type NotesSlice, planSlices, sliceContext } from './notes-slicing';
+import { type NotesSlice, planSlices, sliceContext, sliceSourceIds } from './notes-slicing';
 import { MAX_REDUCE_ROUNDS, estimateTokens } from './ollama-budget';
 import { OllamaClient } from './ollama-client';
 
@@ -31,7 +32,8 @@ function readable<T>(parse: () => T): T {
 
 /**
  * Notes by a local Ollama model whose window is 4096 tokens: a meeting that fits goes in one call,
- * a longer one is read slice by slice (map) and the partial notes are merged (reduce).
+ * a longer one is read slice by slice (map). Decisions and actions of the slices are concatenated by
+ * code; only summary, key points and questions are merged by the model (reduce).
  */
 export class OllamaNotes {
   private readonly client: OllamaClient;
@@ -50,39 +52,34 @@ export class OllamaNotes {
     const slices = planSlices(meeting, estimateTokens(partialInstruction));
     const [only] = slices;
     if (only && slices.length === 1) {
-      const text = await this.ask(model, meeting, only, notesInstruction);
+      const text = await this.ask(model, meeting, only, sliceInstruction);
       return readable(() => parseGroundedNotes(text, meeting));
     }
     const partials: Notes[] = [];
     for (const slice of slices) {
-      const sources = new Set([
-        ...slice.blocks.map((block) => block.id),
-        ...slice.clarifications.map((item) => item.id),
-      ]);
+      const sources = new Set(sliceSourceIds(slice));
       const text = await this.ask(model, meeting, slice, partialInstruction);
       partials.push(readable(() => groundedNotes(text, sources)));
     }
-    return this.reduce(model, meeting, partials);
+    const merged = await this.reduce(model, meeting, partials.map(condensed));
+    const notes: Notes = {
+      ...merged,
+      decisions: concatenateItems(partials.map((partial) => partial.decisions)),
+      actions: concatenateItems(partials.map((partial) => partial.actions)),
+    };
+    return readable(() => parseGroundedNotes(JSON.stringify(notes), meeting));
   }
 
-  private async reduce(model: string, meeting: Meeting, partials: Notes[]): Promise<Notes> {
+  private async reduce(model: string, meeting: Meeting, partials: Condensed[]): Promise<Condensed> {
     let level = partials;
     for (let round = 0; round < MAX_REDUCE_ROUNDS; round += 1) {
       const groups = groupPartials(meeting.title, level);
       const [last] = groups;
-      if (last && groups.length === 1) {
-        const text = await this.merge(model, meeting, last);
-        return readable(() => parseGroundedNotes(text, meeting));
-      }
-      const merged: Notes[] = [];
+      if (last && groups.length === 1) return this.merge(model, meeting, last);
+      const merged: Condensed[] = [];
       for (const group of groups) {
         const [alone] = group;
-        if (alone && group.length === 1) {
-          merged.push(alone);
-          continue;
-        }
-        const text = await this.merge(model, meeting, group);
-        merged.push(readable(() => groundedNotes(text, citedIds(group))));
+        merged.push(alone && group.length === 1 ? alone : await this.merge(model, meeting, group));
       }
       level = merged;
     }
@@ -91,13 +88,17 @@ export class OllamaNotes {
     );
   }
 
-  private merge(model: string, meeting: Meeting, group: Notes[]): Promise<string> {
-    return this.client.chat({
+  // Grounded on the ids the group cites, not the whole meeting: the merge never saw the transcript.
+  private async merge(model: string, meeting: Meeting, group: Condensed[]): Promise<Condensed> {
+    const sources = citedIds(group);
+    const text = await this.client.chat({
       model,
       system: reduceInstruction,
       user: reduceContext(meeting.title, group),
       images: [],
+      format: mergeFormat(sources.size ? [...sources] : undefined),
     });
+    return readable(() => groundedCondensed(text, sources));
   }
 
   private async ask(
@@ -110,6 +111,13 @@ export class OllamaNotes {
     for (const frame of slice.frames) {
       images.push(await this.media.readFrame(meeting.id, frame.index));
     }
-    return this.client.chat({ model, system, user: sliceContext(meeting.title, slice), images });
+    const ids = sliceSourceIds(slice);
+    return this.client.chat({
+      model,
+      system,
+      user: sliceContext(meeting.title, slice),
+      images,
+      format: sliceFormat(ids.length ? ids : undefined),
+    });
   }
 }
