@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { UngroundedNotesError } from './notes-context';
+import { UngroundedNotesError, notesInstruction } from './notes-context';
 import { MERGE_LIMITS } from './notes-format';
 import {
   type Condensed,
   citedIds,
   groundedCondensed,
   groupPartials,
+  partialInstruction,
   reduceContext,
   reduceInstruction,
+  sliceInstruction,
 } from './notes-reduce';
 import { MAX_REDUCE_ROUNDS, PROMPT_BUDGET, estimateTokens } from './ollama-budget';
 import { frenchText } from './ollama-fake.test-support';
@@ -141,5 +143,23 @@ describe('groundedCondensed', () => {
 
     expect(failure).toThrow(UngroundedNotesError);
     expect(failure).not.toThrow(/9-9/);
+  });
+});
+
+describe('slice instructions', () => {
+  const definition = 'Une décision est un choix que les participants actent explicitement';
+  const emptyAnswer = 'des listes decisions et actions vides sont alors la réponse attendue';
+
+  it('define a decision and an action in the single-call and the partial instructions', () => {
+    for (const instruction of [sliceInstruction, partialInstruction]) {
+      expect(instruction).toContain(definition);
+      expect(instruction).toContain('Une action est une tâche concrète');
+      expect(instruction).toContain(emptyAnswer);
+    }
+  });
+
+  it('leave the instruction the other providers share untouched', () => {
+    expect(notesInstruction).not.toContain(definition);
+    expect(reduceInstruction).not.toContain(definition);
   });
 });

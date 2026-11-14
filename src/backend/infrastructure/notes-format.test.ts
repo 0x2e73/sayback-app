@@ -70,4 +70,12 @@ describe('mergeFormat', () => {
       enum: ['1-0'],
     });
   });
+
+  it('allows no key point and no question when there is no id to cite', () => {
+    const format = mergeFormat([]);
+
+    expect(format.properties.keyPoints.maxItems).toBe(0);
+    expect(format.properties.questions.maxItems).toBe(0);
+    expect(format.properties.keyPoints.items.properties.sourceIds.items).not.toHaveProperty('enum');
+  });
 });

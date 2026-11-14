@@ -14,8 +14,13 @@ export type Condensed = Pick<Notes, 'summary' | 'keyPoints' | 'questions'>;
 
 const sliceLimits = `Limites strictes : un résumé de ${SLICE_LIMITS.summary} caractères au plus ; ${SLICE_LIMITS.keyPoints} points clés, ${SLICE_LIMITS.decisions} décisions, ${SLICE_LIMITS.actions} actions et ${SLICE_LIMITS.questions} questions au plus ; chaque élément en ${PROMPT_ITEM_CHARS} caractères au plus, avec 1 ou ${SLICE_LIMITS.sourceIds} ids dans sourceIds.`;
 
+// Measured on qwen3.5:4b (60 calls): without these definitions an extract with no decision still gave
+// 3 decisions and 2.5 actions per call ("Aucune décision n’a été prise"); with them, 0.17 items.
+const definitions =
+  'Une décision est un choix que les participants actent explicitement (« on part sur… », « c’est décidé », « validé ») ; une proposition, une idée, une préférence ou une piste n’en est pas une. Une action est une tâche concrète qu’une personne accepte ou se voit confier ; « il faudrait », « on pourrait » ou « on verra » n’en sont pas. La plupart des extraits ne contiennent aucune décision ni aucune action : des listes decisions et actions vides sont alors la réponse attendue.';
+
 /** A meeting that fits one call. */
-export const sliceInstruction = `${notesInstruction} ${sliceLimits}`;
+export const sliceInstruction = `${notesInstruction} ${sliceLimits} ${definitions}`;
 
 export const partialInstruction = `${sliceInstruction} Ce texte n’est qu’un extrait d’une réunion plus longue : ne conclus rien sur le reste, ne signale pas ce qui manque et cite uniquement des ids présents dans cet extrait.`;
 

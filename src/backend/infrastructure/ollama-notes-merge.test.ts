@@ -89,14 +89,80 @@ describe('Ollama notes: decisions and actions are kept in full', () => {
 
   it('cuts a list at the contract maximum and still returns valid notes', async () => {
     const { request, calls } = fakeOllama();
+    const warnings: string[] = [];
 
-    const notes = await providerOver(request).summarize(
-      meetingOf({ blocks: 240, blockChars: 1_000 }),
-    );
+    const notes = await providerOver(request, undefined, (message) =>
+      warnings.push(message),
+    ).summarize(meetingOf({ blocks: 240, blockChars: 1_000 }));
 
-    expect(calls.filter((call) => call.kind === 'map').length * 2).toBeGreaterThan(MAX_LIST_ITEMS);
+    const slices = calls.filter((call) => call.kind === 'map').length;
+    expect(slices * 2).toBeGreaterThan(MAX_LIST_ITEMS);
     expect(notes.actions).toHaveLength(MAX_LIST_ITEMS);
     expect(notes.actions[0]?.text).toBe('Action 0-0');
     expect(() => notesSchema.parse(notes)).not.toThrow();
+    expect(warnings).toContain(
+      `[ollama-notes] actions cut at the contract maximum: ${slices * 2 - MAX_LIST_ITEMS} dropped`,
+    );
+  });
+
+  it('logs the count of a cut list and never the text of an item', async () => {
+    const { request } = fakeOllama();
+    const warnings: string[] = [];
+
+    await providerOver(request, undefined, (message) => warnings.push(message)).summarize(
+      meetingOf({ blocks: 240, blockChars: 1_000 }),
+    );
+
+    expect(warnings.length).toBeGreaterThan(0);
+    for (const warning of warnings) {
+      expect(warning).toMatch(
+        /^\[ollama-notes\] (decisions|actions) cut at the contract maximum: \d+ dropped$/,
+      );
+    }
+  });
+
+  it('drops a decision or an action that cites a real block of another slice before concatenating', async () => {
+    const foreign = '60-0'; // a later slice's block: real, but not in the first extract
+    const { request } = fakeOllama((call, index) => {
+      const answer = echoNotes(call);
+      if (call.kind !== 'map' || index !== 0) return answer;
+      return {
+        ...answer,
+        decisions: [{ text: 'Décision hors extrait', sourceIds: [foreign] }],
+        actions: [{ text: 'Action hors extrait', sourceIds: [foreign] }],
+      };
+    });
+
+    const notes = await providerOver(request).summarize(meetingOf({ blocks: 68 }));
+
+    expect(notes.decisions.map((item) => item.text)).not.toContain('Décision hors extrait');
+    expect(notes.actions.map((item) => item.text)).not.toContain('Action hors extrait');
+    expect(ids(notes)).not.toContain(foreign);
+  });
+});
+
+describe('Ollama notes: nothing to merge', () => {
+  it('still returns the decisions and actions when no slice has a key point or a question', async () => {
+    const { request, calls } = fakeOllama((call) => ({
+      ...echoNotes(call),
+      keyPoints: [],
+      questions: [],
+    }));
+
+    const notes = await providerOver(request).summarize(meetingOf({ blocks: 68 }));
+
+    const merges = calls.filter((call) => call.kind === 'reduce');
+    expect(merges.length).toBeGreaterThan(0);
+    for (const merge of merges) {
+      const format = merge.body.format as {
+        properties: { keyPoints: { maxItems: number }; questions: { maxItems: number } };
+      };
+      expect(format.properties.keyPoints.maxItems).toBe(0);
+      expect(format.properties.questions.maxItems).toBe(0);
+    }
+    expect(notes.keyPoints).toEqual([]);
+    expect(notes.questions).toEqual([]);
+    expect(notes.decisions.length).toBeGreaterThan(0);
+    expect(notes.actions.length).toBeGreaterThan(0);
   });
 });

@@ -1,4 +1,4 @@
-import type { Meeting, Notes } from '../../shared/contracts';
+import type { Meeting, NoteItem, Notes } from '../../shared/contracts';
 import type { AiMedia } from './openai-intelligence';
 import { groundedNotes, parseGroundedNotes, UngroundedNotesError } from './notes-context';
 import { mergeFormat, sliceFormat } from './notes-format';
@@ -42,6 +42,7 @@ export class OllamaNotes {
     private readonly model: () => string,
     private readonly media: AiMedia,
     request: typeof fetch = fetch,
+    private readonly warn: (message: string) => void = console.warn,
   ) {
     this.client = new OllamaClient(request);
   }
@@ -64,10 +65,23 @@ export class OllamaNotes {
     const merged = await this.reduce(model, meeting, partials.map(condensed));
     const notes: Notes = {
       ...merged,
-      decisions: concatenateItems(partials.map((partial) => partial.decisions)),
-      actions: concatenateItems(partials.map((partial) => partial.actions)),
+      decisions: this.concatenated(
+        'decisions',
+        partials.map((partial) => partial.decisions),
+      ),
+      actions: this.concatenated(
+        'actions',
+        partials.map((partial) => partial.actions),
+      ),
     };
     return readable(() => parseGroundedNotes(JSON.stringify(notes), meeting));
+  }
+
+  // Count only, never text: the in-app hint about a cut list is a separate ticket (SAY-8).
+  private concatenated(list: string, lists: NoteItem[][]): NoteItem[] {
+    return concatenateItems(lists, (dropped) =>
+      this.warn(`[ollama-notes] ${list} cut at the contract maximum: ${dropped} dropped`),
+    );
   }
 
   private async reduce(model: string, meeting: Meeting, partials: Condensed[]): Promise<Condensed> {
@@ -96,7 +110,7 @@ export class OllamaNotes {
       system: reduceInstruction,
       user: reduceContext(meeting.title, group),
       images: [],
-      format: mergeFormat(sources.size ? [...sources] : undefined),
+      format: mergeFormat([...sources]),
     });
     return readable(() => groundedCondensed(text, sources));
   }

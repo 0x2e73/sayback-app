@@ -11,6 +11,17 @@ function summarize(request: typeof fetch, blocks = 3) {
   return new OllamaNotes(() => 'qwen3.5:4b', media, request).summarize(meetingOf({ blocks }));
 }
 
+function counted(content: string, reason: string, prompt: number): Response {
+  return new Response(
+    JSON.stringify({
+      message: { role: 'assistant', content },
+      done: true,
+      done_reason: reason,
+      prompt_eval_count: prompt,
+    }),
+  );
+}
+
 function cutOff(content: string, reason: string): Response {
   return new Response(
     JSON.stringify({ message: { role: 'assistant', content }, done: true, done_reason: reason }),
@@ -66,39 +77,35 @@ describe('Ollama notes failures', () => {
     await expect(summarize(down)).rejects.toThrow(/inaccessible/);
   });
 
-  it('refuses a prompt that left no room for the answer, whatever it contained', async () => {
-    const { request } = fakeOllama(
-      () =>
-        new Response(
-          JSON.stringify({
-            message: { role: 'assistant', content: '{"summary":"secret"}' },
-            done: true,
-            done_reason: 'stop',
-            prompt_eval_count: 3_000,
-          }),
-        ),
-    );
+  it('says the part is too dense, with no retry advice, when a cut answer had no room left', async () => {
+    const { request } = fakeOllama(() => counted('{"summary": "secret', 'length', 3_000));
 
     const failure = summarize(request);
 
     await expect(failure).rejects.toThrow(/trop dense pour la fenêtre/);
+    await expect(failure).rejects.toThrow(/fournisseur à plus grande capacité/);
+    await expect(failure).rejects.not.toThrow(/Relancez/);
     await expect(failure).rejects.not.toThrow(/secret/);
   });
 
-  it('accepts a prompt that leaves the full output cap free', async () => {
-    const { request } = fakeOllama((call) => {
-      const answer = echoNotes(call);
-      return new Response(
-        JSON.stringify({
-          message: { role: 'assistant', content: JSON.stringify(answer) },
-          done: true,
-          done_reason: 'stop',
-          prompt_eval_count: 2_800,
-        }),
-      );
-    });
+  it('says the part is too dense when an unreadable answer had no room left', async () => {
+    const { request } = fakeOllama(() => counted('pas du json', 'stop', 3_000));
+
+    await expect(summarize(request)).rejects.toThrow(/trop dense pour la fenêtre/);
+  });
+
+  it('keeps an answer that ended on its own and parses, whatever the prompt cost', async () => {
+    const { request } = fakeOllama((call) =>
+      counted(JSON.stringify(echoNotes(call)), 'stop', 3_000),
+    );
 
     await expect(summarize(request)).resolves.toMatchObject({ summary: 'Extrait' });
+  });
+
+  it('keeps the plain cut-answer message when the prompt left room', async () => {
+    const { request } = fakeOllama(() => counted('{"summary": "Début', 'length', 2_000));
+
+    await expect(summarize(request)).rejects.toThrow(/coupé sa réponse/);
   });
 
   it('keeps the error about citations that match no transcript block, without echoing ids', async () => {

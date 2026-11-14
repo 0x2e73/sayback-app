@@ -18,7 +18,10 @@ function sameItem(text: string): string {
  * slice, in chronological order, one item per distinct text (case, spacing and punctuation aside),
  * with the union of their ids.
  */
-export function concatenateItems(lists: NoteItem[][]): NoteItem[] {
+export function concatenateItems(
+  lists: NoteItem[][],
+  onCut: (dropped: number) => void = () => undefined,
+): NoteItem[] {
   const byText = new Map<string, NoteItem>();
   for (const item of lists.flat()) {
     const key = sameItem(item.text);
@@ -29,6 +32,7 @@ export function concatenateItems(lists: NoteItem[][]): NoteItem[] {
     }
     known.sourceIds = [...new Set([...known.sourceIds, ...item.sourceIds])];
   }
+  if (byText.size > MAX_LIST_ITEMS) onCut(byText.size - MAX_LIST_ITEMS);
   return [...byText.values()]
     .slice(0, MAX_LIST_ITEMS)
     .map((item) => ({ ...item, sourceIds: item.sourceIds.slice(0, MAX_ITEM_SOURCES) }));

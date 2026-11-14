@@ -22,6 +22,15 @@ export interface ChatInput {
   format: object;
 }
 
+function isJson(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function isTimeout(error: unknown): boolean {
   return error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
 }
@@ -77,19 +86,23 @@ export class OllamaClient {
     const reply = replySchema.safeParse(await this.json(response));
     if (!reply.success)
       throw new Error('Ollama a renvoyé une réponse illisible. Relancez l’analyse.');
-    // Dense text or a tall frame can cost more than estimated: the answer would have no room left.
-    if ((reply.data.prompt_eval_count ?? 0) + OUTPUT_TOKENS > CONTEXT_TOKENS) {
+    const content = reply.data.message.content;
+    // Dense text or a tall frame can cost more than estimated and leave the answer no room. An answer
+    // that ended on its own and parses is kept; a cut or unreadable one is this cause, and retrying
+    // cannot change it.
+    const tight = (reply.data.prompt_eval_count ?? 0) + OUTPUT_TOKENS > CONTEXT_TOKENS;
+    if (tight && (reply.data.done_reason === 'length' || !isJson(content))) {
       throw new Error(
-        'Cette partie de la réunion est trop dense pour la fenêtre du modèle Ollama. Relancez l’analyse ou choisissez un autre modèle.',
+        'Cette partie de la réunion est trop dense pour la fenêtre du modèle Ollama. Réessayer ne changera rien : utilisez un fournisseur à plus grande capacité dans les réglages.',
       );
     }
     if (reply.data.done_reason === 'length') {
       throw new Error('Ollama a coupé sa réponse avant la fin. Relancez l’analyse.');
     }
-    if (!reply.data.message.content.trim()) {
+    if (!content.trim()) {
       throw new Error('Ollama a renvoyé une réponse vide. Relancez l’analyse.');
     }
-    return reply.data.message.content;
+    return content;
   }
 
   private async json(response: Response): Promise<unknown> {

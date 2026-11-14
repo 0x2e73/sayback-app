@@ -145,8 +145,12 @@ const media = {
   readFrame: async () => Buffer.from('image'),
 };
 
-export function providerOver(request: typeof fetch, model = 'qwen3.5:4b'): OllamaNotes {
-  return new OllamaNotes(() => model, media, request);
+export function providerOver(
+  request: typeof fetch,
+  model = 'qwen3.5:4b',
+  warn?: (message: string) => void,
+): OllamaNotes {
+  return new OllamaNotes(() => model, media, request, warn);
 }
 export function ids(notes: Notes): string[] {
   return [notes.keyPoints, notes.decisions, notes.actions, notes.questions]
@@ -162,8 +166,9 @@ export function callOf(calls: ChatCall[], kind: ChatCall['kind']): ChatCall {
   if (!call) throw new Error(`no ${kind} call`);
   return call;
 }
-export // A block that is the first or last of no slice: the fake model never cites it.
-function uncitedBlock(blocks: number): string {
+
+// A block that is the first or last of no slice: the fake model never cites it.
+export function uncitedBlock(blocks: number): string {
   const meeting = meetingOf({ blocks });
   const cited = new Set(
     planSlices(meeting, estimateTokens(partialInstruction)).flatMap((slice) => [

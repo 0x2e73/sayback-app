@@ -65,8 +65,12 @@ export function sliceFormat(allowedIds?: string[]) {
   } as const;
 }
 
-export function mergeFormat(allowedIds?: string[]) {
-  const list = (max: number) => listFormat(max, MERGE_LIMITS, allowedIds);
+// With no id to cite, a key point or a question could only cite an invented one: allow none.
+export function mergeFormat(allowedIds: string[]) {
+  const open = allowedIds.length > 0;
+  const list = (max: number) => ({
+    ...listFormat(open ? max : 0, MERGE_LIMITS, open ? allowedIds : undefined),
+  });
   return {
     type: 'object',
     properties: {

@@ -62,4 +62,16 @@ describe('concatenateItems', () => {
       notesSchema.parse({ summary: 'R', keyPoints: [], decisions, actions: [], questions: [] }),
     ).not.toThrow();
   });
+
+  it('reports how many items a cut dropped, and only when it cuts', () => {
+    const cuts: number[] = [];
+    const lists = Array.from({ length: 36 }, (_unused, slice) => [
+      { text: `Action ${slice}`, sourceIds: [`${slice}-0`] },
+    ]);
+
+    concatenateItems(lists, (dropped) => cuts.push(dropped));
+    concatenateItems(lists.slice(0, 30), (dropped) => cuts.push(dropped));
+
+    expect(cuts).toEqual([6]);
+  });
 });

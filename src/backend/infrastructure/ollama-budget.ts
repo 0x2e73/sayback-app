@@ -14,9 +14,11 @@ export const REQUEST_TIMEOUT_MS = 300_000;
 
 export const PROMPT_BUDGET = CONTEXT_TOKENS - OUTPUT_TOKENS - REQUEST_OVERHEAD_TOKENS;
 
-// Digits and CJK characters cost about one token each (measured 1.65 and 1.74 characters per token
-// on digit-heavy French and Chinese); whisper runs with `-l auto`, so the text can be in any language.
-const DENSE_CHARACTER = /[0-9\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/g;
+// Digits and every non-Latin letter or mark (CJK, Arabic, Cyrillic, Thai, Devanagari...) cost about one
+// token each (measured 1.65 characters per token on digit-heavy French, 1.74 on Chinese); whisper runs
+// with `-l auto`, so the text can be in any language.
+const DENSE_CHARACTER =
+  /\p{Nd}|(?![\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}])[\p{L}\p{M}]/gu;
 
 export function estimateTokens(text: string): number {
   const dense = text.match(DENSE_CHARACTER)?.length ?? 0;
