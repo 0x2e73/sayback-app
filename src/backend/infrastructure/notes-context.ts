@@ -110,8 +110,12 @@ function invented(notes: Notes, sources: Set<string>): string[] {
 }
 
 export function parseGroundedNotes(text: string, meeting: Meeting): Notes {
+  return groundedNotes(text, known(meeting));
+}
+
+// Keeps only the items that cite one of `sources`: a slice or a merge group is checked against its own ids.
+export function groundedNotes(text: string, sources: Set<string>): Notes {
   const notes = notesSchema.parse(JSON.parse(text));
-  const sources = known(meeting);
   const kept: Notes = {
     summary: notes.summary,
     keyPoints: grounded(notes.keyPoints, sources),
