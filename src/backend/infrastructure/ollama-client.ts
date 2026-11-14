@@ -1,0 +1,113 @@
+import { z } from 'zod';
+import { notesFormat } from './notes-format';
+import { CONTEXT_TOKENS, OUTPUT_TOKENS, REQUEST_TIMEOUT_MS } from './ollama-budget';
+
+const baseUrl = 'http://127.0.0.1:11434';
+const replySchema = z.object({
+  message: z.object({ content: z.string() }),
+  done_reason: z.string().optional(),
+});
+const capabilitySchema = z.object({
+  capabilities: z.array(z.string()),
+  remote_host: z.string().optional(),
+  remote_model: z.string().optional(),
+});
+
+export interface ChatInput {
+  model: string;
+  system: string;
+  user: string;
+  images: Buffer[];
+}
+
+function isTimeout(error: unknown): boolean {
+  return error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
+}
+
+/** Ollama's native API: the only one that pins the window (`num_ctx`) and turns thinking off. */
+export class OllamaClient {
+  constructor(private readonly request: typeof fetch) {}
+
+  async verifyLocalModel(model: string, needsVision: boolean): Promise<void> {
+    if (model.endsWith(':cloud')) {
+      throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
+    }
+    const response = await this.post('/api/show', { model }, 20_000);
+    if (!response.ok) throw new Error('Modèle Ollama introuvable. Téléchargez-le puis réessayez.');
+    const details = capabilitySchema.parse(await response.json());
+    if (details.remote_host || details.remote_model) {
+      throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
+    }
+    if (needsVision && !details.capabilities.includes('vision')) {
+      throw new Error('Ce modèle Ollama ne lit pas les images. Choisissez un modèle de vision.');
+    }
+  }
+
+  /** The JSON text of the model's answer; every failure says what really happened. */
+  async chat(input: ChatInput): Promise<string> {
+    const response = await this.post(
+      '/api/chat',
+      {
+        model: input.model,
+        stream: false,
+        // A thinking model would spend the whole window on reasoning and answer nothing.
+        think: false,
+        format: notesFormat,
+        options: { num_ctx: CONTEXT_TOKENS, num_predict: OUTPUT_TOKENS },
+        messages: [
+          { role: 'system', content: input.system },
+          {
+            role: 'user',
+            content: input.user,
+            ...(input.images.length
+              ? { images: input.images.map((image) => image.toString('base64')) }
+              : {}),
+          },
+        ],
+      },
+      REQUEST_TIMEOUT_MS,
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Ollama a refusé la demande (code ${response.status}). Vérifiez le modèle choisi, puis relancez l’analyse.`,
+      );
+    }
+    const reply = replySchema.safeParse(await this.json(response));
+    if (!reply.success)
+      throw new Error('Ollama a renvoyé une réponse illisible. Relancez l’analyse.');
+    if (reply.data.done_reason === 'length') {
+      throw new Error('Ollama a coupé sa réponse avant la fin. Relancez l’analyse.');
+    }
+    if (!reply.data.message.content.trim()) {
+      throw new Error('Ollama a renvoyé une réponse vide. Relancez l’analyse.');
+    }
+    return reply.data.message.content;
+  }
+
+  private async json(response: Response): Promise<unknown> {
+    try {
+      return await response.json();
+    } catch (error) {
+      if (isTimeout(error)) throw this.tooSlow();
+      return null;
+    }
+  }
+
+  private tooSlow(): Error {
+    return new Error('Ollama a mis trop de temps à répondre. Relancez l’analyse.');
+  }
+
+  private async post(path: string, body: unknown, timeout: number): Promise<Response> {
+    try {
+      return await this.request(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeout),
+      });
+    } catch (error) {
+      if (isTimeout(error)) throw this.tooSlow();
+      throw new Error('Ollama est inaccessible. Démarrez Ollama sur cet ordinateur.');
+    }
+  }
+}

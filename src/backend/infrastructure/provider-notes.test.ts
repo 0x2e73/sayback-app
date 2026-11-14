@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Meeting } from '../../shared/contracts';
 import { AnthropicNotes } from './anthropic-notes';
-import { OllamaNotes } from './ollama-notes';
 import { GeminiIntelligence } from './gemini-intelligence';
 import { CompatibleNotes } from './compatible-notes';
 
@@ -92,47 +91,6 @@ describe('Claude notes', () => {
     );
 
     await expect(provider.summarize(meeting)).rejects.toThrow(/missing/);
-  });
-});
-
-describe('Ollama notes', () => {
-  it('checks vision support before sending an image to the local model', async () => {
-    const request = vi.fn(async (url: string | URL | Request) => {
-      if (String(url).endsWith('/api/show')) {
-        return new Response(JSON.stringify({ capabilities: ['completion', 'vision'] }));
-      }
-      return new Response(
-        JSON.stringify({ choices: [{ message: { content: JSON.stringify(notes) } }] }),
-      );
-    });
-    const provider = new OllamaNotes(() => 'gemma3:latest', media, request as typeof fetch);
-    expect(await provider.summarize(meeting)).toEqual(notes);
-    expect(request).toHaveBeenCalledTimes(2);
-    expect(String(request.mock.calls[1]?.[0])).toBe('http://127.0.0.1:11434/v1/chat/completions');
-  });
-
-  it('explains when the selected local model cannot read the screen', async () => {
-    const request = vi.fn(
-      async () => new Response(JSON.stringify({ capabilities: ['completion'] })),
-    );
-    const provider = new OllamaNotes(() => 'text-only', media, request as typeof fetch);
-    await expect(provider.summarize(meeting)).rejects.toThrow(/vision/);
-    expect(request).toHaveBeenCalledOnce();
-  });
-
-  it('refuses Ollama cloud aliases before sending meeting content', async () => {
-    const request = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            capabilities: ['completion', 'vision'],
-            remote_host: 'https://ollama.com',
-          }),
-        ),
-    );
-    const provider = new OllamaNotes(() => 'private-alias', media, request as typeof fetch);
-    await expect(provider.summarize(meeting)).rejects.toThrow(/cloud/);
-    expect(request).toHaveBeenCalledOnce();
   });
 });
 

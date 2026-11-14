@@ -1,100 +1,115 @@
-import { z } from 'zod';
 import type { Meeting, Notes } from '../../shared/contracts';
 import type { AiMedia } from './openai-intelligence';
 import {
-  meetingContext,
+  groundedNotes,
   notesInstruction,
   parseGroundedNotes,
-  selectedFrames,
   UngroundedNotesError,
 } from './notes-context';
+import {
+  citedIds,
+  groupPartials,
+  partialInstruction,
+  reduceContext,
+  reduceInstruction,
+} from './notes-reduce';
+import { type NotesSlice, planSlices, sliceContext } from './notes-slicing';
+import { MAX_REDUCE_ROUNDS, estimateTokens } from './ollama-budget';
+import { OllamaClient } from './ollama-client';
 
-const completionSchema = z.object({
-  choices: z.array(z.object({ message: z.object({ content: z.string().nullable() }) })),
-});
-const capabilitySchema = z.object({
-  capabilities: z.array(z.string()),
-  remote_host: z.string().optional(),
-  remote_model: z.string().optional(),
-});
+// Notes the model wrote but that do not parse: the cause is the answer, not the model's vision.
+function readable<T>(parse: () => T): T {
+  try {
+    return parse();
+  } catch (error) {
+    if (error instanceof UngroundedNotesError) throw error;
+    throw new Error(
+      'Ollama a renvoyé des notes illisibles. Relancez l’analyse ou choisissez un autre modèle.',
+    );
+  }
+}
 
+/**
+ * Notes by a local Ollama model whose window is 4096 tokens: a meeting that fits goes in one call,
+ * a longer one is read slice by slice (map) and the partial notes are merged (reduce).
+ */
 export class OllamaNotes {
+  private readonly client: OllamaClient;
+
   constructor(
     private readonly model: () => string,
     private readonly media: AiMedia,
-    private readonly request: typeof fetch = fetch,
-  ) {}
+    request: typeof fetch = fetch,
+  ) {
+    this.client = new OllamaClient(request);
+  }
 
   async summarize(meeting: Meeting): Promise<Notes> {
     const model = this.model();
-    const frames = selectedFrames(meeting);
-    await this.verifyLocalModel(model, Boolean(frames.length));
-
-    const content: Array<Record<string, unknown>> = [
-      { type: 'text', text: meetingContext(meeting) },
-    ];
-    for (const frame of frames) {
-      content.push({ type: 'text', text: `Écran à ${frame.at.toFixed(1)} secondes.` });
-      content.push({
-        type: 'image_url',
-        image_url: {
-          url: `data:image/jpeg;base64,${(await this.media.readFrame(meeting.id, frame.index)).toString('base64')}`,
-        },
-      });
+    await this.client.verifyLocalModel(model, meeting.frames.length > 0);
+    const slices = planSlices(meeting, estimateTokens(partialInstruction));
+    const [only] = slices;
+    if (only && slices.length === 1) {
+      const text = await this.ask(model, meeting, only, notesInstruction);
+      return readable(() => parseGroundedNotes(text, meeting));
     }
-
-    const response = await this.call('http://127.0.0.1:11434/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: notesInstruction },
-          { role: 'user', content },
-        ],
-      }),
-      signal: AbortSignal.timeout(300_000),
-    });
-    if (!response.ok)
-      throw new Error('Ollama n’a pas pu créer les notes. Vérifiez le modèle choisi.');
-    try {
-      const result = completionSchema.parse(await response.json());
-      const text = result.choices[0]?.message.content;
-      if (!text) throw new Error('Réponse Ollama vide.');
-      return parseGroundedNotes(text, meeting);
-    } catch (error) {
-      if (error instanceof UngroundedNotesError) throw error;
-      throw new Error('Réponse Ollama incomplète. Essayez un autre modèle de vision.');
+    const partials: Notes[] = [];
+    for (const slice of slices) {
+      const sources = new Set([
+        ...slice.blocks.map((block) => block.id),
+        ...slice.clarifications.map((item) => item.id),
+      ]);
+      const text = await this.ask(model, meeting, slice, partialInstruction);
+      partials.push(readable(() => groundedNotes(text, sources)));
     }
+    return this.reduce(model, meeting, partials);
   }
 
-  private async verifyLocalModel(model: string, needsVision: boolean): Promise<void> {
-    if (model.endsWith(':cloud')) {
-      throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
+  private async reduce(model: string, meeting: Meeting, partials: Notes[]): Promise<Notes> {
+    let level = partials;
+    for (let round = 0; round < MAX_REDUCE_ROUNDS; round += 1) {
+      const groups = groupPartials(meeting.title, level);
+      const [last] = groups;
+      if (last && groups.length === 1) {
+        const text = await this.merge(model, meeting, last);
+        return readable(() => parseGroundedNotes(text, meeting));
+      }
+      const merged: Notes[] = [];
+      for (const group of groups) {
+        const [alone] = group;
+        if (alone && group.length === 1) {
+          merged.push(alone);
+          continue;
+        }
+        const text = await this.merge(model, meeting, group);
+        merged.push(readable(() => groundedNotes(text, citedIds(group))));
+      }
+      level = merged;
     }
-    const response = await this.call('http://127.0.0.1:11434/api/show', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!response.ok) throw new Error('Modèle Ollama introuvable. Téléchargez-le puis réessayez.');
-    const details = capabilitySchema.parse(await response.json());
-    if (details.remote_host || details.remote_model) {
-      throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
-    }
-    if (needsVision && !details.capabilities.includes('vision')) {
-      throw new Error('Ce modèle Ollama ne lit pas les images. Choisissez un modèle de vision.');
-    }
+    throw new Error(
+      'Cette réunion est trop longue pour ce modèle Ollama. Choisissez un modèle ou un fournisseur à plus grande capacité.',
+    );
   }
 
-  private async call(url: string, options: RequestInit): Promise<Response> {
-    try {
-      return await this.request(url, options);
-    } catch {
-      throw new Error('Ollama est inaccessible. Démarrez Ollama sur cet ordinateur.');
+  private merge(model: string, meeting: Meeting, group: Notes[]): Promise<string> {
+    return this.client.chat({
+      model,
+      system: reduceInstruction,
+      user: reduceContext(meeting.title, group),
+      images: [],
+    });
+  }
+
+  private async ask(
+    model: string,
+    meeting: Meeting,
+    slice: NotesSlice,
+    system: string,
+  ): Promise<string> {
+    const images: Buffer[] = [];
+    for (const frame of slice.frames) {
+      images.push(await this.media.readFrame(meeting.id, frame.index));
     }
+    return this.client.chat({ model, system, user: sliceContext(meeting.title, slice), images });
   }
 }
