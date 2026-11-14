@@ -4,6 +4,14 @@ import type { NoteItem } from '../../shared/contracts';
 export const MAX_LIST_ITEMS = 30;
 export const MAX_ITEM_SOURCES = 20;
 
+// qwen3.5:4b sometimes states the absence of a decision or an action as an item of its own.
+const ABSENCE =
+  /^(?:il n[’']y a\s+)?(?:aucune?|pas\s+de|pas\s+d[’'])\s*(?:nouvelles?\s+)?(?:décision|action|tâche)/iu;
+
+export function statesAbsence(text: string): boolean {
+  return ABSENCE.test(text.trim());
+}
+
 function sameItem(text: string): string {
   const key = text
     .toLowerCase()
@@ -23,7 +31,7 @@ export function concatenateItems(
   onCut: (dropped: number) => void = () => undefined,
 ): NoteItem[] {
   const byText = new Map<string, NoteItem>();
-  for (const item of lists.flat()) {
+  for (const item of lists.flat().filter((candidate) => !statesAbsence(candidate.text))) {
     const key = sameItem(item.text);
     const known = byText.get(key);
     if (!known) {

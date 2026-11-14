@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UngroundedNotesError, notesInstruction } from './notes-context';
-import { MERGE_LIMITS } from './notes-format';
+import { MERGE_LIMITS, PROMPT_SUMMARY_CHARS, SLICE_LIMITS } from './notes-format';
 import {
   type Condensed,
   citedIds,
@@ -161,5 +161,15 @@ describe('slice instructions', () => {
   it('leave the instruction the other providers share untouched', () => {
     expect(notesInstruction).not.toContain(definition);
     expect(reduceInstruction).not.toContain(definition);
+  });
+});
+
+describe('summary length asked of the model', () => {
+  it('stays below the grammar cap, so a model aiming at the limit is not cut mid-word', () => {
+    expect(sliceInstruction).toContain('un résumé de 300 caractères');
+    expect(partialInstruction).toContain('un résumé de 300 caractères');
+    expect(reduceInstruction).toContain('un résumé de 440 caractères');
+    expect(PROMPT_SUMMARY_CHARS.slice).toBeLessThan(SLICE_LIMITS.summary);
+    expect(PROMPT_SUMMARY_CHARS.merge).toBeLessThan(MERGE_LIMITS.summary);
   });
 });

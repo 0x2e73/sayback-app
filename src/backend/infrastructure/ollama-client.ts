@@ -93,7 +93,7 @@ export class OllamaClient {
     const tight = (reply.data.prompt_eval_count ?? 0) + OUTPUT_TOKENS > CONTEXT_TOKENS;
     if (tight && (reply.data.done_reason === 'length' || !isJson(content))) {
       throw new Error(
-        'Cette partie de la réunion est trop dense pour la fenêtre du modèle Ollama. Réessayer ne changera rien : utilisez un fournisseur à plus grande capacité dans les réglages.',
+        'Cette partie de la réunion est trop dense pour la fenêtre du modèle Ollama. Relancer suffit rarement : utilisez un fournisseur à plus grande capacité dans les réglages.',
       );
     }
     if (reply.data.done_reason === 'length') {

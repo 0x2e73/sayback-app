@@ -84,6 +84,7 @@ describe('Ollama notes failures', () => {
 
     await expect(failure).rejects.toThrow(/trop dense pour la fenêtre/);
     await expect(failure).rejects.toThrow(/fournisseur à plus grande capacité/);
+    await expect(failure).rejects.toThrow(/Relancer suffit rarement/);
     await expect(failure).rejects.not.toThrow(/Relancez/);
     await expect(failure).rejects.not.toThrow(/secret/);
   });

@@ -2,7 +2,7 @@ import type { Meeting, NoteItem, Notes } from '../../shared/contracts';
 import type { AiMedia } from './openai-intelligence';
 import { groundedNotes, parseGroundedNotes, UngroundedNotesError } from './notes-context';
 import { mergeFormat, sliceFormat } from './notes-format';
-import { concatenateItems } from './notes-lists';
+import { concatenateItems, statesAbsence } from './notes-lists';
 import {
   type Condensed,
   citedIds,
@@ -54,7 +54,12 @@ export class OllamaNotes {
     const [only] = slices;
     if (only && slices.length === 1) {
       const text = await this.ask(model, meeting, only, sliceInstruction);
-      return readable(() => parseGroundedNotes(text, meeting));
+      const notes = readable(() => parseGroundedNotes(text, meeting));
+      return {
+        ...notes,
+        decisions: notes.decisions.filter((item) => !statesAbsence(item.text)),
+        actions: notes.actions.filter((item) => !statesAbsence(item.text)),
+      };
     }
     const partials: Notes[] = [];
     for (const slice of slices) {
@@ -78,7 +83,7 @@ export class OllamaNotes {
   }
 
   // Count only, never text: the in-app hint about a cut list is a separate ticket (SAY-8).
-  private concatenated(list: string, lists: NoteItem[][]): NoteItem[] {
+  private concatenated(list: 'decisions' | 'actions', lists: NoteItem[][]): NoteItem[] {
     return concatenateItems(lists, (dropped) =>
       this.warn(`[ollama-notes] ${list} cut at the contract maximum: ${dropped} dropped`),
     );

@@ -3,6 +3,8 @@
 // answer holds only summary, keyPoints and questions: decisions and actions never go through a merge.
 // The prompt asks for PROMPT_ITEM_CHARS characters per item; the grammar cap is only a runaway guard.
 export const PROMPT_ITEM_CHARS = 140;
+// A summary asked at its grammar cap gets cut mid-word by a model that aims at the limit.
+export const PROMPT_SUMMARY_CHARS = { slice: 300, merge: 440 } as const;
 export const SLICE_LIMITS = {
   summary: 350,
   keyPoints: 3,

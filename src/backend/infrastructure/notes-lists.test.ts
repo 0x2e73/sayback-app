@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { notesSchema } from '../../shared/validation';
-import { MAX_ITEM_SOURCES, MAX_LIST_ITEMS, concatenateItems } from './notes-lists';
+import { MAX_ITEM_SOURCES, MAX_LIST_ITEMS, concatenateItems, statesAbsence } from './notes-lists';
 
 describe('concatenateItems', () => {
   it('keeps every item of every slice, in chronological order, ids untouched', () => {
@@ -73,5 +73,44 @@ describe('concatenateItems', () => {
     concatenateItems(lists.slice(0, 30), (dropped) => cuts.push(dropped));
 
     expect(cuts).toEqual([6]);
+  });
+});
+
+describe('statesAbsence', () => {
+  it.each([
+    'Aucune décision n’a été prise',
+    'Pas d’action',
+    'Il n’y a pas de décision formelle',
+    '  aucune nouvelle action à retenir',
+    'Pas de tâche assignée',
+  ])('recognises « %s » as the absence of an item', (text) => {
+    expect(statesAbsence(text)).toBe(true);
+  });
+
+  it.each([
+    'Décision : aucune hausse de prix',
+    'Valider le budget',
+    'Action prioritaire : envoyer le devis',
+    'Paul n’a aucune action en cours sur le sujet',
+  ])('keeps « %s »', (text) => {
+    expect(statesAbsence(text)).toBe(false);
+  });
+});
+
+describe('concatenateItems and absence', () => {
+  it('drops an item that states an absence, before dedupe and before counting a cut', () => {
+    const cuts: number[] = [];
+    const lists = [
+      [{ text: 'Aucune décision n’a été prise', sourceIds: ['0-0'] }],
+      ...Array.from({ length: 31 }, (_unused, slice) => [
+        { text: `Décision ${slice}`, sourceIds: [`${slice}-0`] },
+      ]),
+    ];
+
+    const merged = concatenateItems(lists, (dropped) => cuts.push(dropped));
+
+    expect(merged.map((item) => item.text)).not.toContain('Aucune décision n’a été prise');
+    expect(merged).toHaveLength(MAX_LIST_ITEMS);
+    expect(cuts).toEqual([1]);
   });
 });

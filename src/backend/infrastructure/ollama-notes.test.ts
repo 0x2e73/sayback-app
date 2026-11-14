@@ -11,6 +11,7 @@ import {
 import {
   type ChatCall,
   callOf,
+  echoNotes,
   fakeOllama,
   ids,
   meetingOf,
@@ -65,6 +66,22 @@ describe('Ollama notes on a short meeting', () => {
     expect(calls[0]?.system).toContain('140 caractères');
     expect(calls[0]?.system).toContain('4 décisions, 4 actions');
     expect(allowedIds(callOf(calls, 'single'))).toEqual(['0-0', '1-0', '2-0']);
+  });
+
+  it('drops a decision or an action that only states an absence, on the single-call path too', async () => {
+    const { request } = fakeOllama((call) => ({
+      ...echoNotes(call),
+      decisions: [
+        { text: 'Aucune décision n’a été prise', sourceIds: ['0-0'] },
+        { text: 'Garder mardi', sourceIds: ['1-0'] },
+      ],
+      actions: [{ text: 'Pas d’action', sourceIds: ['0-0'] }],
+    }));
+
+    const notes = await providerOver(request).summarize(meetingOf({ blocks: 3 }));
+
+    expect(notes.decisions).toEqual([{ text: 'Garder mardi', sourceIds: ['1-0'] }]);
+    expect(notes.actions).toEqual([]);
   });
 
   it('explains when the selected local model cannot read the screen', async () => {
