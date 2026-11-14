@@ -4,9 +4,41 @@ import type { NoteItem } from '../../shared/contracts';
 export const MAX_LIST_ITEMS = 30;
 export const MAX_ITEM_SOURCES = 20;
 
-// qwen3.5:4b sometimes states the absence of a decision or an action as an item of its own.
-const ABSENCE =
-  /^(?:il n[’']y a\s+)?(?:aucune?|pas\s+de|pas\s+d[’'])\s*(?:nouvelles?\s+)?(?:décision|action|tâche)/iu;
+// qwen3.5:4b sometimes states the absence of a decision or an action as an item of its own. Only an
+// item that says that and nothing else is dropped: the whole text must match, so « Pas de décision
+// avant le comité du 12 juin » (a deferral) or « Aucun actionnaire ne sera dilué » stay.
+const APOSTROPHE = "[’']";
+const ABSENCE_FILLERS = [
+  'formelles?',
+  'explicites?',
+  'concrètes?',
+  'claires?',
+  'particulières?',
+  'précises?',
+  'prises?',
+  'retenues?',
+  'identifiées?',
+  'assignées?',
+  'mentionnées?',
+  `n${APOSTROPHE}a été (?:prise|actée|décidée|assignée|retenue|identifiée)`,
+  `n${APOSTROPHE}ont été (?:prises|actées|décidées|assignées|retenues|identifiées)`,
+  `n${APOSTROPHE}est ressortie`,
+  'à (?:retenir|signaler|noter)',
+  'pour cette partie',
+  'dans cet extrait',
+  'lors de cet échange',
+];
+const ABSENCE = new RegExp(
+  [
+    `^(?:il n${APOSTROPHE}y a\\s+)?`,
+    `(?:aucune?|pas\\s+de|pas\\s+d${APOSTROPHE})\\s*`,
+    '(?:nouvelles?\\s+)?',
+    '(?:décisions?|actions?|tâches?)(?![\\p{L}\\p{N}])',
+    `(?:\\s+(?:${ABSENCE_FILLERS.join('|')}))*`,
+    '\\s*[.!…]*\\s*$',
+  ].join(''),
+  'iu',
+);
 
 export function statesAbsence(text: string): boolean {
   return ABSENCE.test(text.trim());

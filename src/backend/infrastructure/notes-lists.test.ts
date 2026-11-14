@@ -83,7 +83,14 @@ describe('statesAbsence', () => {
     'Il n’y a pas de décision formelle',
     '  aucune nouvelle action à retenir',
     'Pas de tâche assignée',
-  ])('recognises « %s » as the absence of an item', (text) => {
+    'Aucune décision explicite dans cet extrait.',
+    'Pas de décisions',
+    'AUCUNE DÉCISION',
+    'Aucune action.',
+    "Aucune décision n'a été prise",
+    "Il n'y a pas de décision formelle",
+    'Aucune action concrète pour cette partie',
+  ])('drops « %s », which only states an absence', (text) => {
     expect(statesAbsence(text)).toBe(true);
   });
 
@@ -92,7 +99,14 @@ describe('statesAbsence', () => {
     'Valider le budget',
     'Action prioritaire : envoyer le devis',
     'Paul n’a aucune action en cours sur le sujet',
-  ])('keeps « %s »', (text) => {
+    'Aucun actionnaire ne sera dilué',
+    'Pas d’actionnariat salarié cette année',
+    'Pas de décisionnaire unique, vote collégial',
+    'Aucune tâcheronne',
+    'Aucune action en justice contre le fournisseur',
+    'Pas de décision avant le comité du 12 juin',
+    'Aucune tâche manuelle : tout passe par le script',
+  ])('keeps « %s », which says more than an absence', (text) => {
     expect(statesAbsence(text)).toBe(false);
   });
 });
