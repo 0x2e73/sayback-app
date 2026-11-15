@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { CliNotesProvider, NotesProvider } from '../../shared/contracts';
 import { compatibleBaseUrl } from '../../shared/compatible-url';
+import { isCliNotesProvider } from '../../shared/cli-notes';
 
 const modelPageSchema = z.object({
   data: z.array(z.object({ id: z.string() })),
@@ -37,7 +38,7 @@ export class ProviderModels {
     if (provider === 'anthropic') return this.listAnthropic();
     if (provider === 'gemini') return this.listGemini();
     if (provider === 'compatible') return this.listCompatible();
-    if (provider === 'claude-code' || provider === 'codex') return this.cli.models(provider);
+    if (isCliNotesProvider(provider)) return this.cli.models(provider);
     return this.listOllama();
   }
 

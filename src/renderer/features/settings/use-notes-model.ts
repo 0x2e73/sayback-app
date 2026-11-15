@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { NotesProvider } from '../../../shared/contracts';
+import { cliDefaultModel, isCliNotesProvider } from '../../../shared/cli-notes';
 
 export function useNotesModel() {
   const [model, setModel] = useState('gpt-4.1-mini');
@@ -18,8 +19,9 @@ export function useNotesModel() {
   const reconcile = useCallback(
     (provider: NotesProvider, wanted: string, available: readonly string[]) => {
       // A CLI always has its own choice: nothing to pick unless the user wants another model.
-      const cli = provider === 'claude-code' || provider === 'codex';
-      if (cli && !wanted && available.includes('default')) setModel('default');
+      if (isCliNotesProvider(provider) && !wanted && available.includes(cliDefaultModel)) {
+        setModel(cliDefaultModel);
+      }
       if (provider === 'compatible' || !wanted || !available.length) return;
       if (available.includes(wanted)) return;
       setModel('');
