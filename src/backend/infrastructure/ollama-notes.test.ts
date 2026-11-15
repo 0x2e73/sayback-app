@@ -92,6 +92,16 @@ describe('Ollama notes on a short meeting', () => {
     expect(ids(notes)).toEqual(['0-0', '2-0', '0-0', '0-0', '2-0']);
   });
 
+  it('accepts a model whose /api/show reply lists no capabilities', async () => {
+    const { request: chat } = fakeOllama();
+    const request = (async (url: string | URL | Request, options?: RequestInit) =>
+      String(url).endsWith('/api/show') ? new Response('{}') : chat(url, options)) as typeof fetch;
+
+    const notes = await providerOver(request).summarize(meetingOf({ blocks: 3 }));
+
+    expect(ids(notes)).toEqual(['0-0', '2-0', '0-0', '0-0', '2-0']);
+  });
+
   it('refuses Ollama cloud aliases before sending meeting content', async () => {
     const request = (async () =>
       new Response(

@@ -126,7 +126,7 @@ function toResponse(reply: Reply): Response {
 /** A fake Ollama: `/api/show` answers `capabilities`, `/api/chat` answers `reply(call)`. */
 export function fakeOllama(
   reply: (call: ChatCall, index: number) => Reply = echoNotes,
-  capabilities: string[] = ['completion', 'vision'],
+  capabilities: string[] = ['completion'],
 ) {
   const calls: ChatCall[] = [];
   const request = vi.fn(async (url: string | URL | Request, options?: RequestInit) => {

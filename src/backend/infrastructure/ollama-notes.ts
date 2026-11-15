@@ -17,7 +17,7 @@ import { type NotesSlice, planSlices, sliceContext, sliceSourceIds } from './not
 import { MAX_REDUCE_ROUNDS, estimateTokens } from './ollama-budget';
 import { OllamaClient } from './ollama-client';
 
-// Notes the model wrote but that do not parse: the cause is the answer, not the model's vision.
+// Notes the model wrote but that do not parse: the cause is the answer.
 function readable<T>(parse: () => T): T {
   try {
     return parse();

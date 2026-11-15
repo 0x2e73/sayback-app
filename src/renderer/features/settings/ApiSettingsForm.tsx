@@ -145,7 +145,7 @@ function modelHint(settings: FormSettings): ReactNode {
     );
   }
   if (settings.notesProvider === 'ollama') {
-    return <>Ollama doit être démarré, avec un modèle qui lit les images.</>;
+    return <>Ollama doit être démarré, avec un modèle installé sur cet ordinateur.</>;
   }
   if (settings.notesProvider === 'compatible' && !settings.models.length) {
     return <>Si la liste ne se charge pas, saisissez l’identifiant du modèle.</>;

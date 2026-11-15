@@ -14,7 +14,7 @@
 
 ## Travaux avant une distribution publique
 
-1. **Compatibilité des modèles.** Les API listent aussi des modèles qui ne peuvent pas produire des notes ou lire des images. Filtrer ou annoter les capacités avant distribution, notamment pour OpenAI et Claude. Ollama vérifie déjà la vision lorsque la réunion contient des images. Les identifiants avec `:` sont acceptés.
+1. **Compatibilité des modèles.** Les API listent aussi des modèles qui ne peuvent pas produire des notes ou lire des images. Filtrer ou annoter les capacités avant distribution, notamment pour OpenAI et Claude. Ollama ne reçoit aucune image : il n’a donc pas besoin d’un modèle de vision. Les identifiants avec `:` sont acceptés.
 2. **Gestion des secrets.** Garder toute clé fournisseur dans le processus principal. Ne jamais inclure une clé de service SayBack dans l’application distribuée, la landing ou le dépôt. Tester le chiffrement et la lecture après mise à jour d’une version signée.
 3. **Données locales.** Documenter les permissions des fichiers, la suppression complète d’une réunion et les sauvegardes. Aujourd’hui, la clé est chiffrée, mais les enregistrements et la base SQLite ne le sont pas. Ne pas promettre un chiffrement intégral.
 4. **Consentement et coût.** L’option d’analyse automatique est annoncée avant la capture et peut être désactivée. Le coût de transcription OpenAI affiché reste indicatif ; Claude et les modèles OpenAI de notes peuvent aussi être facturés. Avant distribution, vérifier périodiquement les tarifs, rendre l’estimation des notes plus précise et mesurer les temps réels sur des réunions longues.

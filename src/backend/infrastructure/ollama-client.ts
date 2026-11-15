@@ -7,8 +7,7 @@ const replySchema = z.object({
   done_reason: z.string().optional(),
   prompt_eval_count: z.number().optional(),
 });
-const capabilitySchema = z.object({
-  capabilities: z.array(z.string()),
+const showSchema = z.object({
   remote_host: z.string().optional(),
   remote_model: z.string().optional(),
 });
@@ -44,7 +43,7 @@ export class OllamaClient {
     }
     const response = await this.post('/api/show', { model }, 20_000);
     if (!response.ok) throw new Error('Modèle Ollama introuvable. Téléchargez-le puis réessayez.');
-    const details = capabilitySchema.parse(await response.json());
+    const details = showSchema.parse(await response.json());
     if (details.remote_host || details.remote_model) {
       throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
     }
