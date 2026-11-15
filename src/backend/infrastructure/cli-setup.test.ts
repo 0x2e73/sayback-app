@@ -42,7 +42,8 @@ describe('Claude Code setup', () => {
 
     expect(runs).toHaveLength(1);
     expect(runs[0]!.command).toBe('/opt/homebrew/bin/claude');
-    expect(runs[0]!.timeoutMs).toBeLessThanOrEqual(30_000);
+    expect(runs[0]!.timeoutMs).toBe(20_000);
+    expect(runs[0]!.maxOutputBytes).toBe(2_000_000);
     expect(Object.keys(runs[0]!.env).join()).not.toMatch(/KEY|TOKEN|SECRET/);
   });
 

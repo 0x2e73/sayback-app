@@ -1,13 +1,16 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Meeting, NoteItem, Notes } from '../../shared/contracts';
+import { cliDefaultModel } from '../../shared/cli-notes';
 import type { AiMedia } from './openai-intelligence';
-import { cliEnvironment } from './cli-environment';
+import { cliCall } from './cli-call';
 import {
+  brokenInstall,
   CliRefusalError,
   CliReportedError,
   explainError,
   explainOutput,
+  looksBroken,
   notInstalled,
   type CliLabels,
 } from './cli-failures';
@@ -19,7 +22,7 @@ export interface CliNotesDependencies {
   runner: CliRunner;
   locate(binary: string): string | undefined;
   environment: NodeJS.ProcessEnv;
-  /** The parent of the per-run working folders, normally the system temp folder. */
+  /** The parent of the per-run working folders: `<userData>/cli-runs`, wiped at start and close. */
   tempRoot: string;
   /** Aborted when the app quits: the running process is stopped. */
   signal?: AbortSignal;
@@ -55,14 +58,13 @@ export interface CliTool extends CliLabels {
   errorText(output: CliOutput): string;
 }
 
-// Five minutes for a long transcript on a subscription model; one megabyte is far above the notes.
+// Five minutes for a long transcript on a subscription model.
 const timeoutMs = 300_000;
-const maxOutputBytes = 2_000_000;
 
 /** `default` is the CLI's own choice. A model is a word, never something that reads as an option. */
 export function chosenModel(label: string, value: string): string {
   const model = value.trim();
-  if (!model || model === 'default') return '';
+  if (!model || model === cliDefaultModel) return '';
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,119}$/.test(model)) {
     throw new Error(`Modèle ${label} invalide.`);
   }
@@ -130,18 +132,16 @@ export class CliNotes {
     invocation: CliInvocation,
   ): Promise<CliOutput> {
     const { dependencies } = this;
-    const folder = command.slice(0, command.lastIndexOf('/')) || '/usr/bin';
     try {
-      return await dependencies.runner({
-        command,
-        args: invocation.args,
-        input: invocation.input,
-        cwd: directory,
-        env: { ...cliEnvironment(dependencies.environment, folder), ...this.tool.environment },
-        timeoutMs,
-        maxOutputBytes,
-        signal: dependencies.signal,
-      });
+      return await dependencies.runner(
+        cliCall(dependencies, command, {
+          args: invocation.args,
+          input: invocation.input,
+          cwd: directory,
+          timeoutMs,
+          environment: this.tool.environment,
+        }),
+      );
     } catch (error) {
       throw explainError(error, this.tool);
     }
@@ -149,6 +149,7 @@ export class CliNotes {
 
   private async answer(output: CliOutput, invocation: CliInvocation): Promise<string> {
     if (output.exitCode !== 0) {
+      if (looksBroken(output)) throw new Error(brokenInstall(this.tool));
       throw new Error(explainOutput(this.tool.errorText(output), this.tool));
     }
     try {
