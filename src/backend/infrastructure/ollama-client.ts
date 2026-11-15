@@ -17,7 +17,6 @@ export interface ChatInput {
   model: string;
   system: string;
   user: string;
-  images: Buffer[];
   /** JSON schema of the answer. */
   format: object;
 }
@@ -39,7 +38,7 @@ function isTimeout(error: unknown): boolean {
 export class OllamaClient {
   constructor(private readonly request: typeof fetch) {}
 
-  async verifyLocalModel(model: string, needsVision: boolean): Promise<void> {
+  async verifyLocalModel(model: string): Promise<void> {
     if (/[:-]cloud$/.test(model)) {
       throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
     }
@@ -48,9 +47,6 @@ export class OllamaClient {
     const details = capabilitySchema.parse(await response.json());
     if (details.remote_host || details.remote_model) {
       throw new Error('Ce modèle Ollama utilise le cloud. Choisissez un modèle local.');
-    }
-    if (needsVision && !details.capabilities.includes('vision')) {
-      throw new Error('Ce modèle Ollama ne lit pas les images. Choisissez un modèle de vision.');
     }
   }
 
@@ -67,13 +63,7 @@ export class OllamaClient {
         options: { num_ctx: CONTEXT_TOKENS, num_predict: OUTPUT_TOKENS },
         messages: [
           { role: 'system', content: input.system },
-          {
-            role: 'user',
-            content: input.user,
-            ...(input.images.length
-              ? { images: input.images.map((image) => image.toString('base64')) }
-              : {}),
-          },
+          { role: 'user', content: input.user },
         ],
       },
       REQUEST_TIMEOUT_MS,
@@ -87,7 +77,7 @@ export class OllamaClient {
     if (!reply.success)
       throw new Error('Ollama a renvoyé une réponse illisible. Relancez l’analyse.');
     const content = reply.data.message.content;
-    // Dense text or a tall frame can cost more than estimated and leave the answer no room. An answer
+    // Dense text can cost more than estimated and leave the answer no room. An answer
     // that ended on its own and parses is kept; a cut or unreadable one is this cause, and retrying
     // cannot change it.
     const tight = (reply.data.prompt_eval_count ?? 0) + OUTPUT_TOKENS > CONTEXT_TOKENS;

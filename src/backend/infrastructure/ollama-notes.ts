@@ -1,5 +1,4 @@
 import type { Meeting, NoteItem, Notes } from '../../shared/contracts';
-import type { AiMedia } from './openai-intelligence';
 import { groundedNotes, parseGroundedNotes, UngroundedNotesError } from './notes-context';
 import { mergeFormat, sliceFormat } from './notes-format';
 import { concatenateItems, statesAbsence } from './notes-lists';
@@ -40,7 +39,6 @@ export class OllamaNotes {
 
   constructor(
     private readonly model: () => string,
-    private readonly media: AiMedia,
     request: typeof fetch = fetch,
     private readonly warn: (message: string) => void = console.warn,
   ) {
@@ -49,7 +47,8 @@ export class OllamaNotes {
 
   async summarize(meeting: Meeting): Promise<Notes> {
     const model = this.model();
-    await this.client.verifyLocalModel(model, meeting.frames.length > 0);
+    // Text only: on a 4B model with a 4096 window, a frame costs 44 % of the prompt and invents decisions.
+    await this.client.verifyLocalModel(model);
     const slices = planSlices(meeting, estimateTokens(partialInstruction));
     const [only] = slices;
     if (only && slices.length === 1) {
@@ -114,7 +113,6 @@ export class OllamaNotes {
       model,
       system: reduceInstruction,
       user: reduceContext(meeting.title, group),
-      images: [],
       format: mergeFormat([...sources]),
     });
     return readable(() => groundedCondensed(text, sources));
@@ -126,16 +124,11 @@ export class OllamaNotes {
     slice: NotesSlice,
     system: string,
   ): Promise<string> {
-    const images: Buffer[] = [];
-    for (const frame of slice.frames) {
-      images.push(await this.media.readFrame(meeting.id, frame.index));
-    }
     const ids = sliceSourceIds(slice);
     return this.client.chat({
       model,
       system,
       user: sliceContext(meeting.title, slice),
-      images,
       format: sliceFormat(ids.length ? ids : undefined),
     });
   }

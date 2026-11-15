@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { type Condensed, sliceInstruction } from './notes-reduce';
 import {
   CONTEXT_TOKENS,
-  FRAME_TOKENS,
-  MAX_FRAMES_PER_CALL,
   OUTPUT_TOKENS,
   REQUEST_OVERHEAD_TOKENS,
   estimateTokens,
@@ -21,10 +19,7 @@ import {
 } from './ollama-fake.test-support';
 
 function fits(call: ChatCall): boolean {
-  const prompt =
-    estimateTokens(call.system + call.user) +
-    call.images.length * FRAME_TOKENS +
-    REQUEST_OVERHEAD_TOKENS;
+  const prompt = estimateTokens(call.system + call.user) + REQUEST_OVERHEAD_TOKENS;
   return prompt + OUTPUT_TOKENS <= CONTEXT_TOKENS;
 }
 
@@ -40,7 +35,7 @@ function allowedIds(call: ChatCall): string[] {
 describe('Ollama notes on a short meeting', () => {
   it('makes one call to the native chat API, pinned to the window and without thinking', async () => {
     const { request, calls, spy } = fakeOllama();
-    const meeting = meetingOf({ blocks: 3, frames: 1 });
+    const meeting = meetingOf({ blocks: 3 });
 
     const notes = await providerOver(request).summarize(meeting);
 
@@ -48,7 +43,6 @@ describe('Ollama notes on a short meeting', () => {
     expect(String(spy.mock.calls[1]?.[0])).toBe('http://127.0.0.1:11434/api/chat');
     expect(calls).toHaveLength(1);
     expect(calls[0]?.system).toBe(sliceInstruction);
-    expect(calls[0]?.images).toEqual([Buffer.from('image').toString('base64')]);
     expect(calls[0]?.body).toMatchObject({
       model: 'qwen3.5:4b',
       stream: false,
@@ -84,13 +78,18 @@ describe('Ollama notes on a short meeting', () => {
     expect(notes.actions).toEqual([]);
   });
 
-  it('explains when the selected local model cannot read the screen', async () => {
-    const { request, spy } = fakeOllama(undefined, ['completion']);
+  it('sends no image and asks for no vision, even when the meeting has screen frames', async () => {
+    const { request, calls, spy } = fakeOllama(undefined, ['completion']);
 
-    await expect(
-      providerOver(request, 'text-only').summarize(meetingOf({ blocks: 2, frames: 1 })),
-    ).rejects.toThrow(/vision/);
-    expect(spy).toHaveBeenCalledOnce();
+    const notes = await providerOver(request, 'text-only').summarize(
+      meetingOf({ blocks: 3, frames: 5 }),
+    );
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.images).toEqual([]);
+    expect(calls[0]?.user).not.toContain('screens');
+    expect(ids(notes)).toEqual(['0-0', '2-0', '0-0', '0-0', '2-0']);
   });
 
   it('refuses Ollama cloud aliases before sending meeting content', async () => {
@@ -171,22 +170,18 @@ describe('Ollama notes on a long meeting', () => {
     expect(map?.system).toContain(sliceInstruction);
   });
 
-  it('spreads the screen frames over the calls and names the block each one overlaps', async () => {
-    const { request, calls } = fakeOllama();
+  it('sends no image and plans the same slices as without frames when the meeting has screen frames', async () => {
+    const plain = fakeOllama();
+    const framed = fakeOllama();
 
-    await providerOver(request).summarize(meetingOf({ blocks: 68, frames: 60 }));
+    await providerOver(plain.request).summarize(meetingOf({ blocks: 68 }));
+    await providerOver(framed.request).summarize(meetingOf({ blocks: 68, frames: 60 }));
 
-    const maps = calls.filter((call) => call.kind === 'map');
-    expect(maps.filter((call) => call.images.length > 0).length).toBeGreaterThan(3);
-    expect(Math.max(...maps.map((call) => call.images.length))).toBeLessThanOrEqual(
-      MAX_FRAMES_PER_CALL,
-    );
-    const withImage = maps.find((call) => call.images.length > 0);
-    expect(withImage?.user).toMatch(/écran à [\d.]+ secondes \(bloc \d+-0\)/);
-    expect(
-      calls.filter((call) => call.kind === 'reduce').every((call) => !call.images.length),
-    ).toBe(true);
-    expect(calls.every(fits)).toBe(true);
+    expect(framed.calls.length).toBeGreaterThan(0);
+    expect(framed.calls.every((call) => call.images.length === 0)).toBe(true);
+    expect(framed.calls.some((call) => call.user.includes('screens'))).toBe(false);
+    expect(framed.calls.map((call) => call.user)).toEqual(plain.calls.map((call) => call.user));
+    expect(framed.calls.every(fits)).toBe(true);
   });
 
   it('reduces in bounded rounds when the partial notes do not fit one call', async () => {

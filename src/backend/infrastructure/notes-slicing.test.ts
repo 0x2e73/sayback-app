@@ -1,17 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { FRAME_TOKENS, MAX_FRAMES_PER_CALL, PROMPT_BUDGET, estimateTokens } from './ollama-budget';
+import { PROMPT_BUDGET, estimateTokens } from './ollama-budget';
 import { frenchText, meetingOf } from './ollama-fake.test-support';
 import { planSlices, sliceContext, sliceSourceIds } from './notes-slicing';
 
 const instructionTokens = 400;
-const emptySlice = { blocks: [], clarifications: [], frames: [] };
+const emptySlice = { blocks: [], clarifications: [] };
 
 function used(slice: ReturnType<typeof planSlices>[number], title = 'Revue produit'): number {
-  return (
-    instructionTokens +
-    estimateTokens(sliceContext(title, slice)) +
-    slice.frames.length * FRAME_TOKENS
-  );
+  return instructionTokens + estimateTokens(sliceContext(title, slice));
 }
 
 describe('planSlices', () => {
@@ -33,36 +29,18 @@ describe('planSlices', () => {
     );
   });
 
-  it('keeps every slice, with its frames, under the prompt budget', () => {
-    const slices = planSlices(meetingOf({ blocks: 90, frames: 143 }), instructionTokens);
+  it('keeps every slice under the prompt budget', () => {
+    const slices = planSlices(meetingOf({ blocks: 90 }), instructionTokens);
 
     for (const slice of slices) expect(used(slice)).toBeLessThanOrEqual(PROMPT_BUDGET);
   });
 
-  it('gives each frame to the slice that covers its time, at most once', () => {
-    const meeting = meetingOf({ blocks: 90, frames: 143 });
+  it('plans the same slices for a meeting with screen frames as for one without', () => {
+    const without = planSlices(meetingOf({ blocks: 90 }), instructionTokens);
 
-    const slices = planSlices(meeting, instructionTokens);
+    const withFrames = planSlices(meetingOf({ blocks: 90, frames: 143 }), instructionTokens);
 
-    const sent = slices.flatMap((slice) => slice.frames.map((frame) => frame.index));
-    expect(new Set(sent).size).toBe(sent.length);
-    expect(sent.length).toBeGreaterThan(slices.length / 2);
-    slices.forEach((slice, position) => {
-      const start = position === 0 ? 0 : (slice.blocks[0]?.start ?? 0);
-      const end = slices[position + 1]?.blocks[0]?.start ?? Number.POSITIVE_INFINITY;
-      expect(slice.frames.length).toBeLessThanOrEqual(MAX_FRAMES_PER_CALL);
-      for (const frame of slice.frames) {
-        expect(frame.at).toBeGreaterThanOrEqual(start);
-        expect(frame.at).toBeLessThan(end);
-      }
-    });
-  });
-
-  it('reserves room for a frame only when the meeting has frames', () => {
-    const without = planSlices(meetingOf({ blocks: 68 }), instructionTokens);
-    const withFrames = planSlices(meetingOf({ blocks: 68, frames: 40 }), instructionTokens);
-
-    expect(withFrames.length).toBeGreaterThan(without.length);
+    expect(withFrames).toEqual(without);
   });
 
   it('hands each clarification to the slice that covers its time and counts its size', () => {
@@ -104,32 +82,10 @@ describe('planSlices', () => {
     expect(context.clarifications.map((item) => item.id)).toEqual(['clarification:c1']);
   });
 
-  it('names the block each frame overlaps, so a screen can be cited', () => {
-    const slice = {
-      blocks: [
-        { id: '14-0', start: 300, end: 340, text: 'a' },
-        { id: '15-0', start: 345, end: 385, text: 'b' },
-      ],
-      clarifications: [],
-      frames: [
-        { index: 0, at: 312 },
-        { index: 1, at: 350.5 },
-      ],
-    };
-
-    const { screens } = JSON.parse(sliceContext('Revue', slice)) as { screens: string[] };
-
-    expect(screens).toEqual([
-      'Image 1 : écran à 312.0 secondes (bloc 14-0)',
-      'Image 2 : écran à 350.5 secondes (bloc 15-0)',
-    ]);
-  });
-
   it('lists the ids an extract may cite: its blocks and its clarifications', () => {
     const slice = {
       blocks: [{ id: '1-0', start: 0, end: 4, text: 'a' }],
       clarifications: [{ id: 'clarification:c', at: 2, text: 'b' }],
-      frames: [],
     };
 
     expect(sliceSourceIds(slice)).toEqual(['1-0', 'clarification:c']);
