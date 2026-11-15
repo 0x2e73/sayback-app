@@ -72,6 +72,37 @@ describe('Claude Code setup', () => {
   });
 });
 
+describe('a "No such file or directory" warning on stderr', () => {
+  const warning = 'warning: No such file or directory (os error 2)\n';
+  const claudeClosed =
+    'Votre session Claude Code est fermée : reconnectez-vous à Claude Code, puis réessayez.';
+  const codexClosed = 'Votre session Codex est fermée : reconnectez-vous à Codex, puis réessayez.';
+
+  it('does not stop a logged-in CLI that exits 0: the models are still listed', async () => {
+    const claude = setup({ 'auth status': { stdout: loggedIn, stderr: warning } });
+    const codex = setup({
+      'login status': { stderr: `Logged in using ChatGPT\n${warning}` },
+      'debug models': { stdout: catalog, stderr: warning },
+    });
+
+    expect(await claude.setup.models('claude-code')).toEqual([
+      'default',
+      'sonnet',
+      'opus',
+      'haiku',
+    ]);
+    expect(await codex.setup.models('codex')).toEqual(['default', 'gpt-a', 'gpt-b']);
+  });
+
+  it('still reads a closed session when the same warning comes along', async () => {
+    const claude = setup({ 'auth status': { exitCode: 1, stderr: `Not logged in\n${warning}` } });
+    const codex = setup({ 'login status': { exitCode: 1, stderr: `Not logged in\n${warning}` } });
+
+    await expect(claude.setup.models('claude-code')).rejects.toThrow(claudeClosed);
+    await expect(codex.setup.models('codex')).rejects.toThrow(codexClosed);
+  });
+});
+
 describe('Codex setup', () => {
   it('offers the default and the listed models once logged in', async () => {
     const { runs, setup: tool } = setup({

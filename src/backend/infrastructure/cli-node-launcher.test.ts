@@ -85,7 +85,10 @@ describe('a start that fails with the shell codes', () => {
   it.each([
     ['exit 127', { exitCode: 127, stderr: '' }],
     ['exit 126', { exitCode: 126, stderr: '' }],
-    ['a launcher without node', { exitCode: 1, stderr: 'env: node: No such file or directory\n' }],
+    [
+      'a launcher without node',
+      { exitCode: 127, stderr: 'env: node: No such file or directory\n' },
+    ],
   ])('is a broken install on %s, in a run too', async (_name, output) => {
     const fake = replying(output);
     const provider = claudeCodeNotes(() => 'default', media, dependenciesFor(fake.runner, home));

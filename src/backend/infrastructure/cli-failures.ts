@@ -24,14 +24,13 @@ export const brokenInstall = ({ label }: CliLabels) =>
 export const toolRefused = ({ label }: CliLabels) =>
   `${label} a tenté d’utiliser un outil. Notes refusées. Relancez l’analyse ou choisissez un autre fournisseur.`;
 
-const missingFile = /no such file or directory|command not found/i;
-
 /**
  * A program that cannot start is not a closed session: the shell says 127 (not found) or 126 (not
- * executable), and a `#!/usr/bin/env node` launcher without node says so on stderr.
+ * executable), which includes a `#!/usr/bin/env node` launcher without node. Only the exit code
+ * says it: a warning on stderr ("No such file or directory (os error 2)") proves nothing.
  */
-export function looksBroken(output: { exitCode: number; stderr: string }): boolean {
-  return output.exitCode === 126 || output.exitCode === 127 || missingFile.test(output.stderr);
+export function looksBroken(output: { exitCode: number }): boolean {
+  return output.exitCode === 126 || output.exitCode === 127;
 }
 
 // A status code counts only next to a word that says it is one: `"output_tokens":401` is a count.
@@ -44,7 +43,6 @@ const rules: Array<[RegExp, (labels: CliLabels) => string]> = [
     /unknown (option|argument|flag)|unexpected argument|unrecognized (option|argument)/i,
     ({ label }) => `Mettez à jour ${label}, cette version est trop ancienne.`,
   ],
-  [missingFile, brokenInstall],
   [
     new RegExp(
       `not logged in|please (?:run )?/login|\\blog ?in\\b|unauthorized|authenticat|token (?:has )?expired|${statusCode('401')}`,
