@@ -39,6 +39,7 @@ function missingNotes(fields: Fields): string {
   if (fields.notesProvider === 'compatible' && !fields.compatibleBaseUrl.trim()) {
     return 'Indiquez l’URL de votre API compatible.';
   }
+  if (fields.notesProvider === 'claude-code' || fields.notesProvider === 'codex') return '';
   const credentials = {
     openai: {
       entered: fields.openAiKey.trim(),

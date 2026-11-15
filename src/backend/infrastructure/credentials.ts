@@ -19,7 +19,7 @@ const storedSchema = z.object({
     compatible: z.string().default(''),
   }),
   notesProvider: z
-    .enum(['openai', 'anthropic', 'gemini', 'compatible', 'ollama'])
+    .enum(['openai', 'anthropic', 'gemini', 'compatible', 'ollama', 'claude-code', 'codex'])
     .default('openai'),
   transcriptionProvider: z.enum(['openai', 'gemini', 'local']).default('openai'),
   whisperModelPath: z.string().default(''),

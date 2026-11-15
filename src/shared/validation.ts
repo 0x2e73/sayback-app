@@ -37,7 +37,15 @@ export const captureKindSchema = z.enum(['screen', 'microphone']);
 export const appearanceSchema = z.enum(['system', 'light', 'dark']);
 export const setupGuideSchema = z.enum(['whisper', 'ollama']);
 export const settingsSchema = z.object({
-  notesProvider: z.enum(['openai', 'anthropic', 'gemini', 'compatible', 'ollama']),
+  notesProvider: z.enum([
+    'openai',
+    'anthropic',
+    'gemini',
+    'compatible',
+    'ollama',
+    'claude-code',
+    'codex',
+  ]),
   transcriptionProvider: z.enum(['openai', 'gemini', 'local']),
   openAiKey: z.string().trim().max(512),
   anthropicKey: z.string().trim().max(512),
@@ -52,7 +60,9 @@ export const settingsSchema = z.object({
   model: z
     .string()
     .trim()
-    .regex(/^$|^[a-zA-Z0-9._:/-]{1,120}$/),
+    // A local llama.cpp or vLLM server names its model by a path (`/models/x`, `./m.gguf`): valid.
+    // Only a leading `-` is refused, so an id can never read as a command-line option.
+    .regex(/^$|^(?!-)[a-zA-Z0-9._:/-]{1,120}$/),
 });
 const mediaSchema = z
   .object({

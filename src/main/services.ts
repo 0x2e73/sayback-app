@@ -23,6 +23,11 @@ import {
 import { ProviderModels } from '../backend/infrastructure/provider-models';
 import { GeminiIntelligence } from '../backend/infrastructure/gemini-intelligence';
 import { CompatibleNotes } from '../backend/infrastructure/compatible-notes';
+import { claudeCodeNotes } from '../backend/infrastructure/claude-code-notes';
+import { codexNotes } from '../backend/infrastructure/codex-notes';
+import { clearCliRuns, cliDependencies, prepareCliRuns } from './cli-dependencies';
+import { CliSetup } from '../backend/infrastructure/cli-setup';
+import type { CliNotesDependencies } from '../backend/infrastructure/cli-notes';
 import { RecordingService } from '../backend/application/recordings';
 import type { Intelligence } from '../backend/application/ports';
 import type { Settings } from '../shared/contracts';
@@ -46,7 +51,11 @@ function createSummarizer(
   gemini: GeminiIntelligence,
   anthropicKey: string,
   compatibleKey: string,
+  cli: CliNotesDependencies,
 ): Pick<Intelligence, 'summarize'> {
+  if (settings.notesProvider === 'claude-code')
+    return claudeCodeNotes(() => settings.model, media, cli);
+  if (settings.notesProvider === 'codex') return codexNotes(() => settings.model, media, cli);
   if (settings.notesProvider === 'anthropic')
     return new AnthropicNotes(
       () => anthropicKey,
@@ -66,7 +75,11 @@ function createSummarizer(
   return openai;
 }
 
-function createAnalysis(credentials: Credentials, media: MediaFiles): Intelligence {
+function createAnalysis(
+  credentials: Credentials,
+  media: MediaFiles,
+  cli: CliNotesDependencies,
+): Intelligence {
   const settings = credentials.settings();
   const needsOpenAi =
     settings.transcriptionProvider === 'openai' || settings.notesProvider === 'openai';
@@ -87,7 +100,15 @@ function createAnalysis(credentials: Credentials, media: MediaFiles): Intelligen
     media,
   );
   const transcriber = createTranscriber(settings, media, openai, gemini);
-  const summarizer = createSummarizer(settings, media, openai, gemini, anthropicKey, compatibleKey);
+  const summarizer = createSummarizer(
+    settings,
+    media,
+    openai,
+    gemini,
+    anthropicKey,
+    compatibleKey,
+    cli,
+  );
   return {
     transcriptionConcurrency: settings.transcriptionProvider === 'local' ? 1 : 3,
     transcribe: (id, chunk) => transcriber.transcribe(id, chunk),
@@ -99,6 +120,10 @@ export function createServices(root: string, encryption: Encryption) {
   mkdirSync(root, { recursive: true });
   const repository = new SqliteMeetings(join(root, 'meetings.sqlite'));
   const media = new MediaFiles(join(root, 'recordings'));
+  // Aborted on close: a CLI still running when the app quits is stopped with it.
+  const shutdown = new AbortController();
+  const cliRuns = prepareCliRuns(root);
+  const cli = cliDependencies(shutdown.signal, cliRuns);
   const credentials = new Credentials(join(root, 'settings.json'), encryption, () =>
     findWhisperModel(whisperModelFolders(homedir())),
   );
@@ -122,8 +147,9 @@ export function createServices(root: string, encryption: Encryption) {
       key: credentials.compatibleKey(),
       baseUrl: credentials.settings().compatibleBaseUrl,
     }),
+    new CliSetup(cli),
   );
-  const meetings = new MeetingService(repository, () => createAnalysis(credentials, media));
+  const meetings = new MeetingService(repository, () => createAnalysis(credentials, media, cli));
   const folders = new FolderService(repository, repository);
   const recordings = new RecordingService(meetings, media);
   meetings.recover();
@@ -136,7 +162,11 @@ export function createServices(root: string, encryption: Encryption) {
     credentials,
     models,
     localSetup,
-    close: () => repository.close(),
+    close: () => {
+      shutdown.abort();
+      clearCliRuns(cliRuns);
+      repository.close();
+    },
   };
 }
 
