@@ -73,10 +73,10 @@ describe('CLI notes: failures the user can act on', () => {
     });
 
     await expect(claude(claudeLoggedOut.runner).summarize(meeting)).rejects.toThrow(
-      'Connectez-vous dans le terminal avec claude.',
+      'Votre session Claude Code est fermée : reconnectez-vous à Claude Code, puis réessayez.',
     );
     await expect(codex(codexLoggedOut.runner).summarize(meeting)).rejects.toThrow(
-      'Connectez-vous dans le terminal avec codex login.',
+      'Votre session Codex est fermée : reconnectez-vous à Codex, puis réessayez.',
     );
   });
 

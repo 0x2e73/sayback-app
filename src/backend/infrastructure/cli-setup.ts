@@ -21,11 +21,10 @@ interface CliKind extends CliLabels {
 const kinds: Record<CliNotesProvider, CliKind> = {
   'claude-code': {
     label: 'Claude Code',
-    login: 'claude',
     binary: 'claude',
     statusArgs: ['auth', 'status'],
   },
-  codex: { label: 'Codex', login: 'codex login', binary: 'codex', statusArgs: ['login', 'status'] },
+  codex: { label: 'Codex', binary: 'codex', statusArgs: ['login', 'status'] },
 };
 
 const catalogSchema = z.object({

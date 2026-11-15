@@ -8,8 +8,6 @@ import {
 export interface CliLabels {
   /** « Claude Code » or « Codex », as the user knows it. */
   label: string;
-  /** What to type in the terminal to log in again. */
-  login: string;
 }
 
 /** A failure the CLI reported itself: its text is read to classify it, never shown. */
@@ -19,8 +17,14 @@ export class CliReportedError extends Error {}
 export class CliRefusalError extends Error {}
 
 export const notInstalled = ({ label }: CliLabels) => `${label} n’est pas installé.`;
-export const loginNeeded = ({ login }: CliLabels) =>
-  `Connectez-vous dans le terminal avec ${login}.`;
+export const loginNeeded = ({ label }: CliLabels) =>
+  `Votre session ${label} est fermée : reconnectez-vous à ${label}, puis réessayez.`;
+export const toolRefused = ({ label }: CliLabels) =>
+  `${label} a tenté d’utiliser un outil. Notes refusées. Relancez l’analyse ou choisissez un autre fournisseur.`;
+
+// A status code counts only next to a word that says it is one: `"output_tokens":401` is a count.
+const statusCode = (codes: string) =>
+  `\\b(?:http|status|error|code)\\b[^0-9\\n]{0,15}\\b(?:${codes})\\b`;
 
 // Order matters: a closed session is reported before a limit.
 const rules: Array<[RegExp, (labels: CliLabels) => string]> = [
@@ -29,16 +33,22 @@ const rules: Array<[RegExp, (labels: CliLabels) => string]> = [
     ({ label }) => `Mettez à jour ${label}, cette version est trop ancienne.`,
   ],
   [
-    /not logged in|\/login|log ?in|unauthorized|\b401\b|authenticat|token (has )?expired/i,
+    new RegExp(
+      `not logged in|please (?:run )?/login|\\blog ?in\\b|unauthorized|authenticat|token (?:has )?expired|${statusCode('401')}`,
+      'i',
+    ),
     loginNeeded,
   ],
   [
-    /usage limit|rate limit|quota|limit reached|\b429\b/i,
+    new RegExp(`usage limit|rate limit|quota|limit reached|${statusCode('429')}`, 'i'),
     ({ label }) => `Limite de votre abonnement ${label} atteinte. Réessayez plus tard.`,
   ],
 ];
 
-/** Maps what a CLI printed to a sentence of ours. What it printed may hold the transcript. */
+/**
+ * Maps the error text of a CLI (its stderr, or the message it flagged as an error) to a sentence
+ * of ours. Never give it what the model wrote: that is the transcript's words, not a diagnosis.
+ */
 export function explainOutput(text: string, labels: CliLabels): string {
   const rule = rules.find(([pattern]) => pattern.test(text));
   return rule ? rule[1](labels) : `${labels.label} n’a pas pu créer les notes. Réessayez.`;

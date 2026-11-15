@@ -61,12 +61,12 @@ describe('Claude Code setup', () => {
       'auth status': { stdout: JSON.stringify({ loggedIn: false }) },
     });
     await expect(closed.setup.models('claude-code')).rejects.toThrow(
-      'Connectez-vous dans le terminal avec claude.',
+      'Votre session Claude Code est fermée : reconnectez-vous à Claude Code, puis réessayez.',
     );
 
     const failed = setup({ 'auth status': { exitCode: 1, stdout: 'Not logged in' } });
     await expect(failed.setup.models('claude-code')).rejects.toThrow(
-      'Connectez-vous dans le terminal avec claude.',
+      'Votre session Claude Code est fermée : reconnectez-vous à Claude Code, puis réessayez.',
     );
   });
 });
@@ -97,7 +97,7 @@ describe('Codex setup', () => {
 
     const out = setup({ 'login status': { exitCode: 1, stderr: 'Not logged in' } });
     await expect(out.setup.models('codex')).rejects.toThrow(
-      'Connectez-vous dans le terminal avec codex login.',
+      'Votre session Codex est fermée : reconnectez-vous à Codex, puis réessayez.',
     );
   });
 });

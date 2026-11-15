@@ -29,9 +29,9 @@ const notesOptions: readonly SelectOption[] = [
 // Said before the user picks: the text leaves this computer, through their own account.
 const cliDisclosure: Partial<Record<NotesProvider, string>> = {
   'claude-code':
-    'Les notes sont rédigées par Claude Code avec votre compte : la transcription est envoyée à Anthropic. Les captures d’écran restent sur cet ordinateur.',
+    'Les notes sont rédigées par Claude Code avec votre compte : la transcription, le titre et vos précisions sont envoyés à Anthropic. Les captures d’écran restent sur cet ordinateur.',
   codex:
-    'Les notes sont rédigées par Codex avec votre compte : la transcription et les captures d’écran sont envoyées à OpenAI.',
+    'Les notes sont rédigées par Codex avec votre compte : la transcription, le titre, vos précisions et les captures d’écran sont envoyés à OpenAI.',
 };
 
 function ProviderChoices({ settings }: ApiSettingsFormProps) {

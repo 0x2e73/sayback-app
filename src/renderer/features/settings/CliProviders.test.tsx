@@ -24,14 +24,16 @@ it('offers Claude Code and Codex, and says where the text goes before anything i
   await chooseOption(user, 'Compte rendu', 'Claude Code · votre abonnement');
   expect(
     await screen.findByText(/Les notes sont rédigées par Claude Code avec votre compte/),
-  ).toHaveTextContent('la transcription est envoyée à Anthropic');
+  ).toHaveTextContent('la transcription, le titre et vos précisions sont envoyés à Anthropic');
   expect(api.listModels).toHaveBeenLastCalledWith('claude-code');
   expect(screen.queryByLabelText('Clé API Claude')).toBeNull();
 
   await chooseOption(user, 'Compte rendu', 'Codex · votre abonnement');
   expect(
     await screen.findByText(/Les notes sont rédigées par Codex avec votre compte/),
-  ).toHaveTextContent('la transcription et les captures d’écran sont envoyées à OpenAI');
+  ).toHaveTextContent(
+    'la transcription, le titre, vos précisions et les captures d’écran sont envoyés à OpenAI',
+  );
   expect(api.listModels).toHaveBeenLastCalledWith('codex');
 });
 
