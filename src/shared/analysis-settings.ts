@@ -1,5 +1,6 @@
 import type { Settings } from './contracts';
 import { isLocalCompatibleUrl } from './compatible-url';
+import { isCliNotesProvider } from './cli-notes';
 
 function transcriptionConfigured(settings: Settings): boolean {
   if (settings.transcriptionProvider === 'local') return Boolean(settings.whisperModelPath);
@@ -9,7 +10,7 @@ function transcriptionConfigured(settings: Settings): boolean {
 
 function notesConfigured(settings: Settings): boolean {
   if (settings.notesProvider === 'ollama') return true;
-  if (settings.notesProvider === 'claude-code' || settings.notesProvider === 'codex') return true;
+  if (isCliNotesProvider(settings.notesProvider)) return true;
   if (settings.notesProvider === 'openai') return settings.hasOpenAiKey;
   if (settings.notesProvider === 'anthropic') return settings.hasAnthropicKey;
   if (settings.notesProvider === 'gemini') return settings.hasGeminiKey;

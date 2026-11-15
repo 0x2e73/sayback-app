@@ -7,6 +7,7 @@ import {
   type Settings,
 } from '../../../shared/contracts';
 import { errorMessage } from '../../../shared/format';
+import { isCliNotesProvider } from '../../../shared/cli-notes';
 import { isLocalCompatibleUrl } from '../../../shared/compatible-url';
 import { useModels } from './use-models';
 import { useNotesModel } from './use-notes-model';
@@ -45,11 +46,29 @@ function canListModels(
   compatibleBaseUrl: string,
 ): boolean {
   // For the CLI providers the list is also the check that the tool is installed and logged in.
-  if (provider === 'ollama' || provider === 'claude-code' || provider === 'codex') return true;
+  if (provider === 'ollama' || isCliNotesProvider(provider)) return true;
   if (provider === 'openai') return keys.hasOpenAiKey;
   if (provider === 'anthropic') return keys.hasAnthropicKey;
   if (provider === 'gemini') return keys.hasGeminiKey;
   return keys.hasCompatibleKey || isLocalCompatibleUrl(compatibleBaseUrl);
+}
+
+type ModelNotes = ReturnType<typeof useNotesModel>;
+
+/**
+ * "Réessayer" goes through the same path as a provider switch: the list loads, then the model is
+ * reconciled with it, which preselects the CLI's own default after a logged-out first try.
+ */
+function useModelReload(
+  provider: NotesProvider,
+  model: string,
+  load: (provider: NotesProvider) => Promise<string[]>,
+  reconcile: ModelNotes['reconcile'],
+) {
+  return useCallback(
+    () => void load(provider).then((available) => reconcile(provider, model, available)),
+    [load, provider, model, reconcile],
+  );
 }
 
 function useKeyFields() {
@@ -189,6 +208,7 @@ export function useSettingsFields(api: DesktopApi) {
     setCompatibleBaseUrl,
     setWhisperModelPath,
     loadModels,
+    reloadModels: useModelReload(notesProvider, model, loadModels, reconcile),
     clearModels,
   };
 }

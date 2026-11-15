@@ -26,16 +26,23 @@ const kept = [
 
 const systemPath = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
 
+/**
+ * The PATH is rebuilt, never inherited: the program folder, the extra folders asked for (the one
+ * that holds `node`, for a CLI that is a `#!/usr/bin/env node` script), then the system ones.
+ */
 export function cliEnvironment(
   source: NodeJS.ProcessEnv,
   programFolder: string,
+  extraFolders: string[] = [],
 ): Record<string, string> {
   const env: Record<string, string> = {};
   for (const name of kept) {
     const value = source[name];
     if (value) env[name] = value;
   }
-  env.PATH = [programFolder, ...systemPath].join(':');
+  // Absolute folders only, once each: a relative entry would resolve against the run folder.
+  const folders = [programFolder, ...extraFolders, ...systemPath].filter(isAbsolute);
+  env.PATH = [...new Set(folders)].join(':');
   return env;
 }
 

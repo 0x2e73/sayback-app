@@ -24,7 +24,7 @@ const clientDoors = {
 } as const;
 
 // Every switch below closes one door of an agent that would otherwise read the transcript as orders.
-export function claudeArgs(model: string): string[] {
+function claudeArgs(model: string): string[] {
   return [
     '-p',
     '--output-format',

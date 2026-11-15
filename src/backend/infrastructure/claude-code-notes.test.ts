@@ -99,10 +99,8 @@ describe('Claude Code notes: lock-down', () => {
     await provider(fake).summarize(meeting);
 
     const { run } = fake.seen[0]!;
-    expect(run.timeoutMs).toBeGreaterThan(0);
-    expect(run.timeoutMs).toBeLessThanOrEqual(600_000);
-    expect(run.maxOutputBytes).toBeGreaterThan(0);
-    expect(run.maxOutputBytes).toBeLessThanOrEqual(4_000_000);
+    expect(run.timeoutMs).toBe(300_000);
+    expect(run.maxOutputBytes).toBe(2_000_000);
   });
 
   it('passes the model only when one is chosen, and never one that looks like a flag', async () => {

@@ -1,8 +1,9 @@
 # Notes written by Claude Code or Codex
 
 Optional notes providers (`claude-code`, `codex`). They reuse the CLI already installed and logged in
-on the Mac, so the subscription pays instead of an API key. Never the default. Transcription stays on
-whisper.cpp; the CLI only writes the notes.
+on the Mac, so the subscription pays instead of an API key. Never the default. Transcription stays
+with the transcription provider the user chose (whisper.cpp by default on a new install); the CLI
+only writes the notes.
 
 ## What leaves the machine
 
@@ -29,6 +30,13 @@ The transcript is untrusted input and the CLI is an agent. Each run uses an argu
 shell), the prompt on stdin, a 5 minute timeout, a 2 MB output cap, an abort signal tied to the app
 quitting, and a minimal environment (no API key, no token; `HOME`, locale, proxy and the CLI's own
 config folder only).
+
+The PATH of the process is rebuilt, never inherited: the folder of the program, the folder of the
+`node` we can find (`~/.local/bin`, Homebrew, `/usr/local/bin`, npm or bun global folders, or an
+absolute entry of the app's PATH), then `/usr/bin:/bin:/usr/sbin:/sbin`. Absolute folders only. The
+`node` folder is there because a CLI installed by npm or bun is a `#!/usr/bin/env node` script that
+exits 127 without it. An exit 126 or 127, or a stderr saying "No such file or directory", is reported
+as a damaged install, not as a closed session.
 
 The text sent to the CLI has every word-initial `@` and every `$` before a letter replaced by its
 fullwidth form (`＠`, `＄`), in the title, the transcript and the clarifications. Claude Code reads

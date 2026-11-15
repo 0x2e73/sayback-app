@@ -27,7 +27,7 @@ const disabledFeatures = [
   'browser_use_full_cdp_access',
 ] as const;
 
-export function codexArgs(job: CliJob, schemaPath: string, replyPath: string): string[] {
+function codexArgs(job: CliJob, schemaPath: string, replyPath: string): string[] {
   return [
     'exec',
     // Even if a tool were left, nothing can be written, and no approval is ever asked.

@@ -64,19 +64,30 @@ it('preselects the default model and saves with no key', async () => {
   );
 });
 
-it('says in French when the CLI is missing or logged out, and lets the user try again', async () => {
+it('says in French when the CLI is missing or logged out, and a retry brings the default model', async () => {
   const api = apiFor();
-  const list = vi
+  api.getSettings = () =>
+    ok({ ...settings, transcriptionProvider: 'local', whisperModelPath: '/models/ggml-base.bin' });
+  api.listModels = vi
     .fn()
-    .mockRejectedValueOnce(new Error('Claude Code n’est pas installé.'))
-    .mockResolvedValue({ ok: true, value: ['default'] });
-  api.listModels = list;
+    .mockRejectedValueOnce(new Error('Votre session Claude Code est fermée.'))
+    .mockResolvedValue({ ok: true, value: ['default', 'sonnet'] });
+  const save = vi.fn(() =>
+    ok({ ...settings, notesProvider: 'claude-code' as const, model: 'default' }),
+  );
+  api.saveSettings = save;
   const { user } = await openSettings(api);
 
   await chooseOption(user, 'Compte rendu', 'Claude Code · votre abonnement');
-  expect(await screen.findByText(/Claude Code n’est pas installé\./)).toBeInTheDocument();
+  expect(await screen.findByText(/Votre session Claude Code est fermée\./)).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Réessayer' }));
 
-  expect(await screen.findByRole('button', { name: /^Modèle pour les notes/ })).toBeInTheDocument();
-  expect(screen.queryByText(/n’est pas installé/)).toBeNull();
+  expect(
+    await screen.findByRole('button', { name: /^Modèle pour les notes Modèle par défaut/ }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/session Claude Code est fermée/)).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({ notesProvider: 'claude-code', model: 'default' }),
+  );
 });

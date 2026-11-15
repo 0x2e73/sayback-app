@@ -19,8 +19,19 @@ export class CliRefusalError extends Error {}
 export const notInstalled = ({ label }: CliLabels) => `${label} n’est pas installé.`;
 export const loginNeeded = ({ label }: CliLabels) =>
   `Votre session ${label} est fermée : reconnectez-vous à ${label}, puis réessayez.`;
+export const brokenInstall = ({ label }: CliLabels) =>
+  `L’installation de ${label} semble endommagée : réinstallez ${label}, puis réessayez.`;
 export const toolRefused = ({ label }: CliLabels) =>
   `${label} a tenté d’utiliser un outil. Notes refusées. Relancez l’analyse ou choisissez un autre fournisseur.`;
+
+/**
+ * A program that cannot start is not a closed session: the shell says 127 (not found) or 126 (not
+ * executable), which includes a `#!/usr/bin/env node` launcher without node. Only the exit code
+ * says it: a warning on stderr ("No such file or directory (os error 2)") proves nothing.
+ */
+export function looksBroken(output: { exitCode: number }): boolean {
+  return output.exitCode === 126 || output.exitCode === 127;
+}
 
 // A status code counts only next to a word that says it is one: `"output_tokens":401` is a count.
 const statusCode = (codes: string) =>

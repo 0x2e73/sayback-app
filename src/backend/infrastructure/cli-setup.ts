@@ -2,13 +2,17 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { CliNotesProvider } from '../../shared/contracts';
-import { cliEnvironment } from './cli-environment';
-import { loginNeeded, notInstalled, type CliLabels } from './cli-failures';
+import { cliDefaultModel } from '../../shared/cli-notes';
+import { cliCall } from './cli-call';
+import {
+  brokenInstall,
+  loginNeeded,
+  looksBroken,
+  notInstalled,
+  type CliLabels,
+} from './cli-failures';
 import type { CliNotesDependencies } from './cli-notes';
 import { CliUnavailableError, type CliOutput } from './cli-runner';
-
-/** The CLI's own choice, listed first: the notes then follow whatever the account offers. */
-export const cliDefaultModel = 'default';
 
 const claudeAliases = ['sonnet', 'opus', 'haiku'];
 
@@ -53,6 +57,7 @@ export class CliSetup {
     const directory = await mkdtemp(join(this.dependencies.tempRoot, 'sayback-setup-'));
     try {
       const status = await this.run(kind, command, directory, kind.statusArgs);
+      if (looksBroken(status)) throw new Error(brokenInstall(kind));
       const ready = provider === 'codex' ? status.exitCode === 0 : claudeLoggedIn(status);
       if (!ready) throw new Error(loginNeeded(kind));
       if (provider === 'claude-code') return [cliDefaultModel, ...claudeAliases];
@@ -77,18 +82,15 @@ export class CliSetup {
   }
 
   private async run(kind: CliKind, command: string, directory: string, args: string[]) {
-    const folder = command.slice(0, command.lastIndexOf('/')) || '/usr/bin';
     try {
-      return await this.dependencies.runner({
-        command,
-        args,
-        input: '',
-        cwd: directory,
-        env: cliEnvironment(this.dependencies.environment, folder),
-        timeoutMs: statusTimeoutMs,
-        maxOutputBytes: 2_000_000,
-        signal: this.dependencies.signal,
-      });
+      return await this.dependencies.runner(
+        cliCall(this.dependencies, command, {
+          args,
+          input: '',
+          cwd: directory,
+          timeoutMs: statusTimeoutMs,
+        }),
+      );
     } catch (error) {
       if (error instanceof CliUnavailableError) throw new Error(notInstalled(kind));
       throw new Error(`${kind.label} ne répond pas. Réessayez.`);
