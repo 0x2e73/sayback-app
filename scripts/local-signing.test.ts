@@ -164,11 +164,26 @@ describe('certificateLeaf', () => {
 describe('requirementNamesIdentity', () => {
   it.each([
     ['autosigné, même empreinte', SIGNED, IDENTITY, true],
-    ['autosigné, autre empreinte', SIGNED.replace(HASH.toLowerCase(), 'b'.repeat(40)), IDENTITY, false],
+    [
+      'autosigné, autre empreinte',
+      SIGNED.replace(HASH.toLowerCase(), 'b'.repeat(40)),
+      IDENTITY,
+      false,
+    ],
     ['Developer ID, même équipe', APPLE_SIGNED, APPLE_IDENTITY, true],
-    ['Developer ID, équipe entre guillemets', APPLE_SIGNED.replace(`= ${TEAM}`, `= "${TEAM}"`), APPLE_IDENTITY, true],
+    [
+      'Developer ID, équipe entre guillemets',
+      APPLE_SIGNED.replace(`= ${TEAM}`, `= "${TEAM}"`),
+      APPLE_IDENTITY,
+      true,
+    ],
     ['Developer ID, autre équipe', APPLE_SIGNED.replace(TEAM, 'ZZZZZZZZZZ'), APPLE_IDENTITY, false],
-    ['équipe sans ancre Apple', APPLE_SIGNED.replace('anchor apple generic and ', ''), APPLE_IDENTITY, false],
+    [
+      'équipe sans ancre Apple',
+      APPLE_SIGNED.replace('anchor apple generic and ', ''),
+      APPLE_IDENTITY,
+      false,
+    ],
     ['Developer ID, identité autosignée', APPLE_SIGNED, IDENTITY, false],
     ['autosigné, identité Developer ID', SIGNED, APPLE_IDENTITY, false],
     ['ad hoc', ADHOC, APPLE_IDENTITY, false],
