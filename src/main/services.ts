@@ -1,7 +1,7 @@
 import { MeetingExportService } from '../backend/application/meeting-export';
 import { createExportDestination } from './export-destination';
 import { mkdirSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import OpenAI from 'openai';
 import { MeetingService } from '../backend/application/meetings';
@@ -25,7 +25,7 @@ import { GeminiIntelligence } from '../backend/infrastructure/gemini-intelligenc
 import { CompatibleNotes } from '../backend/infrastructure/compatible-notes';
 import { claudeCodeNotes } from '../backend/infrastructure/claude-code-notes';
 import { codexNotes } from '../backend/infrastructure/codex-notes';
-import { cliDependencies } from './cli-dependencies';
+import { clearCliRuns, cliDependencies, prepareCliRuns } from './cli-dependencies';
 import { CliSetup } from '../backend/infrastructure/cli-setup';
 import type { CliNotesDependencies } from '../backend/infrastructure/cli-notes';
 import { RecordingService } from '../backend/application/recordings';
@@ -122,7 +122,8 @@ export function createServices(root: string, encryption: Encryption) {
   const media = new MediaFiles(join(root, 'recordings'));
   // Aborted on close: a CLI still running when the app quits is stopped with it.
   const shutdown = new AbortController();
-  const cli = cliDependencies(shutdown.signal, tmpdir());
+  const cliRuns = prepareCliRuns(root);
+  const cli = cliDependencies(shutdown.signal, cliRuns);
   const credentials = new Credentials(join(root, 'settings.json'), encryption, () =>
     findWhisperModel(whisperModelFolders(homedir())),
   );
@@ -163,6 +164,7 @@ export function createServices(root: string, encryption: Encryption) {
     localSetup,
     close: () => {
       shutdown.abort();
+      clearCliRuns(cliRuns);
       repository.close();
     },
   };
