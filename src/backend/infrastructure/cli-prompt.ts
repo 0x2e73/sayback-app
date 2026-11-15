@@ -26,6 +26,11 @@ export function neutraliseSigils(text: string): string {
   return text.replace(mention, '$1＠').replace(skill, '$1＄');
 }
 
+/** Gives the notes back their own signs: the model repeats the fullwidth ones it was given. */
+export function restoreSigils(text: string): string {
+  return text.replaceAll('＠', '@').replaceAll('＄', '$');
+}
+
 function neutralised(meeting: Meeting): Meeting {
   return {
     ...meeting,
@@ -33,6 +38,8 @@ function neutralised(meeting: Meeting): Meeting {
     transcript: meeting.transcript.map((segment) => ({
       ...segment,
       text: neutraliseSigils(segment.text),
+      // The label starts a word inside a block (`A: ...`): it comes from the transcription too.
+      ...(segment.speaker === undefined ? {} : { speaker: neutraliseSigils(segment.speaker) }),
     })),
     clarifications: meeting.clarifications.map((item) => ({
       ...item,

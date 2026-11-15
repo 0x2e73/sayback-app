@@ -81,3 +81,13 @@ export function claudeResult(payload: unknown, extra: Record<string, unknown> = 
     ...extra,
   });
 }
+
+/** What a text-only `codex exec --json` run prints, around the events a test adds. */
+export function codexStream(...middle: string[]): string {
+  return [
+    '{"type":"thread.started","thread_id":"t"}',
+    '{"type":"turn.started"}',
+    ...middle,
+    '{"type":"turn.completed","usage":{}}',
+  ].join('\n');
+}

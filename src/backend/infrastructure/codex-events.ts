@@ -38,7 +38,6 @@ function accepted(event: CodexEvent): boolean {
 }
 
 function failureText(event: CodexEvent): string {
-  if (!failures.has(event.type)) return '';
   const { error } = event;
   return event.message ?? (typeof error === 'string' ? error : (error?.message ?? ''));
 }
@@ -46,15 +45,24 @@ function failureText(event: CodexEvent): string {
 export interface StreamReport {
   /** Something other than a text was done, or the stream is not what a text-only run prints. */
   refused: boolean;
-  /** The messages of the `error` and `turn.failed` events: what the CLI says went wrong. */
-  failures: string[];
+  /** How many `turn.completed` the stream holds: a clean text-only run holds exactly one. */
+  completed: number;
+  /** `turn.failed` messages: the turn did not end well, whatever else the stream says. */
+  fatal: string[];
+  /** `error` messages: a transient reconnect looks like this, and a completed turn outlives it. */
+  warnings: string[];
 }
+
+const messages = (events: Array<CodexEvent | undefined>, type: string): string[] =>
+  events.flatMap((event) => (event?.type === type ? [failureText(event)] : [])).filter(Boolean);
 
 /** Fails closed: an unknown event or item type, or a line that is not JSON, refuses the notes. */
 export function inspectStream(stdout: string): StreamReport {
   const events = lines(stdout).map(parseLine);
   return {
     refused: events.some((event) => !event || !accepted(event)),
-    failures: events.flatMap((event) => (event ? [failureText(event)] : [])).filter(Boolean),
+    completed: events.filter((event) => event?.type === 'turn.completed').length,
+    fatal: messages(events, 'turn.failed'),
+    warnings: messages(events, 'error'),
   };
 }

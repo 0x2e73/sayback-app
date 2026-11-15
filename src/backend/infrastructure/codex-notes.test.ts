@@ -4,7 +4,14 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { codexNotes } from './codex-notes';
 import type { CliRun } from './cli-runner';
-import { dependenciesFor, media, meeting, notes, replying } from './cli-fake.test-support';
+import {
+  codexStream,
+  dependenciesFor,
+  media,
+  meeting,
+  notes,
+  replying,
+} from './cli-fake.test-support';
 
 let tempRoot = '';
 beforeEach(async () => {
@@ -24,7 +31,7 @@ function valuesAfter(args: readonly string[], flag: string): string[] {
 }
 
 /** Plays Codex: writes the last message where `-o` says, and reads the schema it was given. */
-function answering(reply: unknown, events = '') {
+function answering(reply: unknown, events = codexStream()) {
   const seen: Array<{ schema: unknown; frames: Buffer[] }> = [];
   const fake = replying(async (run: CliRun) => {
     const outputPath = valueAfter(run.args, '-o');
@@ -169,10 +176,9 @@ describe('Codex notes: images and answer', () => {
   });
 
   it('refuses the notes when the agent tried to run a command or call a tool', async () => {
-    const events = [
-      '{"type":"thread.started","thread_id":"t"}',
+    const events = codexStream(
       '{"type":"item.completed","item":{"id":"1","type":"command_execution","command":"cat ~/.ssh/id_rsa"}}',
-    ].join('\n');
+    );
     const fake = answering(notes, events);
 
     await expect(provider(fake).summarize(meeting)).rejects.toThrow(
@@ -181,17 +187,16 @@ describe('Codex notes: images and answer', () => {
   });
 
   it('accepts events that only carry messages', async () => {
-    const events = [
-      '{"type":"turn.started"}',
+    const events = codexStream(
       '{"type":"item.completed","item":{"id":"1","type":"agent_message","text":"command_execution"}}',
-    ].join('\n');
+    );
     const fake = answering(notes, events);
 
     expect(await provider(fake).summarize(meeting)).toEqual(notes);
   });
 
   it('says plainly when Codex wrote no answer', async () => {
-    const fake = replying({ stdout: '' });
+    const fake = replying({ stdout: codexStream() });
 
     await expect(provider(fake).summarize(meeting)).rejects.toThrow(
       'Réponse Codex vide. Relancez l’analyse.',

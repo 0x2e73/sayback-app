@@ -1,6 +1,6 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Meeting, Notes } from '../../shared/contracts';
+import type { Meeting, NoteItem, Notes } from '../../shared/contracts';
 import type { AiMedia } from './openai-intelligence';
 import { cliEnvironment } from './cli-environment';
 import {
@@ -11,7 +11,7 @@ import {
   notInstalled,
   type CliLabels,
 } from './cli-failures';
-import type { SavedFrame } from './cli-prompt';
+import { restoreSigils, type SavedFrame } from './cli-prompt';
 import type { CliOutput, CliRunner } from './cli-runner';
 import { parseGroundedNotes, selectedFrames, UngroundedNotesError } from './notes-context';
 
@@ -79,10 +79,21 @@ async function saveFrames(meeting: Meeting, media: AiMedia, directory: string) {
   return saved;
 }
 
+function restored(items: NoteItem[]): NoteItem[] {
+  return items.map((item) => ({ ...item, text: restoreSigils(item.text) }));
+}
+
 function parse(text: string, meeting: Meeting, tool: CliTool): Notes {
   if (!text.trim()) throw new Error(`Réponse ${tool.label} vide. Relancez l’analyse.`);
   try {
-    return parseGroundedNotes(text, meeting);
+    const notes = parseGroundedNotes(text, meeting);
+    return {
+      summary: restoreSigils(notes.summary),
+      keyPoints: restored(notes.keyPoints),
+      decisions: restored(notes.decisions),
+      actions: restored(notes.actions),
+      questions: restored(notes.questions),
+    };
   } catch (error) {
     if (error instanceof UngroundedNotesError) throw error;
     throw new Error(`Réponse ${tool.label} incomplète. Relancez l’analyse.`);

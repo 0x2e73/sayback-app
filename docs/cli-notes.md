@@ -21,7 +21,7 @@ screenshots for Codex).
 Each run gets a fresh private folder in `<user data>/cli-runs` (mode 0700), deleted after the run.
 It holds nothing for Claude Code. For Codex it holds the frames and the JSON schema
 (`frame-N.jpg`, `notes-schema.json`) and, at the end, the last message. The whole `cli-runs` folder is
-wiped when the app starts and when it closes, so a crash cannot leave frames behind.
+wiped when the app starts and when it closes, so frames left by a crash are wiped at the next start.
 
 ## Locking down the CLI
 
@@ -62,7 +62,13 @@ multi-agent, image generation, view image, skill search, tool suggestion and ski
 The `--json` event stream is checked against an allowlist that fails closed: only the lifecycle events
 (`thread.started`, `turn.started`, `turn.completed`) and `item.*` events of type `agent_message`,
 `reasoning` or `todo_list` are accepted. Any other event or item type, or a line that is not JSON,
-refuses the notes. This is detection after the fact; the real barrier is the switches above.
+refuses the notes. The stream must also hold exactly one `turn.completed`; an empty or truncated
+stream is refused. A transient `error` event (a reconnect, say) does not refuse a completed turn
+that wrote an answer; a `turn.failed` does. This is detection after the fact; the real barrier is
+the switches above.
+
+The notes get their own signs back: the model repeats the fullwidth `＠` and `＄` it was given, and
+they are mapped to `@` and `$` in the summary and the items. The stored transcript is never touched.
 
 The answer then goes through `parseGroundedNotes`: an item citing an id that is not in the transcript
 is dropped, and notes that cite nothing real are refused.

@@ -67,12 +67,16 @@ async function readReply(replyPath: string): Promise<string> {
   }
 }
 
+function failuresOf(output: CliOutput): string {
+  const stream = inspectStream(output.stdout);
+  return [...stream.fatal, ...stream.warnings].join('\n');
+}
+
 const tool = {
   label: 'Codex',
   binary: 'codex',
   sendsFrames: true,
-  errorText: (output: CliOutput) =>
-    `${inspectStream(output.stdout).failures.join('\n')}\n${output.stderr}`,
+  errorText: (output: CliOutput) => `${failuresOf(output)}\n${output.stderr}`,
   invocation,
 } as const;
 
@@ -88,8 +92,13 @@ async function invocation(job: CliJob): Promise<CliInvocation> {
       // agent: the answer is not to be trusted.
       const stream = inspectStream(output.stdout);
       if (stream.refused) throw new CliRefusalError(toolRefused(tool));
-      if (stream.failures.length) throw new CliReportedError(stream.failures.join('\n'));
-      return readReply(replyPath);
+      const text = await readReply(replyPath);
+      // One completed turn with an answer outlives an `error` event (a reconnect, say).
+      if (stream.completed === 1 && !stream.fatal.length && text.trim()) return text;
+      const failures = [...stream.fatal, ...stream.warnings];
+      if (failures.length) throw new CliReportedError(failures.join('\n'));
+      if (stream.completed !== 1) throw new Error('The turn did not complete exactly once.');
+      return text;
     },
   };
 }

@@ -51,6 +51,22 @@ describe('cliMessage', () => {
     expect(message).toContain('"id":"clarification:c1"');
   });
 
+  it('neutralises a speaker label too, which lands at a word start inside a block', () => {
+    const labelled: Meeting = {
+      ...meeting,
+      transcript: [
+        { id: '0-0', start: 0, end: 3, text: 'bonjour', speaker: '@~/.ssh/id_rsa' },
+        { id: '0-1', start: 3, end: 6, text: 'merci', speaker: '$imagegen' },
+      ],
+    };
+
+    const message = cliMessage(labelled, []);
+
+    expect(message).not.toMatch(/(^|[\s"(])@/);
+    expect(message).not.toMatch(/\$[a-z]/i);
+    expect(message).toContain('＠~/.ssh/id_rsa: bonjour');
+  });
+
   it('does not change the meeting it was given', () => {
     cliMessage(hostile, []);
 

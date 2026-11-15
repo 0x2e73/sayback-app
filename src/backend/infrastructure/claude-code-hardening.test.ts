@@ -52,6 +52,38 @@ describe('Claude Code: what the client does before the model runs', () => {
   });
 });
 
+describe('Claude Code: the notes get their own signs back', () => {
+  it('maps the fullwidth signs the model repeated to @ and $, in the summary and the items', async () => {
+    const fake = replying({
+      stdout: claudeResult({
+        ...notes,
+        summary: 'Écrire à ＠Paul pour ＄imagegen',
+        keyPoints: [{ text: '＠Camille valide', sourceIds: ['0-0'] }],
+        decisions: [{ text: 'Budget ＄5', sourceIds: ['0-0'] }],
+      }),
+    });
+
+    const result = await provider(fake).summarize(meeting);
+
+    expect(result.summary).toBe('Écrire à @Paul pour $imagegen');
+    expect(result.keyPoints[0]?.text).toBe('@Camille valide');
+    expect(result.decisions[0]?.text).toBe('Budget $5');
+    expect(result.keyPoints[0]?.sourceIds).toEqual(['0-0']);
+  });
+
+  it('leaves the stored transcript as it was', async () => {
+    const fake = replying({ stdout: claudeResult(notes) });
+    const spoken = {
+      ...meeting,
+      transcript: [{ id: '0-0', start: 0, end: 4, text: 'voir @Paul', speaker: '@A' }],
+    };
+
+    await provider(fake).summarize(spoken);
+
+    expect(spoken.transcript[0]).toMatchObject({ text: 'voir @Paul', speaker: '@A' });
+  });
+});
+
 describe('Claude Code: the result event is checked after the fact', () => {
   it('refuses notes from a run in which a permission was denied', async () => {
     const fake = replying({
