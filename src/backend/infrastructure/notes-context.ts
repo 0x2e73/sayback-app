@@ -10,6 +10,8 @@ export const notesInstruction =
 
 export class UngroundedNotesError extends Error {}
 
+export const UNGROUNDED_MESSAGE = 'Les notes ne citent aucune source réelle. Relancez l’analyse.';
+
 export interface CitableBlock {
   id: string;
   start: number;
@@ -90,7 +92,7 @@ function known(meeting: Meeting): Set<string> {
 }
 
 // Une citation inventée retire l'élément concerné, jamais tout le compte rendu.
-function grounded(items: NoteItem[], sources: Set<string>): NoteItem[] {
+export function groundedItems(items: NoteItem[], sources: Set<string>): NoteItem[] {
   return items
     .map((item) => ({ ...item, sourceIds: item.sourceIds.filter((id) => sources.has(id)) }))
     .filter((item) => item.sourceIds.length > 0);
@@ -102,28 +104,23 @@ function count(notes: Notes): number {
   );
 }
 
-function invented(notes: Notes, sources: Set<string>): string[] {
-  const ids = [...notes.keyPoints, ...notes.decisions, ...notes.actions, ...notes.questions]
-    .flatMap((item) => item.sourceIds)
-    .filter((id) => !sources.has(id));
-  return [...new Set(ids)];
+export function parseGroundedNotes(text: string, meeting: Meeting): Notes {
+  return groundedNotes(text, known(meeting));
 }
 
-export function parseGroundedNotes(text: string, meeting: Meeting): Notes {
+// Keeps only the items that cite one of `sources`: a slice or a merge group is checked against its own ids.
+export function groundedNotes(text: string, sources: Set<string>): Notes {
   const notes = notesSchema.parse(JSON.parse(text));
-  const sources = known(meeting);
   const kept: Notes = {
     summary: notes.summary,
-    keyPoints: grounded(notes.keyPoints, sources),
-    decisions: grounded(notes.decisions, sources),
-    actions: grounded(notes.actions, sources),
-    questions: grounded(notes.questions, sources),
+    keyPoints: groundedItems(notes.keyPoints, sources),
+    decisions: groundedItems(notes.decisions, sources),
+    actions: groundedItems(notes.actions, sources),
+    questions: groundedItems(notes.questions, sources),
   };
   if (count(notes) > 0 && count(kept) === 0) {
-    const sample = invented(notes, sources).slice(0, 5).join(', ');
-    throw new UngroundedNotesError(
-      `Les notes ne citent aucune source réelle (${sample}). Relancez l’analyse.`,
-    );
+    // No id in the message: it reaches the screen, and an id comes from the model.
+    throw new UngroundedNotesError(UNGROUNDED_MESSAGE);
   }
   return kept;
 }

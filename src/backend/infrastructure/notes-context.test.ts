@@ -113,7 +113,7 @@ describe('parseGroundedNotes', () => {
     expect(result.keyPoints).toHaveLength(1);
   });
 
-  it('échoue en nommant les sources fautives quand plus rien n’est cité correctement', () => {
+  it('échoue sans répéter les ids du modèle quand plus rien n’est cité correctement', () => {
     const text = JSON.stringify({
       summary: 'Résumé.',
       keyPoints: [{ text: 'Invention', sourceIds: ['9-99'] }],
@@ -122,7 +122,8 @@ describe('parseGroundedNotes', () => {
       questions: [],
     });
 
-    expect(() => parseGroundedNotes(text, meeting)).toThrow(/9-99/);
+    expect(() => parseGroundedNotes(text, meeting)).toThrow(/aucune source réelle\. Relancez/);
+    expect(() => parseGroundedNotes(text, meeting)).not.toThrow(/9-99/);
   });
 
   it('accepte une précision humaine comme source', () => {
