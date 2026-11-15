@@ -126,7 +126,7 @@ function toResponse(reply: Reply): Response {
 /** A fake Ollama: `/api/show` answers `capabilities`, `/api/chat` answers `reply(call)`. */
 export function fakeOllama(
   reply: (call: ChatCall, index: number) => Reply = echoNotes,
-  capabilities: string[] = ['completion', 'vision'],
+  capabilities: string[] = ['completion'],
 ) {
   const calls: ChatCall[] = [];
   const request = vi.fn(async (url: string | URL | Request, options?: RequestInit) => {
@@ -140,17 +140,12 @@ export function fakeOllama(
   return { request: request as typeof fetch, calls, spy: request };
 }
 
-const media = {
-  readAudio: async () => Buffer.from('audio'),
-  readFrame: async () => Buffer.from('image'),
-};
-
 export function providerOver(
   request: typeof fetch,
   model = 'qwen3.5:4b',
   warn?: (message: string) => void,
 ): OllamaNotes {
-  return new OllamaNotes(() => model, media, request, warn);
+  return new OllamaNotes(() => model, request, warn);
 }
 export function ids(notes: Notes): string[] {
   return [notes.keyPoints, notes.decisions, notes.actions, notes.questions]

@@ -2,13 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { echoNotes, fakeOllama, meetingOf } from './ollama-fake.test-support';
 import { OllamaNotes } from './ollama-notes';
 
-const media = {
-  readAudio: async () => Buffer.from('audio'),
-  readFrame: async () => Buffer.from('image'),
-};
-
 function summarize(request: typeof fetch, blocks = 3) {
-  return new OllamaNotes(() => 'qwen3.5:4b', media, request).summarize(meetingOf({ blocks }));
+  return new OllamaNotes(() => 'qwen3.5:4b', request).summarize(meetingOf({ blocks }));
 }
 
 function counted(content: string, reason: string, prompt: number): Response {
@@ -137,7 +132,7 @@ describe('Ollama notes failures', () => {
       if (failing) return cutOff('', 'stop');
       return echoNotes(call);
     });
-    const provider = new OllamaNotes(() => 'qwen3.5:4b', media, request);
+    const provider = new OllamaNotes(() => 'qwen3.5:4b', request);
     const meeting = meetingOf({ blocks: 68 });
 
     await expect(provider.summarize(meeting)).rejects.toThrow(/réponse vide/);

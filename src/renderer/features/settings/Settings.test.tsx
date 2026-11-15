@@ -120,6 +120,15 @@ it('brings the stored model back when returning to the stored provider', async (
   ).toBeInTheDocument();
 });
 
+it('tells the Ollama user to install a local model, without asking for one that reads images', async () => {
+  const { user } = await openSettings();
+  await chooseOption(user, 'Compte rendu', 'Ollama · local');
+  expect(
+    screen.getByText('Ollama doit être démarré, avec un modèle installé sur cet ordinateur.'),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/images/)).toBeNull();
+});
+
 it('refuses to save without a model when no key is being added', async () => {
   const api = apiFor();
   api.getSettings = () => ok({ ...settings, hasOpenAiKey: true, model: '' });

@@ -1,6 +1,6 @@
 # Installer Ollama pour SayBack sur macOS
 
-Ollama fait tourner sur votre Mac le modèle qui rédige le **compte rendu** : résumé, décisions, actions et repères dans la réunion. Avec Ollama, la transcription et les captures d’écran ne quittent pas l’ordinateur pour cette étape. Aucun compte Ollama n’est nécessaire.
+Ollama fait tourner sur votre Mac le modèle qui rédige le **compte rendu** : résumé, décisions, actions et repères dans la réunion. Avec Ollama, la transcription ne quitte pas l’ordinateur pour cette étape. Aucun compte Ollama n’est nécessaire.
 
 Ce guide couvre uniquement le compte rendu. Pour la transcription, suivez [le guide du mode local](local-setup.md), étapes 1 et 2.
 
@@ -40,7 +40,7 @@ brew services start ollama
 
 ## 2. Télécharger le modèle de compte rendu
 
-SayBack envoie au modèle la transcription **et des captures d’écran**. Le modèle doit donc savoir lire les images. Le choix proposé est `gemma3:4b` (environ 3,3 Go) :
+Avec Ollama, le compte rendu est fait **à partir du texte seul** : SayBack n’envoie pas les captures d’écran, car sur un petit modèle local à fenêtre de 4096 jetons elles prennent près de la moitié de la place et font inventer des décisions. Les autres fournisseurs les reçoivent toujours. Le choix proposé est `gemma3:4b` (environ 3,3 Go) :
 
 ```bash
 ollama pull gemma3:4b
@@ -49,7 +49,7 @@ ollama list
 
 `gemma3:4b` doit apparaître dans la liste. Le téléchargement n’a lieu qu’une fois ; les modèles sont rangés dans `~/.ollama`.
 
-N’utilisez pas `gemma3:1b` ni `gemma3:270m` : ces variantes ne lisent pas les images. Les modèles dont le nom finit par `:cloud` ou `-cloud` tournent sur les serveurs d’Ollama ; SayBack les refuse pour garder l’analyse sur votre Mac.
+Les modèles dont le nom finit par `:cloud` ou `-cloud` tournent sur les serveurs d’Ollama ; SayBack les refuse pour garder l’analyse sur votre Mac.
 
 Pour un essai rapide hors de SayBack :
 
@@ -77,21 +77,20 @@ Ce que vous retrouvez dans le compte rendu d’une longue réunion :
 
 ## En cas de problème
 
-| Message ou symptôme                                                   | Que faire                                                                                                                                                                                                                      |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| La liste des modèles est vide dans SayBack                            | Ouvrez Ollama (icône dans la barre des menus) ou lancez `brew services start ollama`, puis vérifiez `ollama list`.                                                                                                             |
-| « Ollama est inaccessible »                                           | `curl http://127.0.0.1:11434/api/version` doit répondre. SayBack contacte uniquement cette adresse locale, sur le port par défaut 11434.                                                                                       |
-| « Ce modèle Ollama utilise le cloud »                                 | Choisissez un modèle sans le suffixe `:cloud` ni `-cloud`, par exemple `gemma3:4b`.                                                                                                                                            |
-| « Modèle Ollama introuvable »                                         | Téléchargez-le avec `ollama pull gemma3:4b`, puis réessayez.                                                                                                                                                                   |
-| « Ce modèle Ollama ne lit pas les images »                            | Choisissez un modèle avec vision, comme `gemma3:4b`.                                                                                                                                                                           |
-| « Ollama a coupé sa réponse » ou « notes illisibles »                 | Relancez l’analyse. Si l’erreur revient, le modèle n’a pas produit de notes exploitables : essayez un modèle plus gros si votre Mac le permet.                                                                                 |
-| « Ollama a mis trop de temps à répondre »                             | Une longue réunion est lue en plusieurs parties : fermez les applications gourmandes, puis relancez l’analyse.                                                                                                                 |
-| « Ollama a refusé la demande (code …) »                               | Vérifiez que le modèle choisi est bien installé (`ollama list`), puis relancez l’analyse.                                                                                                                                      |
-| « Ollama a renvoyé une réponse vide » ou « illisible »                | Relancez l’analyse. Si l’erreur revient, essayez un autre modèle.                                                                                                                                                              |
-| « Cette partie de la réunion est trop dense »                         | Le texte (beaucoup de chiffres, une autre langue) ou une capture d’écran très haute dépasse la fenêtre de 4096 jetons d’Ollama. Relancer suffit rarement : choisissez un fournisseur à plus grande capacité dans les réglages. |
-| « Les notes ne citent aucune source réelle »                          | Le modèle n’a rattaché ses notes à aucun passage : relancez l’analyse.                                                                                                                                                         |
-| « Cette réunion est trop longue pour une analyse locale avec Ollama » | Tous les modèles Ollama ont la même fenêtre de 4096 jetons : choisissez un fournisseur à plus grande capacité dans les réglages.                                                                                               |
-| L’analyse est très lente ou le Mac rame                               | Fermez les applications gourmandes pendant l’analyse. Sur 8 Go de mémoire, préférez des réunions courtes pour commencer.                                                                                                       |
+| Message ou symptôme                                                   | Que faire                                                                                                                                                                                    |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| La liste des modèles est vide dans SayBack                            | Ouvrez Ollama (icône dans la barre des menus) ou lancez `brew services start ollama`, puis vérifiez `ollama list`.                                                                           |
+| « Ollama est inaccessible »                                           | `curl http://127.0.0.1:11434/api/version` doit répondre. SayBack contacte uniquement cette adresse locale, sur le port par défaut 11434.                                                     |
+| « Ce modèle Ollama utilise le cloud »                                 | Choisissez un modèle sans le suffixe `:cloud` ni `-cloud`, par exemple `gemma3:4b`.                                                                                                          |
+| « Modèle Ollama introuvable »                                         | Téléchargez-le avec `ollama pull gemma3:4b`, puis réessayez.                                                                                                                                 |
+| « Ollama a coupé sa réponse » ou « notes illisibles »                 | Relancez l’analyse. Si l’erreur revient, le modèle n’a pas produit de notes exploitables : essayez un modèle plus gros si votre Mac le permet.                                               |
+| « Ollama a mis trop de temps à répondre »                             | Une longue réunion est lue en plusieurs parties : fermez les applications gourmandes, puis relancez l’analyse.                                                                               |
+| « Ollama a refusé la demande (code …) »                               | Vérifiez que le modèle choisi est bien installé (`ollama list`), puis relancez l’analyse.                                                                                                    |
+| « Ollama a renvoyé une réponse vide » ou « illisible »                | Relancez l’analyse. Si l’erreur revient, essayez un autre modèle.                                                                                                                            |
+| « Cette partie de la réunion est trop dense »                         | Le texte (beaucoup de chiffres, une autre langue) dépasse la fenêtre de 4096 jetons d’Ollama. Relancer suffit rarement : choisissez un fournisseur à plus grande capacité dans les réglages. |
+| « Les notes ne citent aucune source réelle »                          | Le modèle n’a rattaché ses notes à aucun passage : relancez l’analyse.                                                                                                                       |
+| « Cette réunion est trop longue pour une analyse locale avec Ollama » | Tous les modèles Ollama ont la même fenêtre de 4096 jetons : choisissez un fournisseur à plus grande capacité dans les réglages.                                                             |
+| L’analyse est très lente ou le Mac rame                               | Fermez les applications gourmandes pendant l’analyse. Sur 8 Go de mémoire, préférez des réunions courtes pour commencer.                                                                     |
 
 Les journaux d’Ollama se trouvent dans `~/.ollama/logs/server.log`.
 

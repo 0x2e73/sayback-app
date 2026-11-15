@@ -41,7 +41,7 @@ ollama pull gemma3:4b
 ollama list
 ```
 
-`gemma3:4b` doit apparaître dans la liste. Ce modèle accepte le texte **et les images**, nécessaires au contexte visuel du compte rendu. Son téléchargement représente environ 3,3 Go ; la vitesse d’analyse dépend de la mémoire et du processeur de votre Mac. Les variantes `gemma3:1b` et `gemma3:270m` sont textuelles et ne conviennent pas à ce parcours avec images.
+`gemma3:4b` doit apparaître dans la liste. Avec Ollama, le compte rendu est fait à partir du texte seul : les captures d’écran ne sont pas envoyées au modèle. Son téléchargement représente environ 3,3 Go ; la vitesse d’analyse dépend de la mémoire et du processeur de votre Mac.
 
 ## 4. Régler SayBack
 
@@ -64,4 +64,4 @@ Si SayBack indique que `whisper-cli` ou `ffmpeg` est absent alors que Terminal l
 
 SayBack ne garantit pas encore le même temps de traitement ni la même qualité sur tous les Mac. Pour une réunion longue, faites d’abord un essai représentatif sur votre machine.
 
-Sources : [modèles et tailles de whisper.cpp](https://github.com/ggml-org/whisper.cpp/blob/master/models/README.md), [formule Homebrew whisper-cpp](https://formulae.brew.sh/formula/whisper-cpp), [Gemma 3 et ses variantes avec vision](https://ollama.com/library/gemma3/tags).
+Sources : [modèles et tailles de whisper.cpp](https://github.com/ggml-org/whisper.cpp/blob/master/models/README.md), [formule Homebrew whisper-cpp](https://formulae.brew.sh/formula/whisper-cpp), [Variantes de Gemma 3](https://ollama.com/library/gemma3/tags).

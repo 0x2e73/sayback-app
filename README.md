@@ -25,7 +25,7 @@ Tout se passe sur votre machine. Pas de compte, pas de serveur SayBack, pas d’
 
 - **Capturer** le microphone, une fenêtre ou un écran, et le son du système lorsque la plateforme le permet. Vous choisissez explicitement chaque source.
 - **Transcrire** l’audio avec des repères temporels.
-- **Résumer** : points importants, décisions, actions et questions ouvertes, en tenant compte des captures d’écran. Chaque élément cite les passages dont il vient ; les notes sans source réelle sont écartées.
+- **Résumer** : points importants, décisions, actions et questions ouvertes, en tenant compte des captures d’écran avec les fournisseurs distants ; Ollama, en local, lit le texte seul. Chaque élément cite les passages dont il vient ; les notes sans source réelle sont écartées.
 - **Revenir au moment clé** : un point du compte rendu ouvre la vidéo au passage concerné.
 - **Ranger et chercher** dans des dossiers ou dans toute la bibliothèque.
 

@@ -4,11 +4,8 @@ export const CONTEXT_TOKENS = 4096;
 export const OUTPUT_TOKENS = 1200;
 // Measured on French transcript JSON: 3.08 (qwen3.5:4b) and 2.86 (gemma3:4b); rounded down.
 export const CHARS_PER_TOKEN = 2.5;
-// Measured for a 1152x720 frame: 794 (qwen3.5:4b) and 270 (gemma3:4b); scaled up to 1280x960.
-export const FRAME_TOKENS = 1200;
 // Measured chat template cost: 13 tokens; the rest is safety.
 export const REQUEST_OVERHEAD_TOKENS = 100;
-export const MAX_FRAMES_PER_CALL = 3;
 export const MAX_REDUCE_ROUNDS = 8;
 export const REQUEST_TIMEOUT_MS = 300_000;
 

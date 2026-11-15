@@ -62,7 +62,7 @@ function createSummarizer(
       () => settings.model,
       media,
     );
-  if (settings.notesProvider === 'ollama') return new OllamaNotes(() => settings.model, media);
+  if (settings.notesProvider === 'ollama') return new OllamaNotes(() => settings.model);
   if (settings.notesProvider === 'gemini') return gemini;
   if (settings.notesProvider === 'compatible') {
     return new CompatibleNotes(
