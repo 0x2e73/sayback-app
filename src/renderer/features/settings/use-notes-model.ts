@@ -17,6 +17,9 @@ export function useNotesModel() {
    */
   const reconcile = useCallback(
     (provider: NotesProvider, wanted: string, available: readonly string[]) => {
+      // A CLI always has its own choice: nothing to pick unless the user wants another model.
+      const cli = provider === 'claude-code' || provider === 'codex';
+      if (cli && !wanted && available.includes('default')) setModel('default');
       if (provider === 'compatible' || !wanted || !available.length) return;
       if (available.includes(wanted)) return;
       setModel('');

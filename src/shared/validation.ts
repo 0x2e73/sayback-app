@@ -37,7 +37,15 @@ export const captureKindSchema = z.enum(['screen', 'microphone']);
 export const appearanceSchema = z.enum(['system', 'light', 'dark']);
 export const setupGuideSchema = z.enum(['whisper', 'ollama']);
 export const settingsSchema = z.object({
-  notesProvider: z.enum(['openai', 'anthropic', 'gemini', 'compatible', 'ollama']),
+  notesProvider: z.enum([
+    'openai',
+    'anthropic',
+    'gemini',
+    'compatible',
+    'ollama',
+    'claude-code',
+    'codex',
+  ]),
   transcriptionProvider: z.enum(['openai', 'gemini', 'local']),
   openAiKey: z.string().trim().max(512),
   anthropicKey: z.string().trim().max(512),

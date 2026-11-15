@@ -19,7 +19,10 @@ export type {
   Meeting,
 } from '../backend/domain/meeting';
 
-export type NotesProvider = 'openai' | 'anthropic' | 'gemini' | 'compatible' | 'ollama';
+export type NotesProvider =
+  'openai' | 'anthropic' | 'gemini' | 'compatible' | 'ollama' | 'claude-code' | 'codex';
+/** Notes written by a command-line tool of the user, through their own subscription: no key. */
+export type CliNotesProvider = 'claude-code' | 'codex';
 export type TranscriptionProvider = 'openai' | 'gemini' | 'local';
 export type KeyProvider = 'openai' | 'anthropic' | 'gemini' | 'compatible';
 export type Appearance = 'system' | 'light' | 'dark';

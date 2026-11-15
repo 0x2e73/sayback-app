@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { NotesProvider } from '../../shared/contracts';
+import type { CliNotesProvider, NotesProvider } from '../../shared/contracts';
 import { compatibleBaseUrl } from '../../shared/compatible-url';
 
 const modelPageSchema = z.object({
@@ -27,6 +27,9 @@ export class ProviderModels {
       key: '',
       baseUrl: '',
     }),
+    private readonly cli: { models(provider: CliNotesProvider): Promise<string[]> } = {
+      models: async () => [],
+    },
   ) {}
 
   async list(provider: NotesProvider): Promise<string[]> {
@@ -34,6 +37,7 @@ export class ProviderModels {
     if (provider === 'anthropic') return this.listAnthropic();
     if (provider === 'gemini') return this.listGemini();
     if (provider === 'compatible') return this.listCompatible();
+    if (provider === 'claude-code' || provider === 'codex') return this.cli.models(provider);
     return this.listOllama();
   }
 

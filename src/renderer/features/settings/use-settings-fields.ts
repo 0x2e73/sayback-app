@@ -44,7 +44,8 @@ function canListModels(
   keys: KeyFlags,
   compatibleBaseUrl: string,
 ): boolean {
-  if (provider === 'ollama') return true;
+  // For the CLI providers the list is also the check that the tool is installed and logged in.
+  if (provider === 'ollama' || provider === 'claude-code' || provider === 'codex') return true;
   if (provider === 'openai') return keys.hasOpenAiKey;
   if (provider === 'anthropic') return keys.hasAnthropicKey;
   if (provider === 'gemini') return keys.hasGeminiKey;
