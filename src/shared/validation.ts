@@ -60,7 +60,9 @@ export const settingsSchema = z.object({
   model: z
     .string()
     .trim()
-    .regex(/^$|^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,119}$/),
+    // A local llama.cpp or vLLM server names its model by a path (`/models/x`, `./m.gguf`): valid.
+    // Only a leading `-` is refused, so an id can never read as a command-line option.
+    .regex(/^$|^(?!-)[a-zA-Z0-9._:/-]{1,120}$/),
 });
 const mediaSchema = z
   .object({

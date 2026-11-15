@@ -63,12 +63,16 @@ describe('notes written by a CLI of the user', () => {
       whisperModelPath: '',
     };
 
-    for (const model of ['--sandbox', '-m', '.hidden', '']) {
+    for (const model of ['--sandbox', '-m', '-', '']) {
       if (model === '') expect(settingsSchema.parse({ ...input, model }).model).toBe('');
       else expect(() => settingsSchema.parse({ ...input, model })).toThrow();
     }
     expect(settingsSchema.parse({ ...input, model: 'gpt-4.1-mini' }).model).toBe('gpt-4.1-mini');
     expect(settingsSchema.parse({ ...input, model: 'gemma3:4b' }).model).toBe('gemma3:4b');
     expect(settingsSchema.parse({ ...input, model: 'openai/gpt-4o' }).model).toBe('openai/gpt-4o');
+    // A local llama.cpp or vLLM server reports its model as a path.
+    for (const path of ['/models/Qwen2.5-7B-Instruct', './models/llama-3.gguf']) {
+      expect(settingsSchema.parse({ ...input, model: path }).model).toBe(path);
+    }
   });
 });
