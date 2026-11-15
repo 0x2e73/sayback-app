@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { notesSchema } from '../../shared/validation';
 import { MAX_LIST_ITEMS } from './notes-lists';
+import { MAX_REDUCE_ROUNDS } from './ollama-budget';
 import {
   echoNotes,
   fakeOllama,
+  frenchText,
   ids,
   meetingOf,
   providerOver,
@@ -164,5 +166,29 @@ describe('Ollama notes: nothing to merge', () => {
     expect(notes.questions).toEqual([]);
     expect(notes.decisions.length).toBeGreaterThan(0);
     expect(notes.actions.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Ollama notes: a meeting too long to merge', () => {
+  it('says that another Ollama model cannot help, since every model has the same window', async () => {
+    // Key points of 2 500 characters make every partial too big to share a group with a third one,
+    // so each round halves the count exactly; 300 slices outlast the MAX_REDUCE_ROUNDS rounds.
+    const { request, calls } = fakeOllama((call) => {
+      const answer = echoNotes(call);
+      return {
+        ...answer,
+        keyPoints: answer.keyPoints.map((item) => ({ ...item, text: frenchText(2_500) })),
+      };
+    });
+
+    const attempt = providerOver(request).summarize(meetingOf({ blocks: 300, blockChars: 4_000 }));
+
+    await expect(attempt).rejects.toThrow(
+      'Cette réunion est trop longue pour une analyse locale avec Ollama. Choisissez un fournisseur à plus grande capacité dans les réglages.',
+    );
+    expect(calls.filter((call) => call.kind === 'map').length).toBeGreaterThan(
+      2 ** MAX_REDUCE_ROUNDS,
+    );
+    expect(calls.some((call) => call.kind === 'reduce')).toBe(true);
   });
 });

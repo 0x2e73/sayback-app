@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FRAME_TOKENS, MAX_FRAMES_PER_CALL, PROMPT_BUDGET, estimateTokens } from './ollama-budget';
-import { meetingOf } from './ollama-fake.test-support';
+import { frenchText, meetingOf } from './ollama-fake.test-support';
 import { planSlices, sliceContext, sliceSourceIds } from './notes-slicing';
 
 const instructionTokens = 400;
@@ -70,7 +70,7 @@ describe('planSlices', () => {
       blocks: 40,
       clarifications: [
         { id: 'early', at: 0, text: 'Contexte.', createdAt: '' },
-        { id: 'middle', at: 900, text: 'x'.repeat(1_500), createdAt: '' },
+        { id: 'middle', at: 900, text: frenchText(1_500), createdAt: '' },
         { id: 'late', at: 99_999, text: 'Fin.', createdAt: '' },
       ],
     });

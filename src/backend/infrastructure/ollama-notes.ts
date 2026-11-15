@@ -103,7 +103,7 @@ export class OllamaNotes {
       level = merged;
     }
     throw new Error(
-      'Cette réunion est trop longue pour ce modèle Ollama. Choisissez un modèle ou un fournisseur à plus grande capacité.',
+      'Cette réunion est trop longue pour une analyse locale avec Ollama. Choisissez un fournisseur à plus grande capacité dans les réglages.',
     );
   }
 
