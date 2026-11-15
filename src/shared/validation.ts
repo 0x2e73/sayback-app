@@ -60,7 +60,7 @@ export const settingsSchema = z.object({
   model: z
     .string()
     .trim()
-    .regex(/^$|^[a-zA-Z0-9._:/-]{1,120}$/),
+    .regex(/^$|^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,119}$/),
 });
 const mediaSchema = z
   .object({

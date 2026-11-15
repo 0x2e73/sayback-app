@@ -1,10 +1,12 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { AiMedia } from './openai-intelligence';
-import { CliRefusalError } from './cli-failures';
+import { CliRefusalError, CliReportedError, toolRefused } from './cli-failures';
+import { inspectStream } from './codex-events';
 import { cliNotesSchema } from './cli-notes-schema';
 import { CliNotes, type CliInvocation, type CliJob, type CliNotesDependencies } from './cli-notes';
 import { cliInstruction, cliMessage } from './cli-prompt';
+import type { CliOutput } from './cli-runner';
 
 // Every capability of the agent that is not "write a text" is turned off.
 const disabledFeatures = [
@@ -19,20 +21,11 @@ const disabledFeatures = [
   'image_generation',
   'view_image',
   'skill_search',
+  'tool_suggest',
+  'skill_mcp_dependency_install',
+  'browser_use_external',
+  'browser_use_full_cdp_access',
 ] as const;
-
-// What a run that used a tool looks like in the `--json` event stream.
-const toolEvents = new Set([
-  'command_execution',
-  'file_change',
-  'mcp_tool_call',
-  'web_search',
-  'collab_tool_call',
-  'exec_command_begin',
-  'patch_apply_begin',
-  'mcp_tool_call_begin',
-  'web_search_begin',
-]);
 
 export function codexArgs(job: CliJob, schemaPath: string, replyPath: string): string[] {
   return [
@@ -66,22 +59,6 @@ export function codexArgs(job: CliJob, schemaPath: string, replyPath: string): s
   ];
 }
 
-function typeOf(value: unknown): unknown {
-  return value && typeof value === 'object' ? (value as { type?: unknown }).type : undefined;
-}
-
-function usedATool(stdout: string): boolean {
-  return stdout.split('\n').some((line) => {
-    try {
-      const event: unknown = JSON.parse(line);
-      const nested = (event as { item?: unknown; msg?: unknown } | null) ?? {};
-      return [event, nested.item, nested.msg].some((part) => toolEvents.has(String(typeOf(part))));
-    } catch {
-      return false;
-    }
-  });
-}
-
 async function readReply(replyPath: string): Promise<string> {
   try {
     return await readFile(replyPath, 'utf8');
@@ -89,6 +66,15 @@ async function readReply(replyPath: string): Promise<string> {
     return '';
   }
 }
+
+const tool = {
+  label: 'Codex',
+  binary: 'codex',
+  sendsFrames: true,
+  errorText: (output: CliOutput) =>
+    `${inspectStream(output.stdout).failures.join('\n')}\n${output.stderr}`,
+  invocation,
+} as const;
 
 async function invocation(job: CliJob): Promise<CliInvocation> {
   const schemaPath = join(job.directory, 'notes-schema.json');
@@ -98,10 +84,11 @@ async function invocation(job: CliJob): Promise<CliInvocation> {
     args: codexArgs(job, schemaPath, replyPath),
     input: `${cliInstruction}\n\n${cliMessage(job.meeting, job.frames)}`,
     reply: async (output) => {
-      // A tool call means the transcript steered the agent: the answer is not to be trusted.
-      if (usedATool(output.stdout)) {
-        throw new CliRefusalError('Codex a tenté d’utiliser un outil. Notes refusées.');
-      }
+      // A tool call, or a stream that is not a text-only run, means the transcript steered the
+      // agent: the answer is not to be trusted.
+      const stream = inspectStream(output.stdout);
+      if (stream.refused) throw new CliRefusalError(toolRefused(tool));
+      if (stream.failures.length) throw new CliReportedError(stream.failures.join('\n'));
       return readReply(replyPath);
     },
   };
@@ -112,12 +99,5 @@ export function codexNotes(
   media: AiMedia,
   dependencies: CliNotesDependencies,
 ): CliNotes {
-  const tool = {
-    label: 'Codex',
-    login: 'codex login',
-    binary: 'codex',
-    sendsFrames: true,
-    invocation,
-  } as const;
   return new CliNotes(tool, model, media, dependencies);
 }

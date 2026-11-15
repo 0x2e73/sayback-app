@@ -50,4 +50,25 @@ describe('notes written by a CLI of the user', () => {
     expect(settingsSchema.parse({ ...input, notesProvider: 'codex' }).notesProvider).toBe('codex');
     expect(() => settingsSchema.parse({ ...input, notesProvider: 'rm -rf' })).toThrow();
   });
+
+  it('never lets a model that reads as a command-line option through the boundary', () => {
+    const input = {
+      notesProvider: 'codex',
+      transcriptionProvider: 'local',
+      openAiKey: '',
+      anthropicKey: '',
+      geminiKey: '',
+      compatibleKey: '',
+      compatibleBaseUrl: '',
+      whisperModelPath: '',
+    };
+
+    for (const model of ['--sandbox', '-m', '.hidden', '']) {
+      if (model === '') expect(settingsSchema.parse({ ...input, model }).model).toBe('');
+      else expect(() => settingsSchema.parse({ ...input, model })).toThrow();
+    }
+    expect(settingsSchema.parse({ ...input, model: 'gpt-4.1-mini' }).model).toBe('gpt-4.1-mini');
+    expect(settingsSchema.parse({ ...input, model: 'gemma3:4b' }).model).toBe('gemma3:4b');
+    expect(settingsSchema.parse({ ...input, model: 'openai/gpt-4o' }).model).toBe('openai/gpt-4o');
+  });
 });

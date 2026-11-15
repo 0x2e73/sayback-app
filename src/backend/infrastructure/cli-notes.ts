@@ -45,7 +45,14 @@ export interface CliTool extends CliLabels {
   binary: 'claude' | 'codex';
   /** Whether the frames can be attached as files. Otherwise only the text is sent. */
   sendsFrames: boolean;
+  /** Added to the minimal environment: switches off what the client does before the model runs. */
+  environment?: Readonly<Record<string, string>>;
   invocation(job: CliJob): Promise<CliInvocation>;
+  /**
+   * What the CLI itself says went wrong, for a run that exited with an error: its stderr and the
+   * messages it flagged as errors. Never the content of the model's answer.
+   */
+  errorText(output: CliOutput): string;
 }
 
 // Five minutes for a long transcript on a subscription model; one megabyte is far above the notes.
@@ -119,7 +126,7 @@ export class CliNotes {
         args: invocation.args,
         input: invocation.input,
         cwd: directory,
-        env: cliEnvironment(dependencies.environment, folder),
+        env: { ...cliEnvironment(dependencies.environment, folder), ...this.tool.environment },
         timeoutMs,
         maxOutputBytes,
         signal: dependencies.signal,
@@ -131,7 +138,7 @@ export class CliNotes {
 
   private async answer(output: CliOutput, invocation: CliInvocation): Promise<string> {
     if (output.exitCode !== 0) {
-      throw new Error(explainOutput(`${output.stdout}\n${output.stderr}`, this.tool));
+      throw new Error(explainOutput(this.tool.errorText(output), this.tool));
     }
     try {
       return await invocation.reply(output);

@@ -176,7 +176,7 @@ describe('Codex notes: images and answer', () => {
     const fake = answering(notes, events);
 
     await expect(provider(fake).summarize(meeting)).rejects.toThrow(
-      'Codex a tenté d’utiliser un outil. Notes refusées.',
+      'Codex a tenté d’utiliser un outil. Notes refusées. Relancez l’analyse ou choisissez un autre fournisseur.',
     );
   });
 
