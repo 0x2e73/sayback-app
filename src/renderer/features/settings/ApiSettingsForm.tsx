@@ -4,6 +4,7 @@ import { Button, Select, Skeleton, type SelectOption } from '../../components/ui
 import type { FormSettings } from './use-settings';
 import { ProviderKeys } from './ProviderKeys';
 import type { NotesProvider, TranscriptionProvider } from '../../../shared/contracts';
+import { cliDefaultModel, isCliNotesProvider } from '../../../shared/cli-notes';
 import { SettingRow, SettingsGroup, type RowIds } from './SettingsLayout';
 
 interface ApiSettingsFormProps {
@@ -26,7 +27,8 @@ const notesOptions: readonly SelectOption[] = [
   { value: 'codex', label: 'Codex · votre abonnement' },
 ];
 
-// Said before the user picks: the text leaves this computer, through their own account.
+// Shown once the provider is picked, before anything is saved: the text leaves this computer,
+// through their own account.
 const cliDisclosure: Partial<Record<NotesProvider, string>> = {
   'claude-code':
     'Les notes sont rédigées par Claude Code avec votre compte : la transcription, le titre et vos précisions sont envoyés à Anthropic. Les captures d’écran restent sur cet ordinateur.',
@@ -111,13 +113,13 @@ function ProviderDetails({ settings }: ApiSettingsFormProps) {
 
 // The tool's own choice, as the settings store it.
 function modelLabel(model: string): string {
-  return model === 'default' ? 'Modèle par défaut' : model;
+  return model === cliDefaultModel ? 'Modèle par défaut' : model;
 }
 
 function emptyModels(provider: NotesProvider): string {
   if (provider === 'ollama') return 'Aucun modèle Ollama installé.';
   if (provider === 'compatible') return 'Saisissez l’identifiant du modèle.';
-  if (provider === 'claude-code' || provider === 'codex') return 'Aucun modèle disponible.';
+  if (isCliNotesProvider(provider)) return 'Aucun modèle disponible.';
   return 'Enregistrez votre clé pour charger les modèles.';
 }
 
@@ -127,11 +129,7 @@ function modelHint(settings: FormSettings): ReactNode {
     return (
       <span role="status">
         {settings.modelsError}{' '}
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => void settings.loadModels(settings.notesProvider)}
-        >
+        <Button type="button" variant="ghost" onClick={settings.reloadModels}>
           Réessayer
         </Button>
       </span>
