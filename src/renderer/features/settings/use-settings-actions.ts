@@ -6,6 +6,7 @@ import {
   type SettingsInput,
 } from '../../../shared/contracts';
 import { errorMessage } from '../../../shared/format';
+import { isCliNotesProvider } from '../../../shared/cli-notes';
 import { isLocalCompatibleUrl } from '../../../shared/compatible-url';
 import { savedFrom, type useSettingsFields } from './use-settings-fields';
 
@@ -39,6 +40,7 @@ function missingNotes(fields: Fields): string {
   if (fields.notesProvider === 'compatible' && !fields.compatibleBaseUrl.trim()) {
     return 'Indiquez l’URL de votre API compatible.';
   }
+  if (isCliNotesProvider(fields.notesProvider)) return '';
   const credentials = {
     openai: {
       entered: fields.openAiKey.trim(),

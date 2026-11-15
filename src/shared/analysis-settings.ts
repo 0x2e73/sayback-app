@@ -1,5 +1,6 @@
 import type { Settings } from './contracts';
 import { isLocalCompatibleUrl } from './compatible-url';
+import { isCliNotesProvider } from './cli-notes';
 
 function transcriptionConfigured(settings: Settings): boolean {
   if (settings.transcriptionProvider === 'local') return Boolean(settings.whisperModelPath);
@@ -9,6 +10,7 @@ function transcriptionConfigured(settings: Settings): boolean {
 
 function notesConfigured(settings: Settings): boolean {
   if (settings.notesProvider === 'ollama') return true;
+  if (isCliNotesProvider(settings.notesProvider)) return true;
   if (settings.notesProvider === 'openai') return settings.hasOpenAiKey;
   if (settings.notesProvider === 'anthropic') return settings.hasAnthropicKey;
   if (settings.notesProvider === 'gemini') return settings.hasGeminiKey;
@@ -32,6 +34,10 @@ export function analysisDestination(settings: Settings): string {
   if (settings.notesProvider === 'openai') destinations.add('OpenAI pour les notes et images');
   if (settings.notesProvider === 'anthropic') destinations.add('Claude pour les notes et images');
   if (settings.notesProvider === 'gemini') destinations.add('Gemini pour les notes et images');
+  if (settings.notesProvider === 'claude-code')
+    destinations.add('Anthropic, par votre compte Claude Code, pour le texte des notes');
+  if (settings.notesProvider === 'codex')
+    destinations.add('OpenAI, par votre compte Codex, pour les notes et images');
   if (settings.notesProvider === 'compatible')
     destinations.add('l’API personnalisée pour les notes et images');
   return `Données envoyées à ${[...destinations].join(' et ')}.`;

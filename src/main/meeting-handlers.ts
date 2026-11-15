@@ -109,7 +109,11 @@ export function registerSettingsHandlers(
     return credentials.save(settingsSchema.parse(input));
   });
   handle('settings:clear-key', (provider) =>
-    credentials.clear(settingsSchema.shape.notesProvider.exclude(['ollama']).parse(provider)),
+    credentials.clear(
+      settingsSchema.shape.notesProvider
+        .exclude(['ollama', 'claude-code', 'codex'])
+        .parse(provider),
+    ),
   );
   handlePrivacyPane(handle, 'privacy:open-screen-settings', 'screen');
   handlePrivacyPane(handle, 'privacy:open-microphone-settings', 'microphone');

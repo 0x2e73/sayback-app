@@ -4,6 +4,7 @@ import { Button, Select, Skeleton, type SelectOption } from '../../components/ui
 import type { FormSettings } from './use-settings';
 import { ProviderKeys } from './ProviderKeys';
 import type { NotesProvider, TranscriptionProvider } from '../../../shared/contracts';
+import { cliDefaultModel, isCliNotesProvider } from '../../../shared/cli-notes';
 import { SettingRow, SettingsGroup, type RowIds } from './SettingsLayout';
 
 interface ApiSettingsFormProps {
@@ -22,7 +23,18 @@ const notesOptions: readonly SelectOption[] = [
   { value: 'gemini', label: 'Google · Gemini' },
   { value: 'compatible', label: 'API compatible OpenAI' },
   { value: 'ollama', label: 'Ollama · local' },
+  { value: 'claude-code', label: 'Claude Code · votre abonnement' },
+  { value: 'codex', label: 'Codex · votre abonnement' },
 ];
+
+// Shown once the provider is picked, before anything is saved: the text leaves this computer,
+// through their own account.
+const cliDisclosure: Partial<Record<NotesProvider, string>> = {
+  'claude-code':
+    'Les notes sont rédigées par Claude Code avec votre compte : la transcription, le titre et vos précisions sont envoyés à Anthropic. Les captures d’écran restent sur cet ordinateur.',
+  codex:
+    'Les notes sont rédigées par Codex avec votre compte : la transcription, le titre, vos précisions et les captures d’écran sont envoyés à OpenAI.',
+};
 
 function ProviderChoices({ settings }: ApiSettingsFormProps) {
   return (
@@ -40,7 +52,7 @@ function ProviderChoices({ settings }: ApiSettingsFormProps) {
           />
         )}
       </SettingRow>
-      <SettingRow label="Compte rendu">
+      <SettingRow label="Compte rendu" hint={cliDisclosure[settings.notesProvider]}>
         {({ controlId, labelId }) => (
           <Select
             id={controlId}
@@ -99,9 +111,15 @@ function ProviderDetails({ settings }: ApiSettingsFormProps) {
   );
 }
 
+// The tool's own choice, as the settings store it.
+function modelLabel(model: string): string {
+  return model === cliDefaultModel ? 'Modèle par défaut' : model;
+}
+
 function emptyModels(provider: NotesProvider): string {
   if (provider === 'ollama') return 'Aucun modèle Ollama installé.';
   if (provider === 'compatible') return 'Saisissez l’identifiant du modèle.';
+  if (isCliNotesProvider(provider)) return 'Aucun modèle disponible.';
   return 'Enregistrez votre clé pour charger les modèles.';
 }
 
@@ -111,11 +129,7 @@ function modelHint(settings: FormSettings): ReactNode {
     return (
       <span role="status">
         {settings.modelsError}{' '}
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => void settings.loadModels(settings.notesProvider)}
-        >
+        <Button type="button" variant="ghost" onClick={settings.reloadModels}>
           Réessayer
         </Button>
       </span>
@@ -145,7 +159,7 @@ function ModelControl({ settings, ids }: ApiSettingsFormProps & { ids: RowIds })
       id={ids.controlId}
       labelledBy={ids.labelId}
       value={settings.model}
-      options={settings.models.map((model) => ({ value: model, label: model }))}
+      options={settings.models.map((model) => ({ value: model, label: modelLabel(model) }))}
       placeholder={compatible ? 'ex. openai/gpt-4o' : 'Choisir un modèle'}
       emptyMessage={emptyModels(settings.notesProvider)}
       searchLabel="Rechercher un modèle"
