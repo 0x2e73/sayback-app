@@ -22,7 +22,8 @@ electronFuses:
 mac:
   category: public.app-category.productivity
   # electron-builder never signs: it would pick a Developer ID from the keychain, with hardened
-  # runtime and no entitlements, which cuts the microphone. scripts/local-signing.ts signs.
+  # runtime and no entitlements, which cuts the microphone. scripts/local-signing.ts signs: as is
+  # for local builds, with runtime and build/entitlements.mac.plist for `npm run release`.
   identity: null
   target: [dmg]
   extendInfo:

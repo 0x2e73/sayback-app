@@ -42,6 +42,12 @@ export interface FakeOptions {
   builtRequirement?: string;
   /** Of the bundle the channel already offers; by default the built one's. */
   publishedRequirement?: string;
+  /** Steps `failAt`, `abortAt` and `afterStep` name; by default those of `update:publish`. */
+  steps?: readonly { label: string; command: string; args: readonly string[] }[];
+  /** Answers a `capture` before the defaults; `undefined` lets them answer. */
+  answer?: (command: string, args: readonly string[]) => string | undefined;
+  /** Runs after a step succeeded, in its folder (to write what it would produce). */
+  afterStep?: (label: string, cwd: string) => Promise<void>;
 }
 
 const KEYCHAIN = `  1) ${IDENTITY.hash} "${IDENTITY.name}" (CSSMERR_TP_NOT_TRUSTED)\n     1 identities found\n`;
@@ -61,6 +67,8 @@ export function fakeIo(options: FakeOptions = {}) {
   const io: ReleaseIo = {
     capture: (command, args, cwd) => {
       calls.push({ command, args, cwd });
+      const answered = options.answer?.(command, args);
+      if (answered !== undefined) return Promise.resolve(answered);
       if (args[0] === 'status') return Promise.resolve(options.dirty ?? '');
       if (args[0] === 'rev-parse') return Promise.resolve(`${COMMIT}\n`);
       if (command === SECURITY_PROGRAM) return Promise.resolve(options.keychain ?? KEYCHAIN);
@@ -71,12 +79,13 @@ export function fakeIo(options: FakeOptions = {}) {
     },
     run: async (command, args, cwd, env) => {
       calls.push({ command, args, cwd, ...(env === undefined ? {} : { env }) });
-      const step = RELEASE_STEPS.find(
+      const step = (options.steps ?? RELEASE_STEPS).find(
         (candidate) => candidate.command === command && candidate.args.join(' ') === args.join(' '),
       );
       if (step && step.label === options.abortAt) controller.abort();
       if (step && step.label === options.failAt) return 2;
       if (step?.label === 'package') await build(cwd, outputs, options.builtCommit ?? COMMIT);
+      if (step) await options.afterStep?.(step.label, cwd);
       return 0;
     },
     log: () => undefined,

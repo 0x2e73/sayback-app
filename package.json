@@ -23,7 +23,8 @@
     "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
     "package": "npm run build && electron-builder --dir && node scripts/local-signing-cli.ts",
     "dist": "npm run package && node scripts/dist-cli.ts",
-    "update:publish": "node scripts/update-publish-cli.ts"
+    "update:publish": "node scripts/update-publish-cli.ts",
+    "release": "node scripts/release-cli.ts"
   },
   "dependencies": {
     "lucide-react": "^1.45.0",
@@ -33,6 +34,7 @@
     "zod": "^4.6.2"
   },
   "devDependencies": {
+    "@electron/asar": "^3.4.1",
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",

@@ -1,3 +1,5 @@
+import { deepestFirst, listMachO, nestedBundles } from './mach-o.ts';
+
 // Re-signs the packaged bundle with a local code-signing identity, when one is named. macOS
 // privacy permissions (screen recording, microphone) follow the designated requirement: ad hoc it
 // is the hash of the build, so every update is a new app; signed, it is the certificate, so a
@@ -147,11 +149,26 @@ export function describeSigning(identity: SigningIdentity | null): string {
   return `certificat « ${identity.name} », certificate leaf = H"${identity.hash.toLowerCase()}"`;
 }
 
+/** Proves the goal: the designated requirement names `identity` (or its Apple team). By hash, so a
+ * homonym cannot be picked. */
+async function proveSignedBy(
+  appPath: string,
+  identity: SigningIdentity,
+  io: SigningIo,
+): Promise<void> {
+  await io.capture(CODESIGN_PROGRAM, ['--verify', '--deep', '--strict', appPath]);
+  const requirement = await readDesignatedRequirement(appPath, io.capture);
+  if (!requirementNamesIdentity(requirement, identity)) {
+    throw new SigningError(
+      `signé, mais l’exigence désignée ne nomme pas le certificat : ${requirement}`,
+    );
+  }
+  io.log(`signé : ${describeSigning(identity)}`);
+}
+
 /**
- * Signs `appPath` with `identity`, after electron-builder flipped the fuses, then proves the goal:
- * the designated requirement names this certificate (or its Apple team). By hash, so a homonym
- * cannot be picked. No
- * hardened runtime and no entitlements, as ad hoc: a missing entitlement would cut the microphone.
+ * Signs `appPath` with `identity`, after electron-builder flipped the fuses. No hardened runtime
+ * and no entitlements, as ad hoc: a missing entitlement would cut the microphone.
  */
 export async function signBundle(
   appPath: string,
@@ -161,12 +178,37 @@ export async function signBundle(
   // `--timestamp=none`: no request to Apple's timestamp server, which a local build does not need.
   const signing = ['--sign', identity.hash, '--force', '--deep', '--timestamp=none', appPath];
   await io.capture(CODESIGN_PROGRAM, signing);
-  await io.capture(CODESIGN_PROGRAM, ['--verify', '--deep', '--strict', appPath]);
-  const requirement = await readDesignatedRequirement(appPath, io.capture);
-  if (!requirementNamesIdentity(requirement, identity)) {
-    throw new SigningError(
-      `signé, mais l’exigence désignée ne nomme pas le certificat : ${requirement}`,
-    );
+  await proveSignedBy(appPath, identity, io);
+}
+
+/** Team of the Developer ID that signs public releases. */
+export const RELEASE_TEAM_ID = 'AQ6TKNAF9V';
+
+/** Only the project's Developer ID: the certificate Apple notarizes and Gatekeeper trusts. */
+export function assertReleaseIdentity(name: string): void {
+  if (name.startsWith('Developer ID Application: ') && nameTeam(name) === RELEASE_TEAM_ID) return;
+  throw new SigningError(
+    `« ${name} » ne signe pas une version publique : il faut « Developer ID Application: … (${RELEASE_TEAM_ID}) »`,
+  );
+}
+
+/**
+ * Signs a public release for notarization: every Mach-O and nested bundle on its own, deepest
+ * first, with hardened runtime and a secure timestamp. `entitlements` goes on the `.app` bundles
+ * only (the app and its helpers), never on a library or framework.
+ */
+export async function signBundleForRelease(
+  appPath: string,
+  identity: SigningIdentity,
+  entitlements: string,
+  io: SigningIo,
+): Promise<void> {
+  assertReleaseIdentity(identity.name);
+  const nested = [...(await listMachO(appPath, io.capture)), ...(await nestedBundles(appPath))];
+  for (const target of [...deepestFirst(nested), appPath]) {
+    const options = ['--sign', identity.hash, '--force', '--options', 'runtime', '--timestamp'];
+    const granted = target.endsWith('.app') ? ['--entitlements', entitlements] : [];
+    await io.capture(CODESIGN_PROGRAM, [...options, ...granted, target]);
   }
-  io.log(`signé : ${describeSigning(identity)}`);
+  await proveSignedBy(appPath, identity, io);
 }
