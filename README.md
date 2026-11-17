@@ -9,11 +9,23 @@
 Une mémoire de réunion open source qui tourne sur votre ordinateur.<br>
 Audio, écran et notes sur une même chronologie, analysés par des modèles locaux.
 
-[Mode local](docs/local-setup.md) · [Installer Ollama](docs/ollama.md) · [Contribuer](#contribuer) · [Sécurité et modèles](docs/security-and-models.md)
+[Installer](#installer) · [Mode local](docs/local-setup.md) · [Installer Ollama](docs/ollama.md) · [Contribuer](#contribuer) · [Sécurité et modèles](docs/security-and-models.md)
 
 ![Licence MIT](https://img.shields.io/badge/licence-MIT-2f6f4f) ![Testé sur macOS](https://img.shields.io/badge/testé%20sur-macOS-555) ![Windows et Linux : testeurs bienvenus](https://img.shields.io/badge/Windows%20%26%20Linux-testeurs%20bienvenus-4a7fb0) ![Statut : en test](https://img.shields.io/badge/statut-en%20test-c28a2c)
 
 </div>
+
+## Installer
+
+Sur un Mac Apple silicon (M1 ou plus récent), avec macOS 13 ou plus récent : téléchargez le fichier `.dmg` de la dernière version dans les [Releases](https://github.com/0x2e73/sayback-app/releases/latest), ouvrez-le et glissez SayBack dans **Applications**. L’app est signée et notarisée par Apple : elle s’ouvre sans alerte.
+
+Avant le premier enregistrement, trois prérequis, que la présentation de l’app vérifie et que le [guide du mode local](docs/local-setup.md) détaille :
+
+1. Les outils de transcription, avec [Homebrew](https://brew.sh) : `brew install whisper-cpp ffmpeg`.
+2. Un modèle Whisper multilingue, par exemple `ggml-base.bin` ([étape 2 du guide](docs/local-setup.md#2-télécharger-un-modèle-whisper-multilingue)).
+3. [Ollama](docs/ollama.md) et son modèle `gemma3:4b`.
+
+Les outils Homebrew que SayBack lance (whisper.cpp, ffmpeg) héritent de ses autorisations **Microphone** et **Enregistrement de l’écran** : installez-les depuis une source de confiance et tenez-les à jour.
 
 ## Pourquoi SayBack
 
@@ -53,7 +65,7 @@ Vous êtes sur Windows ou Linux ? Vous êtes les bienvenus pour tester, signaler
 
 ## Démarrer
 
-Il n’y a pas encore d’installateur publié. Pour lancer SayBack depuis les sources, il faut [Node.js](https://nodejs.org) 22.18 ou plus récent :
+Pour lancer SayBack depuis les sources, il faut [Node.js](https://nodejs.org) 22.18 ou plus récent :
 
 ```bash
 git clone https://github.com/0x2e73/sayback-app.git
