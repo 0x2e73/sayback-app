@@ -187,7 +187,7 @@ export async function runPublicRelease(
   return { version: info.version, commit, dmg, checksums };
 }
 
-/** What Salim runs once the test account opened the dmg without a warning. */
+/** What the maintainer runs once the test account opened the dmg without a warning. */
 export function publicationCommands(result: PublicReleaseResult): string[] {
   const tag = `v${result.version}`;
   return [
