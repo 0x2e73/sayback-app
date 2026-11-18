@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { BUILD_INFO_FILE_NAME } from '../src/shared/update-channel.ts';
 import { SigningError, signingIdentityName } from './local-signing.ts';
 import { publicationCommands, runPublicRelease, type PublicReleaseIo } from './public-release.ts';
-import type { CommandResult } from './release-proof.ts';
+import type { CommandResult, InspectOptions } from './release-proof.ts';
 import { ReleaseError } from './update-publish.ts';
 
 // `npm run release`: a notarized dmg of the current commit, proven, with its checksum. Publishes
@@ -13,7 +13,7 @@ import { ReleaseError } from './update-publish.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const execute = promisify(execFile);
-// codesign --timestamp and stapler reach Apple; notarytool has its own --timeout.
+// codesign --timestamp and stapler reach Apple. The notarization sets its own, longer delay.
 const COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 const options = { maxBuffer: 16 * 1024 * 1024, timeout: COMMAND_TIMEOUT_MS };
 
@@ -23,9 +23,14 @@ function exitCode(error: ExecFileException | null): number {
   return typeof error.code === 'number' ? error.code : 1;
 }
 
-function inspect(command: string, args: readonly string[]): Promise<CommandResult> {
+function inspect(
+  command: string,
+  args: readonly string[],
+  inspectOptions: InspectOptions = {},
+): Promise<CommandResult> {
+  const timeout = inspectOptions.timeoutMs ?? COMMAND_TIMEOUT_MS;
   return new Promise((resolveResult) => {
-    execFile(command, [...args], options, (error, stdout, stderr) => {
+    execFile(command, [...args], { ...options, timeout }, (error, stdout, stderr) => {
       resolveResult({ code: exitCode(error), stdout, stderr });
     });
   });
@@ -60,10 +65,9 @@ function describeFailure(error: unknown): string {
 }
 
 try {
-  if (process.platform !== 'darwin')
-    throw new ReleaseError('une version publique se construit sur macOS');
   const result = await runPublicRelease({
     repoRoot: ROOT,
+    host: { platform: process.platform, arch: process.arch },
     io,
     identityName: signingIdentityName(process.env),
     readBuildInfo: (asar) =>

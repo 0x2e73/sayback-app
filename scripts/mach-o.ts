@@ -8,7 +8,7 @@ import type { Capture } from './local-signing.ts';
 
 export const FILE_PROGRAM = '/usr/bin/file';
 
-const BUNDLE_EXTENSIONS = ['.app', '.framework'];
+const BUNDLE_EXTENSIONS = ['.app', '.framework', '.bundle', '.xpc', '.plugin', '.appex'];
 
 /**
  * Entries under `root`, never through a symlink: a framework's `Versions/Current` is not code
@@ -45,7 +45,7 @@ export async function listMachO(root: string, capture: Capture): Promise<string[
   return machOPaths(await capture(FILE_PROGRAM, ['-0', '-N', '--', ...files]));
 }
 
-/** `.app` and `.framework` folders nested in `root`. */
+/** Code bundles (`.app`, `.framework`, `.bundle`, `.xpc`, `.plugin`, `.appex`) nested in `root`. */
 export async function nestedBundles(root: string): Promise<string[]> {
   return (await entriesUnder(root))
     .filter((entry) => entry.isDirectory())

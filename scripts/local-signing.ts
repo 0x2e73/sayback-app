@@ -68,18 +68,26 @@ export function keychainEntries(findIdentityOutput: string, name: string): Keych
   return [...entries.values()];
 }
 
-async function listIdentities(capture: Capture): Promise<string> {
+async function listIdentities(capture: Capture, validOnly: boolean): Promise<string> {
+  const valid = validOnly ? ['-v'] : [];
   try {
-    return await capture(SECURITY_PROGRAM, ['find-identity', '-p', 'codesigning']);
+    return await capture(SECURITY_PROGRAM, ['find-identity', ...valid, '-p', 'codesigning']);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new SigningError(`lecture du trousseau impossible : ${message}`);
   }
 }
 
-/** Finds the certificate named `name`: refuses an absent, ambiguous, expired or revoked one. */
-export async function resolveIdentity(name: string, capture: Capture): Promise<SigningIdentity> {
-  const entries = keychainEntries(await listIdentities(capture), name);
+/**
+ * Finds the certificate named `name`: refuses an absent, ambiguous, expired or revoked one.
+ * `validOnly` (public releases): only a certificate the system trusts, with `find-identity -v`.
+ */
+export async function resolveIdentity(
+  name: string,
+  capture: Capture,
+  validOnly = false,
+): Promise<SigningIdentity> {
+  const entries = keychainEntries(await listIdentities(capture, validOnly), name);
   if (entries.length > 1) {
     throw new SigningError(
       `plusieurs certificats s’appellent « ${name} » dans le trousseau : gardez-en un seul`,

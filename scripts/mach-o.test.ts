@@ -83,13 +83,15 @@ describe('listMachO', () => {
 });
 
 describe('nestedBundles', () => {
-  it('trouve les .app et .framework imbriqués', async () => {
+  it('trouve les paquets de code imbriqués, pas les dossiers de ressources', async () => {
     const helper = join(root, 'Contents', 'Frameworks', 'SayBack Helper (GPU).app');
     const framework = join(root, 'Contents', 'Frameworks', 'Electron Framework.framework');
-    await mkdir(helper, { recursive: true });
-    await mkdir(framework, { recursive: true });
+    const others = ['Plug.bundle', 'Service.xpc', 'Audio.plugin', 'Widget.appex'].map((name) =>
+      join(root, 'Contents', 'PlugIns', name),
+    );
+    for (const path of [helper, framework, ...others]) await mkdir(path, { recursive: true });
     await mkdir(join(root, 'Contents', 'Resources', 'fr.lproj'), { recursive: true });
-    expect((await nestedBundles(root)).sort()).toEqual([framework, helper].sort());
+    expect((await nestedBundles(root)).sort()).toEqual([framework, helper, ...others].sort());
   });
 });
 

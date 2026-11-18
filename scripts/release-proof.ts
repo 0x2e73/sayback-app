@@ -13,14 +13,26 @@ export interface CommandResult {
   stderr: string;
 }
 
+export interface InspectOptions {
+  /** Kills the command past this delay; the runner's default otherwise. */
+  timeoutMs?: number;
+}
+
 /** Runs a command and returns its exit code and both outputs; never throws on a failure code. */
-export type Inspect = (command: string, args: readonly string[]) => Promise<CommandResult>;
+export type Inspect = (
+  command: string,
+  args: readonly string[],
+  options?: InspectOptions,
+) => Promise<CommandResult>;
 
 export interface ProofIo {
   capture: Capture;
   inspect: Inspect;
   log(line: string): void;
 }
+
+/** The chain above a Developer ID certificate, as codesign lists it after the leaf. */
+const APPLE_CHAIN = ['Developer ID Certification Authority', 'Apple Root CA'];
 
 /** What is wrong with one signature, from `codesign -dvvv` (written on standard error). */
 export function signatureProblems(details: string, team: string): string[] {
@@ -31,6 +43,10 @@ export function signatureProblems(details: string, team: string): string[] {
   const authority = /^Authority=(.*)$/m.exec(details)?.[1] ?? 'aucune (ad hoc)';
   const developerId = new RegExp(`^Developer ID Application: .+ \\(${team}\\)$`);
   if (!developerId.test(authority)) problems.push(`autorité ${authority}`);
+  for (const issuer of APPLE_CHAIN) {
+    if (!new RegExp(`^Authority=${issuer}$`, 'm').test(details))
+      problems.push(`chaîne sans ${issuer}`);
+  }
   return problems;
 }
 

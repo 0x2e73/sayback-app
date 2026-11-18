@@ -18,15 +18,18 @@ const TEAM = RELEASE_TEAM_ID;
 const JIT = 'com.apple.security.cs.allow-jit';
 const MIC = 'com.apple.security.device.audio-input';
 
-function details(options: { flags?: string; authority?: string; timestamp?: boolean } = {}) {
+function details(
+  options: { flags?: string; authority?: string; timestamp?: boolean; chain?: boolean } = {},
+) {
   return [
     'Executable=/x/SayBack.app/Contents/MacOS/SayBack',
     'Identifier=ch.sayback.desktop',
     'Format=app bundle with Mach-O thin (arm64)',
     `CodeDirectory v=20500 size=1234 flags=${options.flags ?? '0x10000(runtime)'} hashes=27+7 location=embedded`,
     `Authority=${options.authority ?? `Developer ID Application: Jane Doe (${TEAM})`}`,
-    'Authority=Developer ID Certification Authority',
-    'Authority=Apple Root CA',
+    ...(options.chain === false
+      ? []
+      : ['Authority=Developer ID Certification Authority', 'Authority=Apple Root CA']),
     ...(options.timestamp === false
       ? ['Signed Time=17 Nov 2026']
       : ['Timestamp=17 Nov 2026 at 10:00:00']),
@@ -53,6 +56,8 @@ describe('signatureProblems', () => {
       'runtime absent',
       'horodatage absent',
       'autorité aucune (ad hoc)',
+      'chaîne sans Developer ID Certification Authority',
+      'chaîne sans Apple Root CA',
     ]);
   });
 
@@ -68,7 +73,14 @@ describe('signatureProblems', () => {
   });
 
   it('sortie vide : tout manque', () => {
-    expect(signatureProblems('', TEAM)).toHaveLength(3);
+    expect(signatureProblems('', TEAM)).toHaveLength(5);
+  });
+
+  it('feuille Developer ID sans la chaîne d’Apple : refusée', () => {
+    expect(signatureProblems(details({ chain: false }), TEAM)).toEqual([
+      'chaîne sans Developer ID Certification Authority',
+      'chaîne sans Apple Root CA',
+    ]);
   });
 });
 

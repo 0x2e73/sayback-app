@@ -1,5 +1,5 @@
-import { readdir, rm, writeFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 import { LOCAL_UPDATE_CHANNEL_ENV, buildInfoSchema } from '../src/shared/update-channel.ts';
 import { findBuiltApp } from './built-app.ts';
 import {
@@ -42,11 +42,15 @@ export const PUBLIC_RELEASE_STEPS: readonly PublicReleaseStep[] = [...BUILD_STEP
 /** A public build never carries the local update channel, whatever the shell exports. */
 const STEP_ENV = { [LOCAL_UPDATE_CHANNEL_ENV]: '0' };
 export const CHECKSUMS_NAME = 'SHA256SUMS';
+/** Under dist/: one folder per commit, out of reach of `npm run dist`. */
+export const RELEASE_DIR_NAME = 'release';
 
 export type PublicReleaseIo = ReleaseIo & { inspect: Inspect };
 
 export interface PublicReleaseContext {
   repoRoot: string;
+  /** The machine that builds: the release is Apple silicon only, as the README says. */
+  host: { platform: string; arch: string };
   io: PublicReleaseIo;
   /** `SAYBACK_SIGNING_IDENTITY`, `null` when unset. */
   identityName: string | null;
@@ -65,27 +69,34 @@ function proofIo(context: PublicReleaseContext): ProofIo {
   const { io, repoRoot } = context;
   return {
     capture: (command, args) => io.capture(command, args, repoRoot),
-    inspect: (command, args) => io.inspect(command, args),
+    inspect: (command, args, options) => io.inspect(command, args, options),
     log: (line) => {
       io.log(line);
     },
   };
 }
 
-/** Before any build: a Developer ID of the project's team, and a clean tree. */
+async function assertCleanTree(context: PublicReleaseContext, when: string): Promise<void> {
+  const status = await context.io.capture('git', ['status', '--porcelain'], context.repoRoot);
+  if (status.trim() !== '') {
+    throw new ReleaseError(`l’arbre de travail a des modifications non commitées ${when}`);
+  }
+}
+
+/** Before any build: an Apple silicon Mac, a valid Developer ID of the team, a clean tree. */
 async function prepare(context: PublicReleaseContext) {
-  const { io, repoRoot, identityName } = context;
+  const { io, repoRoot, identityName, host } = context;
+  if (host.platform !== 'darwin' || host.arch !== 'arm64') {
+    throw new ReleaseError(
+      `une version publique se construit sur un Mac Apple silicon, pas ${host.platform}-${host.arch}`,
+    );
+  }
   if (identityName === null) {
     throw new ReleaseError(`${SIGNING_IDENTITY_ENV} absente : exportez le Developer ID`);
   }
   assertReleaseIdentity(identityName);
-  const identity = await resolveIdentity(identityName, proofIo(context).capture);
-  const status = await io.capture('git', ['status', '--porcelain'], repoRoot);
-  if (status.trim() !== '') {
-    throw new ReleaseError(
-      'l’arbre de travail a des modifications non commitées : committez d’abord',
-    );
-  }
+  const identity = await resolveIdentity(identityName, proofIo(context).capture, true);
+  await assertCleanTree(context, ': committez d’abord');
   const commit = (await io.capture('git', ['rev-parse', 'HEAD'], repoRoot)).trim();
   return { identity, commit };
 }
@@ -116,23 +127,41 @@ async function dmgsIn(distDir: string): Promise<string[]> {
   return names.filter((name) => name.endsWith('.dmg')).map((name) => join(distDir, name));
 }
 
-/** Makes the dmg from the signed app, signs it. Older dmgs go first so the new one is unambiguous. */
-async function makeDmg(identity: SigningIdentity, context: PublicReleaseContext): Promise<string> {
+/**
+ * Makes the dmg from the signed app, moves it to the release folder and signs it there, where
+ * `npm run dist` cannot overwrite it. Older dmgs of dist/ go first so the new one is unambiguous.
+ */
+async function makeDmg(
+  identity: SigningIdentity,
+  releaseDir: string,
+  context: PublicReleaseContext,
+): Promise<string> {
   const distDir = join(context.repoRoot, 'dist');
   for (const stale of await dmgsIn(distDir)) await rm(stale, { force: true });
   await runStep(DMG_STEP, context);
-  const [dmg, ...others] = await dmgsIn(distDir);
-  if (dmg === undefined || others.length > 0) {
+  const [built, ...others] = await dmgsIn(distDir);
+  if (built === undefined || others.length > 0) {
     throw new ReleaseError(`un seul dmg attendu dans ${distDir}`);
   }
+  const dmg = join(releaseDir, basename(built));
+  await mkdir(releaseDir, { recursive: true });
+  await rename(built, dmg);
   const { capture } = proofIo(context);
   await capture(CODESIGN_PROGRAM, ['--sign', identity.hash, '--force', '--timestamp', dmg]);
   await capture(CODESIGN_PROGRAM, ['--verify', '--strict', dmg]);
   return dmg;
 }
 
+/** `dist/release/<short commit>/`, emptied: only this run's dmg and checksum end up there. */
+async function freshReleaseDir(repoRoot: string, commit: string): Promise<string> {
+  const releaseDir = join(repoRoot, 'dist', RELEASE_DIR_NAME, commit.slice(0, 12));
+  await rm(releaseDir, { recursive: true, force: true });
+  await mkdir(releaseDir, { recursive: true });
+  return releaseDir;
+}
+
 async function writeChecksums(dmg: string): Promise<string> {
-  const path = join(dmg, '..', CHECKSUMS_NAME);
+  const path = join(dirname(dmg), CHECKSUMS_NAME);
   await writeFile(path, `${await sha256File(dmg)}  ${basename(dmg)}\n`);
   return path;
 }
@@ -142,12 +171,15 @@ export async function runPublicRelease(
   context: PublicReleaseContext,
 ): Promise<PublicReleaseResult> {
   const { identity, commit } = await prepare(context);
+  const releaseDir = await freshReleaseDir(context.repoRoot, commit);
   for (const step of BUILD_STEPS) await runStep(step, context);
+  // The checks and the build must not have touched a tracked file: what is signed is the commit.
+  await assertCleanTree(context, 'après la construction : rien n’est signé');
   const appPath = await findBuiltApp(context.repoRoot);
   const info = await checkPackaged(appPath, commit, context);
   const entitlements = join(context.repoRoot, 'build', 'entitlements.mac.plist');
   await signBundleForRelease(appPath, identity, entitlements, proofIo(context));
-  const dmg = await makeDmg(identity, context);
+  const dmg = await makeDmg(identity, releaseDir, context);
   await notarize(dmg, proofIo(context));
   await proofIo(context).capture(XCRUN_PROGRAM, ['stapler', 'staple', dmg]);
   await proveDmg(dmg, entitlements, proofIo(context));
