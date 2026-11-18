@@ -17,7 +17,7 @@ Audio, écran et notes sur une même chronologie, analysés par des modèles loc
 
 ## Installer
 
-Sur un Mac Apple silicon (M1 ou plus récent), avec macOS 13 ou plus récent : téléchargez le fichier `.dmg` de la dernière version dans les [Releases](https://github.com/0x2e73/sayback-app/releases/latest), ouvrez-le et glissez SayBack dans **Applications**. L’app est signée et notarisée par Apple : elle s’ouvre sans alerte.
+Sur un Mac Apple silicon (M1 ou plus récent), avec macOS 13 ou plus récent : téléchargez le fichier `.dmg` de la dernière version dans les [Releases](https://github.com/0x2e73/sayback-app/releases/latest), ouvrez-le et glissez SayBack dans **Applications**. L’app est signée et notarisée par Apple : elle s’ouvre sans avertissement de développeur non identifié (macOS demande seulement de confirmer l’ouverture d’une app téléchargée).
 
 Avant le premier enregistrement, trois prérequis, que la présentation de l’app vérifie et que le [guide du mode local](docs/local-setup.md) détaille :
 
